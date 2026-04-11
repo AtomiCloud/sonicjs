@@ -1,16 +1,16 @@
-import { getTenantIdOrNull, renderConfirmationDialog, getConfirmationDialogScript, api_default, api_media_default, api_system_default, admin_api_default, router, adminCollectionsRoutes, adminFormsRoutes, adminSettingsRoutes, public_forms_default, router2, admin_content_default, adminMediaRoutes, userProfilesPlugin, adminPluginRoutes, adminLogsRoutes, userRoutes, auth_default, test_cleanup_default } from './chunk-OGDR7Q2T.js';
-export { ROUTES_INFO, admin_api_default as adminApiRoutes, adminCheckboxRoutes, admin_code_examples_default as adminCodeExamplesRoutes, adminCollectionsRoutes, admin_content_default as adminContentRoutes, router as adminDashboardRoutes, adminDesignRoutes, adminLogsRoutes, adminMediaRoutes, adminPluginRoutes, adminSettingsRoutes, admin_testimonials_default as adminTestimonialsRoutes, userRoutes as adminUsersRoutes, api_content_crud_default as apiContentCrudRoutes, api_media_default as apiMediaRoutes, api_default as apiRoutes, api_system_default as apiSystemRoutes, auth_default as authRoutes, createUserProfilesPlugin, defineUserProfile, getTenantId, getTenantIdOrNull, getUserProfileConfig, isSuperAdmin, userProfilesPlugin } from './chunk-OGDR7Q2T.js';
+import { getTenantIdOrNull, renderConfirmationDialog, getConfirmationDialogScript, api_default, api_media_default, api_system_default, admin_api_default, router, adminCollectionsRoutes, adminFormsRoutes, adminSettingsRoutes, public_forms_default, router2, admin_content_default, adminMediaRoutes, userProfilesPlugin, adminPluginRoutes, adminLogsRoutes, userRoutes, auth_default, test_cleanup_default } from './chunk-RSRF5YC3.js';
+export { ROUTES_INFO, admin_api_default as adminApiRoutes, adminCheckboxRoutes, admin_code_examples_default as adminCodeExamplesRoutes, adminCollectionsRoutes, admin_content_default as adminContentRoutes, router as adminDashboardRoutes, adminDesignRoutes, adminLogsRoutes, adminMediaRoutes, adminPluginRoutes, adminSettingsRoutes, admin_testimonials_default as adminTestimonialsRoutes, userRoutes as adminUsersRoutes, api_content_crud_default as apiContentCrudRoutes, api_media_default as apiMediaRoutes, api_default as apiRoutes, api_system_default as apiSystemRoutes, auth_default as authRoutes, createUserProfilesPlugin, defineUserProfile, getTenantId, getTenantIdOrNull, getUserProfileConfig, isSuperAdmin, userProfilesPlugin } from './chunk-RSRF5YC3.js';
 import { SettingsService, setAppInstance, schema_exports } from './chunk-TBJY2FF7.js';
 export { Logger, apiTokens, collections, content, contentVersions, getLogger, initLogger, insertCollectionSchema, insertContentSchema, insertLogConfigSchema, insertMediaSchema, insertPluginActivityLogSchema, insertPluginAssetSchema, insertPluginHookSchema, insertPluginRouteSchema, insertPluginSchema, insertSystemLogSchema, insertUserSchema, insertWorkflowHistorySchema, logConfig, media, pluginActivityLog, pluginAssets, pluginHooks, pluginRoutes, plugins, selectCollectionSchema, selectContentSchema, selectLogConfigSchema, selectMediaSchema, selectPluginActivityLogSchema, selectPluginAssetSchema, selectPluginHookSchema, selectPluginRouteSchema, selectPluginSchema, selectSystemLogSchema, selectUserSchema, selectWorkflowHistorySchema, systemLogs, users, workflowHistory } from './chunk-TBJY2FF7.js';
-import { requireAuth, AuthManager, metricsMiddleware, bootstrapMiddleware, securityHeadersMiddleware, csrfProtection } from './chunk-E6A7MSAR.js';
-export { AuthManager, PermissionManager, bootstrapMiddleware, cacheHeaders, compressionMiddleware, detailedLoggingMiddleware, getActivePlugins, isPluginActive, logActivity, loggingMiddleware, optionalAuth, performanceLoggingMiddleware, requireActivePlugin, requireActivePlugins, requireAnyPermission, requireAuth, requirePermission, requireRole, securityHeadersMiddleware as securityHeaders, securityLoggingMiddleware } from './chunk-E6A7MSAR.js';
+import { requireAuth, AuthManager, metricsMiddleware, bootstrapMiddleware, securityHeadersMiddleware, csrfProtection } from './chunk-SZ4ICYDZ.js';
+export { AuthManager, PermissionManager, bootstrapMiddleware, cacheHeaders, compressionMiddleware, detailedLoggingMiddleware, getActivePlugins, isPluginActive, logActivity, loggingMiddleware, optionalAuth, performanceLoggingMiddleware, requireActivePlugin, requireActivePlugins, requireAnyPermission, requireAuth, requirePermission, requireRole, securityHeadersMiddleware as securityHeaders, securityLoggingMiddleware } from './chunk-SZ4ICYDZ.js';
 import { PluginService, PLUGIN_REGISTRY } from './chunk-3GZLOTZK.js';
 export { PluginBootstrapService, PluginService as PluginServiceClass, backfillFormSubmissions, cleanupRemovedCollections, createContentFromSubmission, deriveCollectionSchemaFromFormio, deriveSubmissionTitle, fullCollectionSync, getAvailableCollectionNames, getManagedCollections, isCollectionManaged, loadCollectionConfig, loadCollectionConfigs, mapFormStatusToContentStatus, registerCollections, syncAllFormCollections, syncCollection, syncCollections, syncFormCollection, validateCollectionConfig } from './chunk-3GZLOTZK.js';
-export { MigrationService } from './chunk-TGYRVZQK.js';
-export { renderFilterBar } from './chunk-ON5ZMSU4.js';
-import { renderAdminLayout } from './chunk-XWIA3HVX.js';
-export { getConfirmationDialogScript, renderAlert, renderConfirmationDialog, renderForm, renderFormField, renderPagination, renderTable } from './chunk-XWIA3HVX.js';
-import { init_admin_layout_catalyst_template, renderAdminLayoutCatalyst } from './chunk-55RDMDOP.js';
+export { MigrationService } from './chunk-PPRICE35.js';
+export { renderFilterBar } from './chunk-FKMSQPKO.js';
+import { renderAdminLayout } from './chunk-XZM4V2PU.js';
+export { getConfirmationDialogScript, renderAlert, renderConfirmationDialog, renderForm, renderFormField, renderPagination, renderTable } from './chunk-XZM4V2PU.js';
+import { init_admin_layout_catalyst_template, renderAdminLayoutCatalyst } from './chunk-SZLKK4DC.js';
 export { HookSystemImpl, HookUtils, PluginManager as PluginManagerClass, PluginRegistryImpl, PluginValidator as PluginValidatorClass, ScopedHookSystem as ScopedHookSystemClass } from './chunk-TFNTM3OA.js';
 import { PluginBuilder } from './chunk-EXNEW5US.js';
 export { PluginBuilder, PluginHelpers } from './chunk-EXNEW5US.js';
@@ -1331,26 +1331,240 @@ function createSeedDataAdminRoutes() {
   });
   return routes;
 }
+
+// src/templates/pages/admin-tenants-list.template.ts
+init_admin_layout_catalyst_template();
+function renderTenantsListPage(data) {
+  const rows = data.tenants.map((t) => {
+    const createdDate = new Date(t.created_at).toLocaleDateString();
+    const statusBadge2 = t.is_active ? '<span class="inline-flex items-center rounded-md bg-green-500/10 px-2 py-1 text-xs font-medium text-green-400 ring-1 ring-inset ring-green-500/20">Active</span>' : '<span class="inline-flex items-center rounded-md bg-red-500/10 px-2 py-1 text-xs font-medium text-red-400 ring-1 ring-inset ring-red-500/20">Inactive</span>';
+    return `
+      <tr class="hover:bg-zinc-800/50 cursor-pointer" onclick="window.location='/admin/tenants/${t.id}'">
+        <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-white sm:pl-6">${t.name}</td>
+        <td class="whitespace-nowrap px-3 py-4 text-sm text-zinc-400">${t.slug}</td>
+        <td class="whitespace-nowrap px-3 py-4 text-sm text-zinc-400">${t.user_count ?? "-"}</td>
+        <td class="whitespace-nowrap px-3 py-4 text-sm text-zinc-400">${t.content_count ?? "-"}</td>
+        <td class="whitespace-nowrap px-3 py-4 text-sm">${statusBadge2}</td>
+        <td class="whitespace-nowrap px-3 py-4 text-sm text-zinc-400">${createdDate}</td>
+      </tr>
+    `;
+  }).join("");
+  const emptyState = data.tenants.length === 0 ? `
+    <tr>
+      <td colspan="6" class="px-6 py-12 text-center text-sm text-zinc-500">
+        No tenants yet. Create your first tenant to get started.
+      </td>
+    </tr>
+  ` : "";
+  const pageContent = `
+    <div class="px-4 sm:px-6 lg:px-8">
+      <div class="sm:flex sm:items-center sm:justify-between">
+        <div>
+          <h1 class="text-2xl font-semibold text-white">Tenants</h1>
+          <p class="mt-2 text-sm text-zinc-400">Manage customer tenants and their CMS instances.</p>
+        </div>
+        <div class="mt-4 sm:mt-0">
+          <button onclick="document.getElementById('create-modal').classList.remove('hidden')"
+            class="inline-flex items-center rounded-lg bg-lime-600 px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-lime-700 transition-colors shadow-sm">
+            <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+            </svg>
+            Create Tenant
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-8 flow-root">
+        <div class="overflow-x-auto rounded-xl ring-1 ring-white/10">
+          <table class="min-w-full divide-y divide-white/5">
+            <thead class="bg-zinc-800/50">
+              <tr>
+                <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-zinc-300 sm:pl-6">Name</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-zinc-300">Slug</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-zinc-300">Users</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-zinc-300">Content</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-zinc-300">Status</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-zinc-300">Created</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+              ${rows}${emptyState}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Tenant Modal -->
+    <div id="create-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+      <div class="flex min-h-full items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black/60" onclick="document.getElementById('create-modal').classList.add('hidden')"></div>
+        <div class="relative w-full max-w-lg rounded-xl bg-zinc-900 ring-1 ring-white/10 shadow-2xl p-6">
+          <h2 class="text-lg font-semibold text-white mb-4">Create New Tenant</h2>
+          <form id="create-tenant-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-zinc-300 mb-1">Tenant Name</label>
+              <input type="text" name="name" required placeholder="My Customer"
+                class="w-full rounded-lg border-0 bg-zinc-800 px-3 py-2 text-white ring-1 ring-inset ring-white/10 placeholder:text-zinc-500 focus:ring-2 focus:ring-lime-500 text-sm"/>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-zinc-300 mb-1">Slug</label>
+              <input type="text" name="slug" required placeholder="my-customer" pattern="[a-z0-9-]+"
+                class="w-full rounded-lg border-0 bg-zinc-800 px-3 py-2 text-white ring-1 ring-inset ring-white/10 placeholder:text-zinc-500 focus:ring-2 focus:ring-lime-500 text-sm"/>
+              <p class="mt-1 text-xs text-zinc-500">Lowercase letters, numbers, and hyphens only.</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-zinc-300 mb-1">Admin Email</label>
+              <input type="email" name="adminEmail" required placeholder="admin@customer.com"
+                class="w-full rounded-lg border-0 bg-zinc-800 px-3 py-2 text-white ring-1 ring-inset ring-white/10 placeholder:text-zinc-500 focus:ring-2 focus:ring-lime-500 text-sm"/>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-zinc-300 mb-1">Admin Password</label>
+              <input type="password" name="adminPassword" required minlength="8" placeholder="Min 8 characters"
+                class="w-full rounded-lg border-0 bg-zinc-800 px-3 py-2 text-white ring-1 ring-inset ring-white/10 placeholder:text-zinc-500 focus:ring-2 focus:ring-lime-500 text-sm"/>
+            </div>
+            <div id="create-error" class="hidden rounded-lg bg-red-500/10 p-3 text-sm text-red-400 ring-1 ring-inset ring-red-500/20"></div>
+            <div id="create-success" class="hidden rounded-lg bg-green-500/10 p-3 text-sm text-green-400 ring-1 ring-inset ring-green-500/20"></div>
+            <div class="flex justify-end gap-3 pt-2">
+              <button type="button" onclick="document.getElementById('create-modal').classList.add('hidden')"
+                class="rounded-lg px-3.5 py-2.5 text-sm font-semibold text-zinc-300 hover:text-white transition-colors">Cancel</button>
+              <button type="submit" id="create-btn"
+                class="rounded-lg bg-lime-600 px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-lime-700 transition-colors shadow-sm">Create Tenant</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.getElementById('create-tenant-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const btn = document.getElementById('create-btn');
+        const errorDiv = document.getElementById('create-error');
+        const successDiv = document.getElementById('create-success');
+        errorDiv.classList.add('hidden');
+        successDiv.classList.add('hidden');
+        btn.disabled = true;
+        btn.textContent = 'Creating...';
+
+        try {
+          const res = await fetch('/admin/tenants/api', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: form.name.value,
+              slug: form.slug.value,
+              adminEmail: form.adminEmail.value,
+              adminPassword: form.adminPassword.value
+            })
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            errorDiv.textContent = data.error || 'Failed to create tenant';
+            errorDiv.classList.remove('hidden');
+          } else {
+            successDiv.innerHTML = 'Tenant created! API Token: <code class="bg-zinc-800 px-1.5 py-0.5 rounded text-xs font-mono break-all">' + data.apiToken + '</code><br/><span class="text-xs text-zinc-500">Save this token \u2014 it will not be shown again.</span>';
+            successDiv.classList.remove('hidden');
+            form.reset();
+            setTimeout(() => window.location.reload(), 3000);
+          }
+        } catch (err) {
+          errorDiv.textContent = 'Network error';
+          errorDiv.classList.remove('hidden');
+        }
+        btn.disabled = false;
+        btn.textContent = 'Create Tenant';
+      });
+
+      // Auto-generate slug from name
+      document.querySelector('input[name="name"]').addEventListener('input', (e) => {
+        const slugInput = document.querySelector('input[name="slug"]');
+        if (!slugInput.dataset.manual) {
+          slugInput.value = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        }
+      });
+      document.querySelector('input[name="slug"]').addEventListener('input', (e) => {
+        e.target.dataset.manual = 'true';
+      });
+    </script>
+  `;
+  const layoutData = {
+    title: "Tenants",
+    pageTitle: "Tenant Management",
+    currentPath: "/admin/tenants",
+    user: data.user,
+    version: data.version,
+    content: pageContent
+  };
+  return renderAdminLayoutCatalyst(layoutData);
+}
+
+// src/routes/admin-tenants.ts
+init_admin_layout_catalyst_template();
 var router3 = new Hono();
 router3.use("*", requireAuth());
 router3.use("*", async (c, next) => {
   const user = c.get("user");
   if (user?.role !== "super_admin") {
-    return c.json({ error: "Super admin access required" }, 403);
+    if (c.req.header("Accept")?.includes("application/json") || c.req.path.includes("/api")) {
+      return c.json({ error: "Super admin access required" }, 403);
+    }
+    return c.redirect("/admin/dashboard");
   }
   return next();
 });
 router3.get("/", async (c) => {
   try {
     const db = c.env.DB;
-    const result = await db.prepare("SELECT * FROM tenants ORDER BY created_at DESC").all();
-    return c.json(result.results);
+    const user = c.get("user");
+    const result = await db.prepare(`
+      SELECT t.*,
+        (SELECT COUNT(*) FROM users WHERE tenant_id = t.id) as user_count,
+        (SELECT COUNT(*) FROM content WHERE tenant_id = t.id) as content_count
+      FROM tenants t
+      ORDER BY t.created_at DESC
+    `).all();
+    return c.html(renderTenantsListPage({
+      tenants: result.results,
+      user: { name: user.email, email: user.email, role: user.role },
+      version: c.get("appVersion")
+    }));
   } catch (error) {
-    console.error("Error listing tenants:", error);
-    return c.json({ error: "Failed to list tenants" }, 500);
+    console.error("Error rendering tenants page:", error);
+    return c.text("Failed to load tenants page", 500);
   }
 });
-router3.post("/", async (c) => {
+router3.get("/:id", async (c) => {
+  const id = c.req.param("id");
+  if (id === "api") return;
+  try {
+    const db = c.env.DB;
+    const user = c.get("user");
+    const tenant = await db.prepare("SELECT * FROM tenants WHERE id = ?").bind(id).first();
+    if (!tenant) return c.redirect("/admin/tenants");
+    const users2 = await db.prepare(
+      "SELECT id, email, username, role, is_active, created_at FROM users WHERE tenant_id = ? ORDER BY created_at DESC"
+    ).bind(id).all();
+    const contentCount = await db.prepare(
+      "SELECT COUNT(*) as count FROM content WHERE tenant_id = ?"
+    ).bind(id).first();
+    const tokens = await db.prepare(
+      "SELECT id, name, created_at, last_used_at, expires_at FROM api_tokens WHERE tenant_id = ?"
+    ).bind(id).all();
+    const pageContent = renderTenantDetailPage(tenant, users2.results, contentCount?.count ?? 0, tokens.results);
+    return c.html(renderTenantsDetailLayout({
+      title: `Tenant: ${tenant.name}`,
+      content: pageContent,
+      user: { name: user.email, email: user.email, role: user.role },
+      version: c.get("appVersion")
+    }));
+  } catch (error) {
+    console.error("Error rendering tenant detail:", error);
+    return c.text("Failed to load tenant detail", 500);
+  }
+});
+router3.post("/api", async (c) => {
   try {
     const db = c.env.DB;
     const body = await c.req.json();
@@ -1358,11 +1572,17 @@ router3.post("/", async (c) => {
     if (!name || !slug || !adminEmail || !adminPassword) {
       return c.json({ error: "name, slug, adminEmail, and adminPassword are required" }, 400);
     }
+    if (!/^[a-z0-9-]+$/.test(slug)) {
+      return c.json({ error: "Slug must contain only lowercase letters, numbers, and hyphens" }, 400);
+    }
+    if (adminPassword.length < 8) {
+      return c.json({ error: "Password must be at least 8 characters" }, 400);
+    }
     const existing = await db.prepare("SELECT id FROM tenants WHERE slug = ?").bind(slug).first();
     if (existing) {
       return c.json({ error: "A tenant with this slug already exists" }, 409);
     }
-    const now = (/* @__PURE__ */ new Date()).toISOString();
+    const now = Date.now();
     const tenantId = crypto.randomUUID();
     await db.prepare(
       "INSERT INTO tenants (id, name, slug, is_active, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)"
@@ -1370,47 +1590,30 @@ router3.post("/", async (c) => {
     const hashedPassword = await AuthManager.hashPassword(adminPassword);
     const userId = crypto.randomUUID();
     await db.prepare(
-      "INSERT INTO users (id, email, password, role, tenant_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    ).bind(userId, adminEmail, hashedPassword, "admin", tenantId, now, now).run();
+      "INSERT INTO users (id, email, username, first_name, last_name, password_hash, role, is_active, tenant_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)"
+    ).bind(userId, adminEmail, adminEmail.split("@")[0], "Admin", "User", hashedPassword, "admin", tenantId, now, now).run();
     const tokenBytes = new Uint8Array(16);
     crypto.getRandomValues(tokenBytes);
     const tokenHex = Array.from(tokenBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
     const apiToken = `ffx_${tokenHex}`;
     const tokenId = crypto.randomUUID();
     await db.prepare(
-      "INSERT INTO api_tokens (id, token, tenant_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
-    ).bind(tokenId, apiToken, tenantId, now, now).run();
+      "INSERT INTO api_tokens (id, name, token, user_id, permissions, tenant_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ).bind(tokenId, `${slug}-api-token`, apiToken, userId, '["*"]', tenantId, now).run();
     const tenant = await db.prepare("SELECT * FROM tenants WHERE id = ?").bind(tenantId).first();
-    const adminUser = await db.prepare("SELECT id, email, role, tenant_id, created_at, updated_at FROM users WHERE id = ?").bind(userId).first();
-    return c.json({ tenant, adminUser, apiToken }, 201);
+    return c.json({ tenant, adminUser: { id: userId, email: adminEmail, role: "admin" }, apiToken }, 201);
   } catch (error) {
     console.error("Error creating tenant:", error);
     return c.json({ error: "Failed to create tenant" }, 500);
   }
 });
-router3.get("/:id", async (c) => {
-  try {
-    const db = c.env.DB;
-    const id = c.req.param("id");
-    const tenant = await db.prepare("SELECT * FROM tenants WHERE id = ?").bind(id).first();
-    if (!tenant) {
-      return c.json({ error: "Tenant not found" }, 404);
-    }
-    return c.json(tenant);
-  } catch (error) {
-    console.error("Error fetching tenant:", error);
-    return c.json({ error: "Failed to fetch tenant" }, 500);
-  }
-});
-router3.put("/:id", async (c) => {
+router3.put("/api/:id", async (c) => {
   try {
     const db = c.env.DB;
     const id = c.req.param("id");
     const body = await c.req.json();
     const existing = await db.prepare("SELECT * FROM tenants WHERE id = ?").bind(id).first();
-    if (!existing) {
-      return c.json({ error: "Tenant not found" }, 404);
-    }
+    if (!existing) return c.json({ error: "Tenant not found" }, 404);
     const updates = [];
     const values = [];
     if (body.name !== void 0) {
@@ -1419,9 +1622,7 @@ router3.put("/:id", async (c) => {
     }
     if (body.slug !== void 0) {
       const slugCheck = await db.prepare("SELECT id FROM tenants WHERE slug = ? AND id != ?").bind(body.slug, id).first();
-      if (slugCheck) {
-        return c.json({ error: "A tenant with this slug already exists" }, 409);
-      }
+      if (slugCheck) return c.json({ error: "Slug already in use" }, 409);
       updates.push("slug = ?");
       values.push(body.slug);
     }
@@ -1433,12 +1634,9 @@ router3.put("/:id", async (c) => {
       updates.push("settings = ?");
       values.push(body.settings);
     }
-    if (updates.length === 0) {
-      return c.json({ error: "No fields to update" }, 400);
-    }
-    const now = (/* @__PURE__ */ new Date()).toISOString();
+    if (updates.length === 0) return c.json({ error: "No fields to update" }, 400);
     updates.push("updated_at = ?");
-    values.push(now);
+    values.push(Date.now());
     values.push(id);
     await db.prepare(`UPDATE tenants SET ${updates.join(", ")} WHERE id = ?`).bind(...values).run();
     const updated = await db.prepare("SELECT * FROM tenants WHERE id = ?").bind(id).first();
@@ -1448,22 +1646,126 @@ router3.put("/:id", async (c) => {
     return c.json({ error: "Failed to update tenant" }, 500);
   }
 });
-router3.delete("/:id", async (c) => {
+router3.delete("/api/:id", async (c) => {
   try {
     const db = c.env.DB;
     const id = c.req.param("id");
-    const now = (/* @__PURE__ */ new Date()).toISOString();
     const existing = await db.prepare("SELECT * FROM tenants WHERE id = ?").bind(id).first();
-    if (!existing) {
-      return c.json({ error: "Tenant not found" }, 404);
-    }
-    await db.prepare("UPDATE tenants SET is_active = 0, updated_at = ? WHERE id = ?").bind(now, id).run();
-    return c.json({ message: "Tenant deactivated successfully" });
+    if (!existing) return c.json({ error: "Tenant not found" }, 404);
+    await db.prepare("UPDATE tenants SET is_active = 0, updated_at = ? WHERE id = ?").bind(Date.now(), id).run();
+    return c.json({ message: "Tenant deactivated" });
   } catch (error) {
     console.error("Error deactivating tenant:", error);
     return c.json({ error: "Failed to deactivate tenant" }, 500);
   }
 });
+function renderTenantDetailPage(tenant, users2, contentCount, tokens) {
+  const statusBadge2 = tenant.is_active ? '<span class="inline-flex items-center rounded-md bg-green-500/10 px-2 py-1 text-xs font-medium text-green-400 ring-1 ring-inset ring-green-500/20">Active</span>' : '<span class="inline-flex items-center rounded-md bg-red-500/10 px-2 py-1 text-xs font-medium text-red-400 ring-1 ring-inset ring-red-500/20">Inactive</span>';
+  const userRows = users2.map((u) => `
+    <tr>
+      <td class="whitespace-nowrap py-3 pl-4 pr-3 text-sm text-white sm:pl-6">${u.email}</td>
+      <td class="whitespace-nowrap px-3 py-3 text-sm text-zinc-400">${u.role}</td>
+      <td class="whitespace-nowrap px-3 py-3 text-sm">${u.is_active ? '<span class="text-green-400">Active</span>' : '<span class="text-red-400">Inactive</span>'}</td>
+      <td class="whitespace-nowrap px-3 py-3 text-sm text-zinc-400">${new Date(u.created_at).toLocaleDateString()}</td>
+    </tr>
+  `).join("");
+  const tokenRows = tokens.map((t) => `
+    <tr>
+      <td class="whitespace-nowrap py-3 pl-4 pr-3 text-sm text-white sm:pl-6">${t.name}</td>
+      <td class="whitespace-nowrap px-3 py-3 text-sm text-zinc-400">${new Date(t.created_at).toLocaleDateString()}</td>
+      <td class="whitespace-nowrap px-3 py-3 text-sm text-zinc-400">${t.last_used_at ? new Date(t.last_used_at).toLocaleDateString() : "Never"}</td>
+    </tr>
+  `).join("");
+  return `
+    <div class="px-4 sm:px-6 lg:px-8">
+      <div class="mb-6">
+        <a href="/admin/tenants" class="text-sm text-zinc-400 hover:text-white transition-colors">&larr; Back to Tenants</a>
+      </div>
+
+      <div class="sm:flex sm:items-center sm:justify-between mb-8">
+        <div>
+          <h1 class="text-2xl font-semibold text-white">${tenant.name}</h1>
+          <p class="mt-1 text-sm text-zinc-400">Slug: <code class="bg-zinc-800 px-1.5 py-0.5 rounded text-xs">${tenant.slug}</code> ${statusBadge2}</p>
+        </div>
+        <div class="mt-4 sm:mt-0 flex gap-3">
+          <button onclick="toggleTenantStatus('${tenant.id}', ${tenant.is_active ? 0 : 1})"
+            class="rounded-lg px-3.5 py-2.5 text-sm font-semibold ${tenant.is_active ? "text-red-400 ring-1 ring-red-500/20 hover:bg-red-500/10" : "text-green-400 ring-1 ring-green-500/20 hover:bg-green-500/10"} transition-colors">
+            ${tenant.is_active ? "Deactivate" : "Activate"}
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-8">
+        <div class="rounded-xl bg-zinc-800/50 ring-1 ring-white/10 p-4">
+          <p class="text-sm text-zinc-400">Users</p>
+          <p class="text-2xl font-semibold text-white mt-1">${users2.length}</p>
+        </div>
+        <div class="rounded-xl bg-zinc-800/50 ring-1 ring-white/10 p-4">
+          <p class="text-sm text-zinc-400">Content Items</p>
+          <p class="text-2xl font-semibold text-white mt-1">${contentCount}</p>
+        </div>
+        <div class="rounded-xl bg-zinc-800/50 ring-1 ring-white/10 p-4">
+          <p class="text-sm text-zinc-400">API Tokens</p>
+          <p class="text-2xl font-semibold text-white mt-1">${tokens.length}</p>
+        </div>
+      </div>
+
+      <!-- Users -->
+      <h2 class="text-lg font-semibold text-white mb-4">Users</h2>
+      <div class="overflow-x-auto rounded-xl ring-1 ring-white/10 mb-8">
+        <table class="min-w-full divide-y divide-white/5">
+          <thead class="bg-zinc-800/50">
+            <tr>
+              <th class="py-3 pl-4 pr-3 text-left text-sm font-semibold text-zinc-300 sm:pl-6">Email</th>
+              <th class="px-3 py-3 text-left text-sm font-semibold text-zinc-300">Role</th>
+              <th class="px-3 py-3 text-left text-sm font-semibold text-zinc-300">Status</th>
+              <th class="px-3 py-3 text-left text-sm font-semibold text-zinc-300">Created</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5">${userRows || '<tr><td colspan="4" class="px-6 py-4 text-center text-sm text-zinc-500">No users</td></tr>'}</tbody>
+        </table>
+      </div>
+
+      <!-- API Tokens -->
+      <h2 class="text-lg font-semibold text-white mb-4">API Tokens</h2>
+      <div class="overflow-x-auto rounded-xl ring-1 ring-white/10">
+        <table class="min-w-full divide-y divide-white/5">
+          <thead class="bg-zinc-800/50">
+            <tr>
+              <th class="py-3 pl-4 pr-3 text-left text-sm font-semibold text-zinc-300 sm:pl-6">Name</th>
+              <th class="px-3 py-3 text-left text-sm font-semibold text-zinc-300">Created</th>
+              <th class="px-3 py-3 text-left text-sm font-semibold text-zinc-300">Last Used</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5">${tokenRows || '<tr><td colspan="3" class="px-6 py-4 text-center text-sm text-zinc-500">No tokens</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      async function toggleTenantStatus(id, newStatus) {
+        if (!confirm(newStatus ? 'Activate this tenant?' : 'Deactivate this tenant?')) return;
+        const res = await fetch('/admin/tenants/api/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_active: newStatus })
+        });
+        if (res.ok) window.location.reload();
+        else alert('Failed to update tenant');
+      }
+    </script>
+  `;
+}
+function renderTenantsDetailLayout(data) {
+  return renderAdminLayoutCatalyst({
+    title: data.title,
+    currentPath: "/admin/tenants",
+    user: data.user,
+    version: data.version,
+    content: data.content
+  });
+}
 var admin_tenants_default = router3;
 function createEmailPlugin() {
   const builder = PluginBuilder.create({
@@ -7341,7 +7643,7 @@ adminRoutes3.get("/settings", async (c) => {
   const db = c.env.DB;
   const user = c.get("user");
   const settings = await getSettings3(db);
-  const { renderAdminLayoutCatalyst: renderAdminLayoutCatalyst2 } = await import('./admin-layout-catalyst.template-UMTIN66R.js');
+  const { renderAdminLayoutCatalyst: renderAdminLayoutCatalyst2 } = await import('./admin-layout-catalyst.template-MQGACL6H.js');
   const content2 = `
     <div>
       <div class="mb-6">

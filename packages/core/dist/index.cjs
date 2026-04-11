@@ -1,13 +1,13 @@
 'use strict';
 
-var chunk3DRZA2HL_cjs = require('./chunk-3DRZA2HL.cjs');
+var chunkZMDTE3KX_cjs = require('./chunk-ZMDTE3KX.cjs');
 var chunkNZWFCUDA_cjs = require('./chunk-NZWFCUDA.cjs');
-var chunk6VPVJN4S_cjs = require('./chunk-6VPVJN4S.cjs');
+var chunk6W6JGFKT_cjs = require('./chunk-6W6JGFKT.cjs');
 var chunkQNY7OU4B_cjs = require('./chunk-QNY7OU4B.cjs');
-var chunkA2XCPDQS_cjs = require('./chunk-A2XCPDQS.cjs');
-var chunk4ZSNJDLS_cjs = require('./chunk-4ZSNJDLS.cjs');
-var chunkOHYBNCVL_cjs = require('./chunk-OHYBNCVL.cjs');
-var chunkUYJ6TJHX_cjs = require('./chunk-UYJ6TJHX.cjs');
+var chunkAJLZNXZR_cjs = require('./chunk-AJLZNXZR.cjs');
+var chunk2WTI3ORX_cjs = require('./chunk-2WTI3ORX.cjs');
+var chunkUFFKDP2E_cjs = require('./chunk-UFFKDP2E.cjs');
+var chunkKF4GHKB7_cjs = require('./chunk-KF4GHKB7.cjs');
 var chunkABB34XUS_cjs = require('./chunk-ABB34XUS.cjs');
 var chunk635JAMSE_cjs = require('./chunk-635JAMSE.cjs');
 var chunkVUISYUHY_cjs = require('./chunk-VUISYUHY.cjs');
@@ -239,7 +239,7 @@ var DatabaseToolsService = class {
 };
 
 // src/templates/pages/admin-database-table.template.ts
-chunkUYJ6TJHX_cjs.init_admin_layout_catalyst_template();
+chunkKF4GHKB7_cjs.init_admin_layout_catalyst_template();
 function renderDatabaseTablePage(data) {
   const totalPages = Math.ceil(data.totalRows / data.pageSize);
   const startRow = (data.currentPage - 1) * data.pageSize + 1;
@@ -488,7 +488,7 @@ function renderDatabaseTablePage(data) {
     user: data.user,
     content: pageContent
   };
-  return chunkUYJ6TJHX_cjs.renderAdminLayoutCatalyst(layoutData);
+  return chunkKF4GHKB7_cjs.renderAdminLayoutCatalyst(layoutData);
 }
 function generatePageNumbers(currentPage, totalPages) {
   const pages = [];
@@ -563,7 +563,7 @@ function formatCellValue(value) {
 // src/plugins/core-plugins/database-tools-plugin/admin-routes.ts
 function createDatabaseToolsAdminRoutes() {
   const router4 = new hono.Hono();
-  router4.use("*", chunk6VPVJN4S_cjs.requireAuth());
+  router4.use("*", chunk6W6JGFKT_cjs.requireAuth());
   router4.get("/api/stats", async (c) => {
     try {
       const user = c.get("user");
@@ -1326,26 +1326,240 @@ function createSeedDataAdminRoutes() {
   });
   return routes;
 }
+
+// src/templates/pages/admin-tenants-list.template.ts
+chunkKF4GHKB7_cjs.init_admin_layout_catalyst_template();
+function renderTenantsListPage(data) {
+  const rows = data.tenants.map((t) => {
+    const createdDate = new Date(t.created_at).toLocaleDateString();
+    const statusBadge2 = t.is_active ? '<span class="inline-flex items-center rounded-md bg-green-500/10 px-2 py-1 text-xs font-medium text-green-400 ring-1 ring-inset ring-green-500/20">Active</span>' : '<span class="inline-flex items-center rounded-md bg-red-500/10 px-2 py-1 text-xs font-medium text-red-400 ring-1 ring-inset ring-red-500/20">Inactive</span>';
+    return `
+      <tr class="hover:bg-zinc-800/50 cursor-pointer" onclick="window.location='/admin/tenants/${t.id}'">
+        <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-white sm:pl-6">${t.name}</td>
+        <td class="whitespace-nowrap px-3 py-4 text-sm text-zinc-400">${t.slug}</td>
+        <td class="whitespace-nowrap px-3 py-4 text-sm text-zinc-400">${t.user_count ?? "-"}</td>
+        <td class="whitespace-nowrap px-3 py-4 text-sm text-zinc-400">${t.content_count ?? "-"}</td>
+        <td class="whitespace-nowrap px-3 py-4 text-sm">${statusBadge2}</td>
+        <td class="whitespace-nowrap px-3 py-4 text-sm text-zinc-400">${createdDate}</td>
+      </tr>
+    `;
+  }).join("");
+  const emptyState = data.tenants.length === 0 ? `
+    <tr>
+      <td colspan="6" class="px-6 py-12 text-center text-sm text-zinc-500">
+        No tenants yet. Create your first tenant to get started.
+      </td>
+    </tr>
+  ` : "";
+  const pageContent = `
+    <div class="px-4 sm:px-6 lg:px-8">
+      <div class="sm:flex sm:items-center sm:justify-between">
+        <div>
+          <h1 class="text-2xl font-semibold text-white">Tenants</h1>
+          <p class="mt-2 text-sm text-zinc-400">Manage customer tenants and their CMS instances.</p>
+        </div>
+        <div class="mt-4 sm:mt-0">
+          <button onclick="document.getElementById('create-modal').classList.remove('hidden')"
+            class="inline-flex items-center rounded-lg bg-lime-600 px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-lime-700 transition-colors shadow-sm">
+            <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+            </svg>
+            Create Tenant
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-8 flow-root">
+        <div class="overflow-x-auto rounded-xl ring-1 ring-white/10">
+          <table class="min-w-full divide-y divide-white/5">
+            <thead class="bg-zinc-800/50">
+              <tr>
+                <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-zinc-300 sm:pl-6">Name</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-zinc-300">Slug</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-zinc-300">Users</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-zinc-300">Content</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-zinc-300">Status</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-zinc-300">Created</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+              ${rows}${emptyState}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Tenant Modal -->
+    <div id="create-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+      <div class="flex min-h-full items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black/60" onclick="document.getElementById('create-modal').classList.add('hidden')"></div>
+        <div class="relative w-full max-w-lg rounded-xl bg-zinc-900 ring-1 ring-white/10 shadow-2xl p-6">
+          <h2 class="text-lg font-semibold text-white mb-4">Create New Tenant</h2>
+          <form id="create-tenant-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-zinc-300 mb-1">Tenant Name</label>
+              <input type="text" name="name" required placeholder="My Customer"
+                class="w-full rounded-lg border-0 bg-zinc-800 px-3 py-2 text-white ring-1 ring-inset ring-white/10 placeholder:text-zinc-500 focus:ring-2 focus:ring-lime-500 text-sm"/>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-zinc-300 mb-1">Slug</label>
+              <input type="text" name="slug" required placeholder="my-customer" pattern="[a-z0-9-]+"
+                class="w-full rounded-lg border-0 bg-zinc-800 px-3 py-2 text-white ring-1 ring-inset ring-white/10 placeholder:text-zinc-500 focus:ring-2 focus:ring-lime-500 text-sm"/>
+              <p class="mt-1 text-xs text-zinc-500">Lowercase letters, numbers, and hyphens only.</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-zinc-300 mb-1">Admin Email</label>
+              <input type="email" name="adminEmail" required placeholder="admin@customer.com"
+                class="w-full rounded-lg border-0 bg-zinc-800 px-3 py-2 text-white ring-1 ring-inset ring-white/10 placeholder:text-zinc-500 focus:ring-2 focus:ring-lime-500 text-sm"/>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-zinc-300 mb-1">Admin Password</label>
+              <input type="password" name="adminPassword" required minlength="8" placeholder="Min 8 characters"
+                class="w-full rounded-lg border-0 bg-zinc-800 px-3 py-2 text-white ring-1 ring-inset ring-white/10 placeholder:text-zinc-500 focus:ring-2 focus:ring-lime-500 text-sm"/>
+            </div>
+            <div id="create-error" class="hidden rounded-lg bg-red-500/10 p-3 text-sm text-red-400 ring-1 ring-inset ring-red-500/20"></div>
+            <div id="create-success" class="hidden rounded-lg bg-green-500/10 p-3 text-sm text-green-400 ring-1 ring-inset ring-green-500/20"></div>
+            <div class="flex justify-end gap-3 pt-2">
+              <button type="button" onclick="document.getElementById('create-modal').classList.add('hidden')"
+                class="rounded-lg px-3.5 py-2.5 text-sm font-semibold text-zinc-300 hover:text-white transition-colors">Cancel</button>
+              <button type="submit" id="create-btn"
+                class="rounded-lg bg-lime-600 px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-lime-700 transition-colors shadow-sm">Create Tenant</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.getElementById('create-tenant-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const btn = document.getElementById('create-btn');
+        const errorDiv = document.getElementById('create-error');
+        const successDiv = document.getElementById('create-success');
+        errorDiv.classList.add('hidden');
+        successDiv.classList.add('hidden');
+        btn.disabled = true;
+        btn.textContent = 'Creating...';
+
+        try {
+          const res = await fetch('/admin/tenants/api', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: form.name.value,
+              slug: form.slug.value,
+              adminEmail: form.adminEmail.value,
+              adminPassword: form.adminPassword.value
+            })
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            errorDiv.textContent = data.error || 'Failed to create tenant';
+            errorDiv.classList.remove('hidden');
+          } else {
+            successDiv.innerHTML = 'Tenant created! API Token: <code class="bg-zinc-800 px-1.5 py-0.5 rounded text-xs font-mono break-all">' + data.apiToken + '</code><br/><span class="text-xs text-zinc-500">Save this token \u2014 it will not be shown again.</span>';
+            successDiv.classList.remove('hidden');
+            form.reset();
+            setTimeout(() => window.location.reload(), 3000);
+          }
+        } catch (err) {
+          errorDiv.textContent = 'Network error';
+          errorDiv.classList.remove('hidden');
+        }
+        btn.disabled = false;
+        btn.textContent = 'Create Tenant';
+      });
+
+      // Auto-generate slug from name
+      document.querySelector('input[name="name"]').addEventListener('input', (e) => {
+        const slugInput = document.querySelector('input[name="slug"]');
+        if (!slugInput.dataset.manual) {
+          slugInput.value = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        }
+      });
+      document.querySelector('input[name="slug"]').addEventListener('input', (e) => {
+        e.target.dataset.manual = 'true';
+      });
+    </script>
+  `;
+  const layoutData = {
+    title: "Tenants",
+    pageTitle: "Tenant Management",
+    currentPath: "/admin/tenants",
+    user: data.user,
+    version: data.version,
+    content: pageContent
+  };
+  return chunkKF4GHKB7_cjs.renderAdminLayoutCatalyst(layoutData);
+}
+
+// src/routes/admin-tenants.ts
+chunkKF4GHKB7_cjs.init_admin_layout_catalyst_template();
 var router3 = new hono.Hono();
-router3.use("*", chunk6VPVJN4S_cjs.requireAuth());
+router3.use("*", chunk6W6JGFKT_cjs.requireAuth());
 router3.use("*", async (c, next) => {
   const user = c.get("user");
   if (user?.role !== "super_admin") {
-    return c.json({ error: "Super admin access required" }, 403);
+    if (c.req.header("Accept")?.includes("application/json") || c.req.path.includes("/api")) {
+      return c.json({ error: "Super admin access required" }, 403);
+    }
+    return c.redirect("/admin/dashboard");
   }
   return next();
 });
 router3.get("/", async (c) => {
   try {
     const db = c.env.DB;
-    const result = await db.prepare("SELECT * FROM tenants ORDER BY created_at DESC").all();
-    return c.json(result.results);
+    const user = c.get("user");
+    const result = await db.prepare(`
+      SELECT t.*,
+        (SELECT COUNT(*) FROM users WHERE tenant_id = t.id) as user_count,
+        (SELECT COUNT(*) FROM content WHERE tenant_id = t.id) as content_count
+      FROM tenants t
+      ORDER BY t.created_at DESC
+    `).all();
+    return c.html(renderTenantsListPage({
+      tenants: result.results,
+      user: { name: user.email, email: user.email, role: user.role },
+      version: c.get("appVersion")
+    }));
   } catch (error) {
-    console.error("Error listing tenants:", error);
-    return c.json({ error: "Failed to list tenants" }, 500);
+    console.error("Error rendering tenants page:", error);
+    return c.text("Failed to load tenants page", 500);
   }
 });
-router3.post("/", async (c) => {
+router3.get("/:id", async (c) => {
+  const id = c.req.param("id");
+  if (id === "api") return;
+  try {
+    const db = c.env.DB;
+    const user = c.get("user");
+    const tenant = await db.prepare("SELECT * FROM tenants WHERE id = ?").bind(id).first();
+    if (!tenant) return c.redirect("/admin/tenants");
+    const users2 = await db.prepare(
+      "SELECT id, email, username, role, is_active, created_at FROM users WHERE tenant_id = ? ORDER BY created_at DESC"
+    ).bind(id).all();
+    const contentCount = await db.prepare(
+      "SELECT COUNT(*) as count FROM content WHERE tenant_id = ?"
+    ).bind(id).first();
+    const tokens = await db.prepare(
+      "SELECT id, name, created_at, last_used_at, expires_at FROM api_tokens WHERE tenant_id = ?"
+    ).bind(id).all();
+    const pageContent = renderTenantDetailPage(tenant, users2.results, contentCount?.count ?? 0, tokens.results);
+    return c.html(renderTenantsDetailLayout({
+      title: `Tenant: ${tenant.name}`,
+      content: pageContent,
+      user: { name: user.email, email: user.email, role: user.role },
+      version: c.get("appVersion")
+    }));
+  } catch (error) {
+    console.error("Error rendering tenant detail:", error);
+    return c.text("Failed to load tenant detail", 500);
+  }
+});
+router3.post("/api", async (c) => {
   try {
     const db = c.env.DB;
     const body = await c.req.json();
@@ -1353,59 +1567,48 @@ router3.post("/", async (c) => {
     if (!name || !slug || !adminEmail || !adminPassword) {
       return c.json({ error: "name, slug, adminEmail, and adminPassword are required" }, 400);
     }
+    if (!/^[a-z0-9-]+$/.test(slug)) {
+      return c.json({ error: "Slug must contain only lowercase letters, numbers, and hyphens" }, 400);
+    }
+    if (adminPassword.length < 8) {
+      return c.json({ error: "Password must be at least 8 characters" }, 400);
+    }
     const existing = await db.prepare("SELECT id FROM tenants WHERE slug = ?").bind(slug).first();
     if (existing) {
       return c.json({ error: "A tenant with this slug already exists" }, 409);
     }
-    const now = (/* @__PURE__ */ new Date()).toISOString();
+    const now = Date.now();
     const tenantId = crypto.randomUUID();
     await db.prepare(
       "INSERT INTO tenants (id, name, slug, is_active, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)"
     ).bind(tenantId, name, slug, now, now).run();
-    const hashedPassword = await chunk6VPVJN4S_cjs.AuthManager.hashPassword(adminPassword);
+    const hashedPassword = await chunk6W6JGFKT_cjs.AuthManager.hashPassword(adminPassword);
     const userId = crypto.randomUUID();
     await db.prepare(
-      "INSERT INTO users (id, email, password, role, tenant_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    ).bind(userId, adminEmail, hashedPassword, "admin", tenantId, now, now).run();
+      "INSERT INTO users (id, email, username, first_name, last_name, password_hash, role, is_active, tenant_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)"
+    ).bind(userId, adminEmail, adminEmail.split("@")[0], "Admin", "User", hashedPassword, "admin", tenantId, now, now).run();
     const tokenBytes = new Uint8Array(16);
     crypto.getRandomValues(tokenBytes);
     const tokenHex = Array.from(tokenBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
     const apiToken = `ffx_${tokenHex}`;
     const tokenId = crypto.randomUUID();
     await db.prepare(
-      "INSERT INTO api_tokens (id, token, tenant_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
-    ).bind(tokenId, apiToken, tenantId, now, now).run();
+      "INSERT INTO api_tokens (id, name, token, user_id, permissions, tenant_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ).bind(tokenId, `${slug}-api-token`, apiToken, userId, '["*"]', tenantId, now).run();
     const tenant = await db.prepare("SELECT * FROM tenants WHERE id = ?").bind(tenantId).first();
-    const adminUser = await db.prepare("SELECT id, email, role, tenant_id, created_at, updated_at FROM users WHERE id = ?").bind(userId).first();
-    return c.json({ tenant, adminUser, apiToken }, 201);
+    return c.json({ tenant, adminUser: { id: userId, email: adminEmail, role: "admin" }, apiToken }, 201);
   } catch (error) {
     console.error("Error creating tenant:", error);
     return c.json({ error: "Failed to create tenant" }, 500);
   }
 });
-router3.get("/:id", async (c) => {
-  try {
-    const db = c.env.DB;
-    const id = c.req.param("id");
-    const tenant = await db.prepare("SELECT * FROM tenants WHERE id = ?").bind(id).first();
-    if (!tenant) {
-      return c.json({ error: "Tenant not found" }, 404);
-    }
-    return c.json(tenant);
-  } catch (error) {
-    console.error("Error fetching tenant:", error);
-    return c.json({ error: "Failed to fetch tenant" }, 500);
-  }
-});
-router3.put("/:id", async (c) => {
+router3.put("/api/:id", async (c) => {
   try {
     const db = c.env.DB;
     const id = c.req.param("id");
     const body = await c.req.json();
     const existing = await db.prepare("SELECT * FROM tenants WHERE id = ?").bind(id).first();
-    if (!existing) {
-      return c.json({ error: "Tenant not found" }, 404);
-    }
+    if (!existing) return c.json({ error: "Tenant not found" }, 404);
     const updates = [];
     const values = [];
     if (body.name !== void 0) {
@@ -1414,9 +1617,7 @@ router3.put("/:id", async (c) => {
     }
     if (body.slug !== void 0) {
       const slugCheck = await db.prepare("SELECT id FROM tenants WHERE slug = ? AND id != ?").bind(body.slug, id).first();
-      if (slugCheck) {
-        return c.json({ error: "A tenant with this slug already exists" }, 409);
-      }
+      if (slugCheck) return c.json({ error: "Slug already in use" }, 409);
       updates.push("slug = ?");
       values.push(body.slug);
     }
@@ -1428,12 +1629,9 @@ router3.put("/:id", async (c) => {
       updates.push("settings = ?");
       values.push(body.settings);
     }
-    if (updates.length === 0) {
-      return c.json({ error: "No fields to update" }, 400);
-    }
-    const now = (/* @__PURE__ */ new Date()).toISOString();
+    if (updates.length === 0) return c.json({ error: "No fields to update" }, 400);
     updates.push("updated_at = ?");
-    values.push(now);
+    values.push(Date.now());
     values.push(id);
     await db.prepare(`UPDATE tenants SET ${updates.join(", ")} WHERE id = ?`).bind(...values).run();
     const updated = await db.prepare("SELECT * FROM tenants WHERE id = ?").bind(id).first();
@@ -1443,22 +1641,126 @@ router3.put("/:id", async (c) => {
     return c.json({ error: "Failed to update tenant" }, 500);
   }
 });
-router3.delete("/:id", async (c) => {
+router3.delete("/api/:id", async (c) => {
   try {
     const db = c.env.DB;
     const id = c.req.param("id");
-    const now = (/* @__PURE__ */ new Date()).toISOString();
     const existing = await db.prepare("SELECT * FROM tenants WHERE id = ?").bind(id).first();
-    if (!existing) {
-      return c.json({ error: "Tenant not found" }, 404);
-    }
-    await db.prepare("UPDATE tenants SET is_active = 0, updated_at = ? WHERE id = ?").bind(now, id).run();
-    return c.json({ message: "Tenant deactivated successfully" });
+    if (!existing) return c.json({ error: "Tenant not found" }, 404);
+    await db.prepare("UPDATE tenants SET is_active = 0, updated_at = ? WHERE id = ?").bind(Date.now(), id).run();
+    return c.json({ message: "Tenant deactivated" });
   } catch (error) {
     console.error("Error deactivating tenant:", error);
     return c.json({ error: "Failed to deactivate tenant" }, 500);
   }
 });
+function renderTenantDetailPage(tenant, users2, contentCount, tokens) {
+  const statusBadge2 = tenant.is_active ? '<span class="inline-flex items-center rounded-md bg-green-500/10 px-2 py-1 text-xs font-medium text-green-400 ring-1 ring-inset ring-green-500/20">Active</span>' : '<span class="inline-flex items-center rounded-md bg-red-500/10 px-2 py-1 text-xs font-medium text-red-400 ring-1 ring-inset ring-red-500/20">Inactive</span>';
+  const userRows = users2.map((u) => `
+    <tr>
+      <td class="whitespace-nowrap py-3 pl-4 pr-3 text-sm text-white sm:pl-6">${u.email}</td>
+      <td class="whitespace-nowrap px-3 py-3 text-sm text-zinc-400">${u.role}</td>
+      <td class="whitespace-nowrap px-3 py-3 text-sm">${u.is_active ? '<span class="text-green-400">Active</span>' : '<span class="text-red-400">Inactive</span>'}</td>
+      <td class="whitespace-nowrap px-3 py-3 text-sm text-zinc-400">${new Date(u.created_at).toLocaleDateString()}</td>
+    </tr>
+  `).join("");
+  const tokenRows = tokens.map((t) => `
+    <tr>
+      <td class="whitespace-nowrap py-3 pl-4 pr-3 text-sm text-white sm:pl-6">${t.name}</td>
+      <td class="whitespace-nowrap px-3 py-3 text-sm text-zinc-400">${new Date(t.created_at).toLocaleDateString()}</td>
+      <td class="whitespace-nowrap px-3 py-3 text-sm text-zinc-400">${t.last_used_at ? new Date(t.last_used_at).toLocaleDateString() : "Never"}</td>
+    </tr>
+  `).join("");
+  return `
+    <div class="px-4 sm:px-6 lg:px-8">
+      <div class="mb-6">
+        <a href="/admin/tenants" class="text-sm text-zinc-400 hover:text-white transition-colors">&larr; Back to Tenants</a>
+      </div>
+
+      <div class="sm:flex sm:items-center sm:justify-between mb-8">
+        <div>
+          <h1 class="text-2xl font-semibold text-white">${tenant.name}</h1>
+          <p class="mt-1 text-sm text-zinc-400">Slug: <code class="bg-zinc-800 px-1.5 py-0.5 rounded text-xs">${tenant.slug}</code> ${statusBadge2}</p>
+        </div>
+        <div class="mt-4 sm:mt-0 flex gap-3">
+          <button onclick="toggleTenantStatus('${tenant.id}', ${tenant.is_active ? 0 : 1})"
+            class="rounded-lg px-3.5 py-2.5 text-sm font-semibold ${tenant.is_active ? "text-red-400 ring-1 ring-red-500/20 hover:bg-red-500/10" : "text-green-400 ring-1 ring-green-500/20 hover:bg-green-500/10"} transition-colors">
+            ${tenant.is_active ? "Deactivate" : "Activate"}
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-8">
+        <div class="rounded-xl bg-zinc-800/50 ring-1 ring-white/10 p-4">
+          <p class="text-sm text-zinc-400">Users</p>
+          <p class="text-2xl font-semibold text-white mt-1">${users2.length}</p>
+        </div>
+        <div class="rounded-xl bg-zinc-800/50 ring-1 ring-white/10 p-4">
+          <p class="text-sm text-zinc-400">Content Items</p>
+          <p class="text-2xl font-semibold text-white mt-1">${contentCount}</p>
+        </div>
+        <div class="rounded-xl bg-zinc-800/50 ring-1 ring-white/10 p-4">
+          <p class="text-sm text-zinc-400">API Tokens</p>
+          <p class="text-2xl font-semibold text-white mt-1">${tokens.length}</p>
+        </div>
+      </div>
+
+      <!-- Users -->
+      <h2 class="text-lg font-semibold text-white mb-4">Users</h2>
+      <div class="overflow-x-auto rounded-xl ring-1 ring-white/10 mb-8">
+        <table class="min-w-full divide-y divide-white/5">
+          <thead class="bg-zinc-800/50">
+            <tr>
+              <th class="py-3 pl-4 pr-3 text-left text-sm font-semibold text-zinc-300 sm:pl-6">Email</th>
+              <th class="px-3 py-3 text-left text-sm font-semibold text-zinc-300">Role</th>
+              <th class="px-3 py-3 text-left text-sm font-semibold text-zinc-300">Status</th>
+              <th class="px-3 py-3 text-left text-sm font-semibold text-zinc-300">Created</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5">${userRows || '<tr><td colspan="4" class="px-6 py-4 text-center text-sm text-zinc-500">No users</td></tr>'}</tbody>
+        </table>
+      </div>
+
+      <!-- API Tokens -->
+      <h2 class="text-lg font-semibold text-white mb-4">API Tokens</h2>
+      <div class="overflow-x-auto rounded-xl ring-1 ring-white/10">
+        <table class="min-w-full divide-y divide-white/5">
+          <thead class="bg-zinc-800/50">
+            <tr>
+              <th class="py-3 pl-4 pr-3 text-left text-sm font-semibold text-zinc-300 sm:pl-6">Name</th>
+              <th class="px-3 py-3 text-left text-sm font-semibold text-zinc-300">Created</th>
+              <th class="px-3 py-3 text-left text-sm font-semibold text-zinc-300">Last Used</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5">${tokenRows || '<tr><td colspan="3" class="px-6 py-4 text-center text-sm text-zinc-500">No tokens</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      async function toggleTenantStatus(id, newStatus) {
+        if (!confirm(newStatus ? 'Activate this tenant?' : 'Deactivate this tenant?')) return;
+        const res = await fetch('/admin/tenants/api/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_active: newStatus })
+        });
+        if (res.ok) window.location.reload();
+        else alert('Failed to update tenant');
+      }
+    </script>
+  `;
+}
+function renderTenantsDetailLayout(data) {
+  return chunkKF4GHKB7_cjs.renderAdminLayoutCatalyst({
+    title: data.title,
+    currentPath: "/admin/tenants",
+    user: data.user,
+    version: data.version,
+    content: data.content
+  });
+}
 var admin_tenants_default = router3;
 function createEmailPlugin() {
   const builder = chunk635JAMSE_cjs.PluginBuilder.create({
@@ -1939,7 +2241,7 @@ function createOTPLoginPlugin() {
           error: "Too many requests. Please try again in an hour."
         }, 429);
       }
-      const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+      const tenantId = chunkZMDTE3KX_cjs.getTenantIdOrNull(c);
       const userQuery = tenantId ? "SELECT id, email, role, is_active FROM users WHERE email = ? AND tenant_id = ?" : "SELECT id, email, role, is_active FROM users WHERE email = ?";
       const userStmt = tenantId ? db.prepare(userQuery).bind(normalizedEmail, tenantId) : db.prepare(userQuery).bind(normalizedEmail);
       const user = await userStmt.first();
@@ -2064,7 +2366,7 @@ function createOTPLoginPlugin() {
           attemptsRemaining: verification.attemptsRemaining
         }, 401);
       }
-      const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+      const tenantId = chunkZMDTE3KX_cjs.getTenantIdOrNull(c);
       const verifyUserQuery = tenantId ? "SELECT id, email, role, is_active FROM users WHERE email = ? AND tenant_id = ?" : "SELECT id, email, role, is_active FROM users WHERE email = ?";
       const verifyUserStmt = tenantId ? db.prepare(verifyUserQuery).bind(normalizedEmail, tenantId) : db.prepare(verifyUserQuery).bind(normalizedEmail);
       let user = await verifyUserStmt.first();
@@ -2099,7 +2401,7 @@ function createOTPLoginPlugin() {
           error: "Account is deactivated"
         }, 403);
       }
-      const token = await chunk6VPVJN4S_cjs.AuthManager.generateToken(user.id, user.email, user.role, c.env.JWT_SECRET);
+      const token = await chunk6W6JGFKT_cjs.AuthManager.generateToken(user.id, user.email, user.role, c.env.JWT_SECRET);
       cookie.setCookie(c, "auth_token", token, {
         httpOnly: true,
         secure: true,
@@ -2559,7 +2861,7 @@ function createOAuthProvidersPlugin() {
       if (!creds) {
         return c.redirect("/auth/login?error=OAuth provider not configured");
       }
-      const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+      const tenantId = chunkZMDTE3KX_cjs.getTenantIdOrNull(c);
       const oauthService = new OAuthService(db);
       const redirectUri = getCallbackUrl(c, providerId);
       const tokens = await oauthService.exchangeCode(
@@ -2588,13 +2890,13 @@ function createOAuthProvidersPlugin() {
         if (!user || !user.is_active) {
           return c.redirect("/auth/login?error=Account is deactivated");
         }
-        const jwt2 = await chunk6VPVJN4S_cjs.AuthManager.generateToken(
+        const jwt2 = await chunk6W6JGFKT_cjs.AuthManager.generateToken(
           user.id,
           user.email,
           user.role,
           c.env.JWT_SECRET
         );
-        chunk6VPVJN4S_cjs.AuthManager.setAuthCookie(c, jwt2, { sameSite: "Lax" });
+        chunk6W6JGFKT_cjs.AuthManager.setAuthCookie(c, jwt2, { sameSite: "Lax" });
         return c.redirect("/admin");
       }
       const existingUser = await oauthService.findUserByEmail(profile.email, tenantId);
@@ -2611,13 +2913,13 @@ function createOAuthProvidersPlugin() {
           tokenExpiresAt: tokenExpiresAt ?? void 0,
           profileData: JSON.stringify(profile)
         });
-        const jwt2 = await chunk6VPVJN4S_cjs.AuthManager.generateToken(
+        const jwt2 = await chunk6W6JGFKT_cjs.AuthManager.generateToken(
           existingUser.id,
           existingUser.email,
           existingUser.role,
           c.env.JWT_SECRET
         );
-        chunk6VPVJN4S_cjs.AuthManager.setAuthCookie(c, jwt2, { sameSite: "Lax" });
+        chunk6W6JGFKT_cjs.AuthManager.setAuthCookie(c, jwt2, { sameSite: "Lax" });
         return c.redirect("/admin");
       }
       const newUserId = await oauthService.createUserFromOAuth(profile, tenantId);
@@ -2630,13 +2932,13 @@ function createOAuthProvidersPlugin() {
         tokenExpiresAt: tokenExpiresAt ?? void 0,
         profileData: JSON.stringify(profile)
       });
-      const jwt = await chunk6VPVJN4S_cjs.AuthManager.generateToken(
+      const jwt = await chunk6W6JGFKT_cjs.AuthManager.generateToken(
         newUserId,
         profile.email.toLowerCase(),
         "viewer",
         c.env.JWT_SECRET
       );
-      chunk6VPVJN4S_cjs.AuthManager.setAuthCookie(c, jwt, { sameSite: "Lax" });
+      chunk6W6JGFKT_cjs.AuthManager.setAuthCookie(c, jwt, { sameSite: "Lax" });
       return c.redirect("/admin");
     } catch (error) {
       console.error("OAuth callback error:", error);
@@ -2695,7 +2997,7 @@ function createOAuthProvidersPlugin() {
         return c.json({ error: "Provider is required" }, 400);
       }
       const db = c.env.DB;
-      const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+      const tenantId = chunkZMDTE3KX_cjs.getTenantIdOrNull(c);
       const oauthService = new OAuthService(db);
       const success = await oauthService.unlinkOAuthAccount(user.userId, provider, tenantId);
       if (!success) {
@@ -4341,7 +4643,7 @@ function renderSettingsPage(data) {
       }, 30000);
     </script>
   `;
-  return chunkOHYBNCVL_cjs.renderAdminLayout({
+  return chunkUFFKDP2E_cjs.renderAdminLayout({
     title: "AI Search Settings",
     pageTitle: "AI Search Settings",
     currentPath: "/admin/plugins/ai-search/settings",
@@ -4352,14 +4654,14 @@ function renderSettingsPage(data) {
 
 // src/plugins/core-plugins/ai-search-plugin/routes/admin.ts
 var adminRoutes = new hono.Hono();
-adminRoutes.use("*", chunk6VPVJN4S_cjs.requireAuth());
+adminRoutes.use("*", chunk6W6JGFKT_cjs.requireAuth());
 adminRoutes.get("/", async (c) => {
   try {
     const user = c.get("user");
     const db = c.env.DB;
     const ai = c.env.AI;
     const vectorize = c.env.VECTORIZE_INDEX;
-    const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+    const tenantId = chunkZMDTE3KX_cjs.getTenantIdOrNull(c);
     const service = new AISearchService(db, ai, vectorize, tenantId);
     const indexer = new IndexManager(db, ai, vectorize, tenantId);
     const settings = await service.getSettings();
@@ -4408,7 +4710,7 @@ adminRoutes.post("/", async (c) => {
     const db = c.env.DB;
     const ai = c.env.AI;
     const vectorize = c.env.VECTORIZE_INDEX;
-    const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+    const tenantId = chunkZMDTE3KX_cjs.getTenantIdOrNull(c);
     const service = new AISearchService(db, ai, vectorize, tenantId);
     const indexer = new IndexManager(db, ai, vectorize, tenantId);
     const body = await c.req.json();
@@ -4446,7 +4748,7 @@ adminRoutes.get("/api/settings", async (c) => {
     const db = c.env.DB;
     const ai = c.env.AI;
     const vectorize = c.env.VECTORIZE_INDEX;
-    const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+    const tenantId = chunkZMDTE3KX_cjs.getTenantIdOrNull(c);
     const service = new AISearchService(db, ai, vectorize, tenantId);
     const settings = await service.getSettings();
     return c.json({ success: true, data: settings });
@@ -4460,7 +4762,7 @@ adminRoutes.get("/api/new-collections", async (c) => {
     const db = c.env.DB;
     const ai = c.env.AI;
     const vectorize = c.env.VECTORIZE_INDEX;
-    const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+    const tenantId = chunkZMDTE3KX_cjs.getTenantIdOrNull(c);
     const service = new AISearchService(db, ai, vectorize, tenantId);
     const notifications = await service.detectNewCollections();
     return c.json({ success: true, data: notifications });
@@ -4474,7 +4776,7 @@ adminRoutes.get("/api/status", async (c) => {
     const db = c.env.DB;
     const ai = c.env.AI;
     const vectorize = c.env.VECTORIZE_INDEX;
-    const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+    const tenantId = chunkZMDTE3KX_cjs.getTenantIdOrNull(c);
     const indexer = new IndexManager(db, ai, vectorize, tenantId);
     const status = await indexer.getAllIndexStatus();
     return c.json({ success: true, data: status });
@@ -4488,7 +4790,7 @@ adminRoutes.post("/api/reindex", async (c) => {
     const db = c.env.DB;
     const ai = c.env.AI;
     const vectorize = c.env.VECTORIZE_INDEX;
-    const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+    const tenantId = chunkZMDTE3KX_cjs.getTenantIdOrNull(c);
     const indexer = new IndexManager(db, ai, vectorize, tenantId);
     const body = await c.req.json();
     const collectionIdRaw = body.collection_id;
@@ -4643,7 +4945,7 @@ function createMagicLinkAuthPlugin() {
           error: "Too many requests. Please try again later."
         }, 429);
       }
-      const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+      const tenantId = chunkZMDTE3KX_cjs.getTenantIdOrNull(c);
       const userLookupQuery = tenantId ? "SELECT id, email, role, is_active FROM users WHERE email = ? AND tenant_id = ?" : "SELECT id, email, role, is_active FROM users WHERE email = ?";
       const user = await (tenantId ? db.prepare(userLookupQuery).bind(normalizedEmail, tenantId) : db.prepare(userLookupQuery).bind(normalizedEmail)).first();
       const allowNewUsers = false;
@@ -4721,7 +5023,7 @@ function createMagicLinkAuthPlugin() {
       if (magicLink.expires_at < Date.now()) {
         return c.redirect("/auth/login?error=This magic link has expired");
       }
-      const verifyTenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+      const verifyTenantId = chunkZMDTE3KX_cjs.getTenantIdOrNull(c);
       const verifyUserQuery = verifyTenantId ? "SELECT * FROM users WHERE email = ? AND is_active = 1 AND tenant_id = ?" : "SELECT * FROM users WHERE email = ? AND is_active = 1";
       let user = await (verifyTenantId ? db.prepare(verifyUserQuery).bind(magicLink.user_email, verifyTenantId) : db.prepare(verifyUserQuery).bind(magicLink.user_email)).first();
       const allowNewUsers = false;
@@ -4775,13 +5077,13 @@ function createMagicLinkAuthPlugin() {
         SET used = 1, used_at = ?
         WHERE id = ?
       `).bind(Date.now(), magicLink.id).run();
-      const jwtToken = await chunk6VPVJN4S_cjs.AuthManager.generateToken(
+      const jwtToken = await chunk6W6JGFKT_cjs.AuthManager.generateToken(
         user.id,
         user.email,
         user.role,
         c.env.JWT_SECRET
       );
-      chunk6VPVJN4S_cjs.AuthManager.setAuthCookie(c, jwtToken);
+      chunk6W6JGFKT_cjs.AuthManager.setAuthCookie(c, jwtToken);
       await db.prepare(`
         UPDATE users SET last_login_at = ? WHERE id = ?
       `).bind(Date.now(), user.id).run();
@@ -5254,7 +5556,7 @@ var SecurityAuditService = class {
 };
 
 // src/plugins/core-plugins/security-audit-plugin/components/dashboard-page.ts
-chunkUYJ6TJHX_cjs.init_admin_layout_catalyst_template();
+chunkKF4GHKB7_cjs.init_admin_layout_catalyst_template();
 function formatTimestamp(ts) {
   const date = new Date(ts);
   const now = Date.now();
@@ -5453,11 +5755,11 @@ function renderSecurityDashboard(data) {
     version,
     dynamicMenuItems
   };
-  return chunkUYJ6TJHX_cjs.renderAdminLayoutCatalyst(layoutData);
+  return chunkKF4GHKB7_cjs.renderAdminLayoutCatalyst(layoutData);
 }
 
 // src/plugins/core-plugins/security-audit-plugin/components/event-log-page.ts
-chunkUYJ6TJHX_cjs.init_admin_layout_catalyst_template();
+chunkKF4GHKB7_cjs.init_admin_layout_catalyst_template();
 function formatTimestamp2(ts) {
   const date = new Date(ts);
   return date.toLocaleDateString("en-US", {
@@ -5664,11 +5966,11 @@ function renderEventLogPage(data) {
     version,
     dynamicMenuItems
   };
-  return chunkUYJ6TJHX_cjs.renderAdminLayoutCatalyst(layoutData);
+  return chunkKF4GHKB7_cjs.renderAdminLayoutCatalyst(layoutData);
 }
 
 // src/plugins/core-plugins/security-audit-plugin/components/settings-page.ts
-chunkUYJ6TJHX_cjs.init_admin_layout_catalyst_template();
+chunkKF4GHKB7_cjs.init_admin_layout_catalyst_template();
 function renderSecuritySettingsPage(data) {
   const { settings, user, version, message, dynamicMenuItems } = data;
   const content2 = `
@@ -5821,12 +6123,12 @@ function renderSecuritySettingsPage(data) {
     version,
     dynamicMenuItems
   };
-  return chunkUYJ6TJHX_cjs.renderAdminLayoutCatalyst(layoutData);
+  return chunkKF4GHKB7_cjs.renderAdminLayoutCatalyst(layoutData);
 }
 
 // src/plugins/core-plugins/security-audit-plugin/routes/admin.ts
 var adminRoutes2 = new hono.Hono();
-adminRoutes2.use("*", chunk6VPVJN4S_cjs.requireAuth());
+adminRoutes2.use("*", chunk6W6JGFKT_cjs.requireAuth());
 adminRoutes2.use("*", async (c, next) => {
   const user = c.get("user");
   if (user?.role !== "admin") {
@@ -6096,7 +6398,7 @@ var BruteForceDetector = class {
 
 // src/plugins/core-plugins/security-audit-plugin/routes/api.ts
 var apiRoutes2 = new hono.Hono();
-apiRoutes2.use("*", chunk6VPVJN4S_cjs.requireAuth());
+apiRoutes2.use("*", chunk6W6JGFKT_cjs.requireAuth());
 apiRoutes2.use("*", async (c, next) => {
   const user = c.get("user");
   if (user?.role !== "admin") {
@@ -6281,7 +6583,7 @@ function securityAuditMiddleware() {
       return next();
     }
     const db = c.env.DB;
-    const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+    const tenantId = chunkZMDTE3KX_cjs.getTenantIdOrNull(c);
     if (!await isPluginActive2(db)) {
       return next();
     }
@@ -6890,7 +7192,7 @@ var StripeEventService = class {
 };
 
 // src/plugins/core-plugins/stripe-plugin/components/subscriptions-page.ts
-chunkUYJ6TJHX_cjs.init_admin_layout_catalyst_template();
+chunkKF4GHKB7_cjs.init_admin_layout_catalyst_template();
 
 // src/plugins/core-plugins/stripe-plugin/components/tab-bar.ts
 var TABS = [
@@ -7023,7 +7325,7 @@ function renderSubscriptionsPage(data) {
     version,
     dynamicMenuItems
   };
-  return chunkUYJ6TJHX_cjs.renderAdminLayoutCatalyst(layoutData);
+  return chunkKF4GHKB7_cjs.renderAdminLayoutCatalyst(layoutData);
 }
 function statsCard(label, value, colorClass) {
   return `
@@ -7103,7 +7405,7 @@ function renderPagination2(page, totalPages, status) {
 }
 
 // src/plugins/core-plugins/stripe-plugin/components/events-page.ts
-chunkUYJ6TJHX_cjs.init_admin_layout_catalyst_template();
+chunkKF4GHKB7_cjs.init_admin_layout_catalyst_template();
 function renderEventsPage(data) {
   const { events, stats, types, filters, user, version, dynamicMenuItems } = data;
   const content2 = `
@@ -7176,7 +7478,7 @@ function renderEventsPage(data) {
     version,
     dynamicMenuItems
   };
-  return chunkUYJ6TJHX_cjs.renderAdminLayoutCatalyst(layoutData);
+  return chunkKF4GHKB7_cjs.renderAdminLayoutCatalyst(layoutData);
 }
 function eventStatsCard(label, value, colorClass) {
   return `
@@ -7262,7 +7564,7 @@ var DEFAULT_SETTINGS3 = {
 
 // src/plugins/core-plugins/stripe-plugin/routes/admin.ts
 var adminRoutes3 = new hono.Hono();
-adminRoutes3.use("*", chunk6VPVJN4S_cjs.requireAuth());
+adminRoutes3.use("*", chunk6W6JGFKT_cjs.requireAuth());
 adminRoutes3.use("*", async (c, next) => {
   const user = c.get("user");
   if (user?.role !== "admin") {
@@ -7285,7 +7587,7 @@ async function getSettings3(db) {
 adminRoutes3.get("/", async (c) => {
   const db = c.env.DB;
   const user = c.get("user");
-  const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+  const tenantId = chunkZMDTE3KX_cjs.getTenantIdOrNull(c);
   const subscriptionService = new SubscriptionService(db, tenantId);
   await subscriptionService.ensureTable();
   const page = parseInt(c.req.query("page") || "1");
@@ -7336,7 +7638,7 @@ adminRoutes3.get("/settings", async (c) => {
   const db = c.env.DB;
   const user = c.get("user");
   const settings = await getSettings3(db);
-  const { renderAdminLayoutCatalyst: renderAdminLayoutCatalyst2 } = await import('./admin-layout-catalyst.template-HFD37TY5.cjs');
+  const { renderAdminLayoutCatalyst: renderAdminLayoutCatalyst2 } = await import('./admin-layout-catalyst.template-XG2WHO2X.cjs');
   const content2 = `
     <div>
       <div class="mb-6">
@@ -7746,7 +8048,7 @@ apiRoutes3.post("/webhook", async (c) => {
   }
   return c.json({ received: true });
 });
-apiRoutes3.post("/create-checkout-session", chunk6VPVJN4S_cjs.requireAuth(), async (c) => {
+apiRoutes3.post("/create-checkout-session", chunk6W6JGFKT_cjs.requireAuth(), async (c) => {
   const db = c.env.DB;
   const user = c.get("user");
   if (!user) return c.json({ error: "Unauthorized" }, 401);
@@ -7786,7 +8088,7 @@ apiRoutes3.post("/create-checkout-session", chunk6VPVJN4S_cjs.requireAuth(), asy
   });
   return c.json({ sessionId: session.id, url: session.url });
 });
-apiRoutes3.get("/subscription", chunk6VPVJN4S_cjs.requireAuth(), async (c) => {
+apiRoutes3.get("/subscription", chunk6W6JGFKT_cjs.requireAuth(), async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: "Unauthorized" }, 401);
   const db = c.env.DB;
@@ -7798,7 +8100,7 @@ apiRoutes3.get("/subscription", chunk6VPVJN4S_cjs.requireAuth(), async (c) => {
   }
   return c.json({ subscription });
 });
-apiRoutes3.get("/subscriptions", chunk6VPVJN4S_cjs.requireAuth(), async (c) => {
+apiRoutes3.get("/subscriptions", chunk6W6JGFKT_cjs.requireAuth(), async (c) => {
   const user = c.get("user");
   if (user?.role !== "admin") return c.json({ error: "Access denied" }, 403);
   const db = c.env.DB;
@@ -7814,7 +8116,7 @@ apiRoutes3.get("/subscriptions", chunk6VPVJN4S_cjs.requireAuth(), async (c) => {
   const result = await subscriptionService.list(filters);
   return c.json(result);
 });
-apiRoutes3.get("/stats", chunk6VPVJN4S_cjs.requireAuth(), async (c) => {
+apiRoutes3.get("/stats", chunk6W6JGFKT_cjs.requireAuth(), async (c) => {
   const user = c.get("user");
   if (user?.role !== "admin") return c.json({ error: "Access denied" }, 403);
   const db = c.env.DB;
@@ -7823,7 +8125,7 @@ apiRoutes3.get("/stats", chunk6VPVJN4S_cjs.requireAuth(), async (c) => {
   const stats = await subscriptionService.getStats();
   return c.json(stats);
 });
-apiRoutes3.post("/sync-subscriptions", chunk6VPVJN4S_cjs.requireAuth(), async (c) => {
+apiRoutes3.post("/sync-subscriptions", chunk6W6JGFKT_cjs.requireAuth(), async (c) => {
   const user = c.get("user");
   if (user?.role !== "admin") return c.json({ error: "Access denied" }, 403);
   const db = c.env.DB;
@@ -7871,7 +8173,7 @@ apiRoutes3.post("/sync-subscriptions", chunk6VPVJN4S_cjs.requireAuth(), async (c
     }, 500);
   }
 });
-apiRoutes3.get("/events", chunk6VPVJN4S_cjs.requireAuth(), async (c) => {
+apiRoutes3.get("/events", chunk6W6JGFKT_cjs.requireAuth(), async (c) => {
   const user = c.get("user");
   if (user?.role !== "admin") return c.json({ error: "Access denied" }, 403);
   const db = c.env.DB;
@@ -9017,7 +9319,7 @@ async function warmNamespace(namespace, entries) {
 }
 
 // src/templates/pages/admin-cache.template.ts
-chunkUYJ6TJHX_cjs.init_admin_layout_catalyst_template();
+chunkKF4GHKB7_cjs.init_admin_layout_catalyst_template();
 function renderCacheDashboard(data) {
   const pageContent = `
     <div class="space-y-6">
@@ -9196,7 +9498,7 @@ function renderCacheDashboard(data) {
     </script>
 
     <!-- Confirmation Dialogs -->
-    ${chunk3DRZA2HL_cjs.renderConfirmationDialog({
+    ${chunkZMDTE3KX_cjs.renderConfirmationDialog({
     id: "clear-all-cache-confirm",
     title: "Clear All Cache",
     message: "Are you sure you want to clear all cache entries? This cannot be undone.",
@@ -9207,7 +9509,7 @@ function renderCacheDashboard(data) {
     onConfirm: "performClearAllCaches()"
   })}
 
-    ${chunk3DRZA2HL_cjs.renderConfirmationDialog({
+    ${chunkZMDTE3KX_cjs.renderConfirmationDialog({
     id: "clear-namespace-cache-confirm",
     title: "Clear Namespace Cache",
     message: "Clear cache for this namespace?",
@@ -9218,7 +9520,7 @@ function renderCacheDashboard(data) {
     onConfirm: "performClearNamespaceCache()"
   })}
 
-    ${chunk3DRZA2HL_cjs.getConfirmationDialogScript()}
+    ${chunkZMDTE3KX_cjs.getConfirmationDialogScript()}
   `;
   const layoutData = {
     title: "Cache System",
@@ -9228,7 +9530,7 @@ function renderCacheDashboard(data) {
     version: data.version,
     content: pageContent
   };
-  return chunkUYJ6TJHX_cjs.renderAdminLayoutCatalyst(layoutData);
+  return chunkKF4GHKB7_cjs.renderAdminLayoutCatalyst(layoutData);
 }
 function renderStatCard(label, value, color, icon, colorOverride) {
   const finalColor = colorOverride || color;
@@ -9910,8 +10212,8 @@ function createSonicJSApp(config = {}) {
     c.set("appVersion", appVersion);
     await next();
   });
-  app2.use("*", chunk6VPVJN4S_cjs.metricsMiddleware());
-  app2.use("*", chunk6VPVJN4S_cjs.bootstrapMiddleware(config));
+  app2.use("*", chunk6W6JGFKT_cjs.metricsMiddleware());
+  app2.use("*", chunk6W6JGFKT_cjs.bootstrapMiddleware(config));
   if (config.middleware?.beforeAuth) {
     for (const middleware of config.middleware.beforeAuth) {
       app2.use("*", middleware);
@@ -9920,8 +10222,8 @@ function createSonicJSApp(config = {}) {
   app2.use("*", async (_c, next) => {
     await next();
   });
-  app2.use("*", chunk6VPVJN4S_cjs.securityHeadersMiddleware());
-  app2.use("*", chunk6VPVJN4S_cjs.csrfProtection());
+  app2.use("*", chunk6W6JGFKT_cjs.securityHeadersMiddleware());
+  app2.use("*", chunk6W6JGFKT_cjs.csrfProtection());
   app2.use("*", tenantMiddleware());
   if (config.middleware?.afterAuth) {
     for (const middleware of config.middleware.afterAuth) {
@@ -9929,21 +10231,21 @@ function createSonicJSApp(config = {}) {
     }
   }
   app2.use("/admin/*", pluginMenuMiddleware());
-  app2.route("/api", chunk3DRZA2HL_cjs.api_default);
-  app2.route("/api/media", chunk3DRZA2HL_cjs.api_media_default);
-  app2.route("/api/system", chunk3DRZA2HL_cjs.api_system_default);
-  app2.route("/admin/api", chunk3DRZA2HL_cjs.admin_api_default);
-  app2.route("/admin/dashboard", chunk3DRZA2HL_cjs.router);
-  app2.route("/admin/collections", chunk3DRZA2HL_cjs.adminCollectionsRoutes);
-  app2.route("/admin/forms", chunk3DRZA2HL_cjs.adminFormsRoutes);
-  app2.route("/admin/settings", chunk3DRZA2HL_cjs.adminSettingsRoutes);
-  app2.route("/forms", chunk3DRZA2HL_cjs.public_forms_default);
-  app2.route("/api/forms", chunk3DRZA2HL_cjs.public_forms_default);
-  app2.route("/admin/api-reference", chunk3DRZA2HL_cjs.router2);
+  app2.route("/api", chunkZMDTE3KX_cjs.api_default);
+  app2.route("/api/media", chunkZMDTE3KX_cjs.api_media_default);
+  app2.route("/api/system", chunkZMDTE3KX_cjs.api_system_default);
+  app2.route("/admin/api", chunkZMDTE3KX_cjs.admin_api_default);
+  app2.route("/admin/dashboard", chunkZMDTE3KX_cjs.router);
+  app2.route("/admin/collections", chunkZMDTE3KX_cjs.adminCollectionsRoutes);
+  app2.route("/admin/forms", chunkZMDTE3KX_cjs.adminFormsRoutes);
+  app2.route("/admin/settings", chunkZMDTE3KX_cjs.adminSettingsRoutes);
+  app2.route("/forms", chunkZMDTE3KX_cjs.public_forms_default);
+  app2.route("/api/forms", chunkZMDTE3KX_cjs.public_forms_default);
+  app2.route("/admin/api-reference", chunkZMDTE3KX_cjs.router2);
   app2.route("/admin/database-tools", createDatabaseToolsAdminRoutes());
   app2.route("/admin/seed-data", createSeedDataAdminRoutes());
-  app2.route("/admin/content", chunk3DRZA2HL_cjs.admin_content_default);
-  app2.route("/admin/media", chunk3DRZA2HL_cjs.adminMediaRoutes);
+  app2.route("/admin/content", chunkZMDTE3KX_cjs.admin_content_default);
+  app2.route("/admin/media", chunkZMDTE3KX_cjs.adminMediaRoutes);
   app2.use("/auth/*", securityAuditMiddleware());
   if (securityAuditPlugin.routes && securityAuditPlugin.routes.length > 0) {
     for (const route of securityAuditPlugin.routes) {
@@ -9961,8 +10263,8 @@ function createSonicJSApp(config = {}) {
       app2.route(route.path, route.handler);
     }
   }
-  if (chunk3DRZA2HL_cjs.userProfilesPlugin.routes && chunk3DRZA2HL_cjs.userProfilesPlugin.routes.length > 0) {
-    for (const route of chunk3DRZA2HL_cjs.userProfilesPlugin.routes) {
+  if (chunkZMDTE3KX_cjs.userProfilesPlugin.routes && chunkZMDTE3KX_cjs.userProfilesPlugin.routes.length > 0) {
+    for (const route of chunkZMDTE3KX_cjs.userProfilesPlugin.routes) {
       app2.route(route.path, route.handler);
     }
   }
@@ -9977,11 +10279,11 @@ function createSonicJSApp(config = {}) {
     }
   }
   app2.route("/admin/tenants", admin_tenants_default);
-  app2.route("/admin/plugins", chunk3DRZA2HL_cjs.adminPluginRoutes);
-  app2.route("/admin/logs", chunk3DRZA2HL_cjs.adminLogsRoutes);
-  app2.route("/admin", chunk3DRZA2HL_cjs.userRoutes);
-  app2.route("/auth", chunk3DRZA2HL_cjs.auth_default);
-  app2.route("/", chunk3DRZA2HL_cjs.test_cleanup_default);
+  app2.route("/admin/plugins", chunkZMDTE3KX_cjs.adminPluginRoutes);
+  app2.route("/admin/logs", chunkZMDTE3KX_cjs.adminLogsRoutes);
+  app2.route("/admin", chunkZMDTE3KX_cjs.userRoutes);
+  app2.route("/auth", chunkZMDTE3KX_cjs.auth_default);
+  app2.route("/", chunkZMDTE3KX_cjs.test_cleanup_default);
   if (emailPlugin.routes && emailPlugin.routes.length > 0) {
     for (const route of emailPlugin.routes) {
       app2.route(route.path, route.handler);
@@ -10069,107 +10371,107 @@ var VERSION = chunkVUISYUHY_cjs.package_default.version;
 
 Object.defineProperty(exports, "ROUTES_INFO", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.ROUTES_INFO; }
+  get: function () { return chunkZMDTE3KX_cjs.ROUTES_INFO; }
 });
 Object.defineProperty(exports, "adminApiRoutes", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.admin_api_default; }
+  get: function () { return chunkZMDTE3KX_cjs.admin_api_default; }
 });
 Object.defineProperty(exports, "adminCheckboxRoutes", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.adminCheckboxRoutes; }
+  get: function () { return chunkZMDTE3KX_cjs.adminCheckboxRoutes; }
 });
 Object.defineProperty(exports, "adminCodeExamplesRoutes", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.admin_code_examples_default; }
+  get: function () { return chunkZMDTE3KX_cjs.admin_code_examples_default; }
 });
 Object.defineProperty(exports, "adminCollectionsRoutes", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.adminCollectionsRoutes; }
+  get: function () { return chunkZMDTE3KX_cjs.adminCollectionsRoutes; }
 });
 Object.defineProperty(exports, "adminContentRoutes", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.admin_content_default; }
+  get: function () { return chunkZMDTE3KX_cjs.admin_content_default; }
 });
 Object.defineProperty(exports, "adminDashboardRoutes", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.router; }
+  get: function () { return chunkZMDTE3KX_cjs.router; }
 });
 Object.defineProperty(exports, "adminDesignRoutes", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.adminDesignRoutes; }
+  get: function () { return chunkZMDTE3KX_cjs.adminDesignRoutes; }
 });
 Object.defineProperty(exports, "adminLogsRoutes", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.adminLogsRoutes; }
+  get: function () { return chunkZMDTE3KX_cjs.adminLogsRoutes; }
 });
 Object.defineProperty(exports, "adminMediaRoutes", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.adminMediaRoutes; }
+  get: function () { return chunkZMDTE3KX_cjs.adminMediaRoutes; }
 });
 Object.defineProperty(exports, "adminPluginRoutes", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.adminPluginRoutes; }
+  get: function () { return chunkZMDTE3KX_cjs.adminPluginRoutes; }
 });
 Object.defineProperty(exports, "adminSettingsRoutes", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.adminSettingsRoutes; }
+  get: function () { return chunkZMDTE3KX_cjs.adminSettingsRoutes; }
 });
 Object.defineProperty(exports, "adminTestimonialsRoutes", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.admin_testimonials_default; }
+  get: function () { return chunkZMDTE3KX_cjs.admin_testimonials_default; }
 });
 Object.defineProperty(exports, "adminUsersRoutes", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.userRoutes; }
+  get: function () { return chunkZMDTE3KX_cjs.userRoutes; }
 });
 Object.defineProperty(exports, "apiContentCrudRoutes", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.api_content_crud_default; }
+  get: function () { return chunkZMDTE3KX_cjs.api_content_crud_default; }
 });
 Object.defineProperty(exports, "apiMediaRoutes", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.api_media_default; }
+  get: function () { return chunkZMDTE3KX_cjs.api_media_default; }
 });
 Object.defineProperty(exports, "apiRoutes", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.api_default; }
+  get: function () { return chunkZMDTE3KX_cjs.api_default; }
 });
 Object.defineProperty(exports, "apiSystemRoutes", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.api_system_default; }
+  get: function () { return chunkZMDTE3KX_cjs.api_system_default; }
 });
 Object.defineProperty(exports, "authRoutes", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.auth_default; }
+  get: function () { return chunkZMDTE3KX_cjs.auth_default; }
 });
 Object.defineProperty(exports, "createUserProfilesPlugin", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.createUserProfilesPlugin; }
+  get: function () { return chunkZMDTE3KX_cjs.createUserProfilesPlugin; }
 });
 Object.defineProperty(exports, "defineUserProfile", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.defineUserProfile; }
+  get: function () { return chunkZMDTE3KX_cjs.defineUserProfile; }
 });
 Object.defineProperty(exports, "getTenantId", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.getTenantId; }
+  get: function () { return chunkZMDTE3KX_cjs.getTenantId; }
 });
 Object.defineProperty(exports, "getTenantIdOrNull", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.getTenantIdOrNull; }
+  get: function () { return chunkZMDTE3KX_cjs.getTenantIdOrNull; }
 });
 Object.defineProperty(exports, "getUserProfileConfig", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.getUserProfileConfig; }
+  get: function () { return chunkZMDTE3KX_cjs.getUserProfileConfig; }
 });
 Object.defineProperty(exports, "isSuperAdmin", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.isSuperAdmin; }
+  get: function () { return chunkZMDTE3KX_cjs.isSuperAdmin; }
 });
 Object.defineProperty(exports, "userProfilesPlugin", {
   enumerable: true,
-  get: function () { return chunk3DRZA2HL_cjs.userProfilesPlugin; }
+  get: function () { return chunkZMDTE3KX_cjs.userProfilesPlugin; }
 });
 Object.defineProperty(exports, "Logger", {
   enumerable: true,
@@ -10337,83 +10639,83 @@ Object.defineProperty(exports, "workflowHistory", {
 });
 Object.defineProperty(exports, "AuthManager", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.AuthManager; }
+  get: function () { return chunk6W6JGFKT_cjs.AuthManager; }
 });
 Object.defineProperty(exports, "PermissionManager", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.PermissionManager; }
+  get: function () { return chunk6W6JGFKT_cjs.PermissionManager; }
 });
 Object.defineProperty(exports, "bootstrapMiddleware", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.bootstrapMiddleware; }
+  get: function () { return chunk6W6JGFKT_cjs.bootstrapMiddleware; }
 });
 Object.defineProperty(exports, "cacheHeaders", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.cacheHeaders; }
+  get: function () { return chunk6W6JGFKT_cjs.cacheHeaders; }
 });
 Object.defineProperty(exports, "compressionMiddleware", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.compressionMiddleware; }
+  get: function () { return chunk6W6JGFKT_cjs.compressionMiddleware; }
 });
 Object.defineProperty(exports, "detailedLoggingMiddleware", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.detailedLoggingMiddleware; }
+  get: function () { return chunk6W6JGFKT_cjs.detailedLoggingMiddleware; }
 });
 Object.defineProperty(exports, "getActivePlugins", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.getActivePlugins; }
+  get: function () { return chunk6W6JGFKT_cjs.getActivePlugins; }
 });
 Object.defineProperty(exports, "isPluginActive", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.isPluginActive; }
+  get: function () { return chunk6W6JGFKT_cjs.isPluginActive; }
 });
 Object.defineProperty(exports, "logActivity", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.logActivity; }
+  get: function () { return chunk6W6JGFKT_cjs.logActivity; }
 });
 Object.defineProperty(exports, "loggingMiddleware", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.loggingMiddleware; }
+  get: function () { return chunk6W6JGFKT_cjs.loggingMiddleware; }
 });
 Object.defineProperty(exports, "optionalAuth", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.optionalAuth; }
+  get: function () { return chunk6W6JGFKT_cjs.optionalAuth; }
 });
 Object.defineProperty(exports, "performanceLoggingMiddleware", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.performanceLoggingMiddleware; }
+  get: function () { return chunk6W6JGFKT_cjs.performanceLoggingMiddleware; }
 });
 Object.defineProperty(exports, "requireActivePlugin", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.requireActivePlugin; }
+  get: function () { return chunk6W6JGFKT_cjs.requireActivePlugin; }
 });
 Object.defineProperty(exports, "requireActivePlugins", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.requireActivePlugins; }
+  get: function () { return chunk6W6JGFKT_cjs.requireActivePlugins; }
 });
 Object.defineProperty(exports, "requireAnyPermission", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.requireAnyPermission; }
+  get: function () { return chunk6W6JGFKT_cjs.requireAnyPermission; }
 });
 Object.defineProperty(exports, "requireAuth", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.requireAuth; }
+  get: function () { return chunk6W6JGFKT_cjs.requireAuth; }
 });
 Object.defineProperty(exports, "requirePermission", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.requirePermission; }
+  get: function () { return chunk6W6JGFKT_cjs.requirePermission; }
 });
 Object.defineProperty(exports, "requireRole", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.requireRole; }
+  get: function () { return chunk6W6JGFKT_cjs.requireRole; }
 });
 Object.defineProperty(exports, "securityHeaders", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.securityHeadersMiddleware; }
+  get: function () { return chunk6W6JGFKT_cjs.securityHeadersMiddleware; }
 });
 Object.defineProperty(exports, "securityLoggingMiddleware", {
   enumerable: true,
-  get: function () { return chunk6VPVJN4S_cjs.securityLoggingMiddleware; }
+  get: function () { return chunk6W6JGFKT_cjs.securityLoggingMiddleware; }
 });
 Object.defineProperty(exports, "PluginBootstrapService", {
   enumerable: true,
@@ -10497,39 +10799,39 @@ Object.defineProperty(exports, "validateCollectionConfig", {
 });
 Object.defineProperty(exports, "MigrationService", {
   enumerable: true,
-  get: function () { return chunkA2XCPDQS_cjs.MigrationService; }
+  get: function () { return chunkAJLZNXZR_cjs.MigrationService; }
 });
 Object.defineProperty(exports, "renderFilterBar", {
   enumerable: true,
-  get: function () { return chunk4ZSNJDLS_cjs.renderFilterBar; }
+  get: function () { return chunk2WTI3ORX_cjs.renderFilterBar; }
 });
 Object.defineProperty(exports, "getConfirmationDialogScript", {
   enumerable: true,
-  get: function () { return chunkOHYBNCVL_cjs.getConfirmationDialogScript; }
+  get: function () { return chunkUFFKDP2E_cjs.getConfirmationDialogScript; }
 });
 Object.defineProperty(exports, "renderAlert", {
   enumerable: true,
-  get: function () { return chunkOHYBNCVL_cjs.renderAlert; }
+  get: function () { return chunkUFFKDP2E_cjs.renderAlert; }
 });
 Object.defineProperty(exports, "renderConfirmationDialog", {
   enumerable: true,
-  get: function () { return chunkOHYBNCVL_cjs.renderConfirmationDialog; }
+  get: function () { return chunkUFFKDP2E_cjs.renderConfirmationDialog; }
 });
 Object.defineProperty(exports, "renderForm", {
   enumerable: true,
-  get: function () { return chunkOHYBNCVL_cjs.renderForm; }
+  get: function () { return chunkUFFKDP2E_cjs.renderForm; }
 });
 Object.defineProperty(exports, "renderFormField", {
   enumerable: true,
-  get: function () { return chunkOHYBNCVL_cjs.renderFormField; }
+  get: function () { return chunkUFFKDP2E_cjs.renderFormField; }
 });
 Object.defineProperty(exports, "renderPagination", {
   enumerable: true,
-  get: function () { return chunkOHYBNCVL_cjs.renderPagination; }
+  get: function () { return chunkUFFKDP2E_cjs.renderPagination; }
 });
 Object.defineProperty(exports, "renderTable", {
   enumerable: true,
-  get: function () { return chunkOHYBNCVL_cjs.renderTable; }
+  get: function () { return chunkUFFKDP2E_cjs.renderTable; }
 });
 Object.defineProperty(exports, "HookSystemImpl", {
   enumerable: true,
