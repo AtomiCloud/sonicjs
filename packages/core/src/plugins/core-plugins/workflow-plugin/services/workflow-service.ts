@@ -57,14 +57,14 @@ export class WorkflowService implements PluginDbService {
   constructor(private db: D1Database) {}
 
   // Legacy compatibility - alias for WorkflowEngine
-  static createEngine(db: D1Database): WorkflowEngine {
-    return new WorkflowEngine(db)
+  static createEngine(db: D1Database, tenantId: string | null = null): WorkflowEngine {
+    return new WorkflowEngine(db, tenantId)
   }
 }
 
 // Legacy WorkflowEngine class for backward compatibility
 export class WorkflowEngine {
-  constructor(private db: D1Database) {}
+  constructor(private db: D1Database, private tenantId: string | null = null) {}
 
   async getWorkflowStates(): Promise<WorkflowState[]> {
     const { results } = await this.db.prepare(`
@@ -162,34 +162,36 @@ export class WorkflowEngine {
       `).bind(toStateId, contentId).run()
 
       // Update content table workflow state
-      await this.db.prepare(`
-        UPDATE content 
-        SET workflow_state_id = ?, updated_at = ?
-        WHERE id = ?
-      `).bind(toStateId, Date.now(), contentId).run()
+      const updateContentSql = this.tenantId
+        ? `UPDATE content SET workflow_state_id = ?, updated_at = ? WHERE id = ? AND tenant_id = ?`
+        : `UPDATE content SET workflow_state_id = ?, updated_at = ? WHERE id = ?`
+      const updateContentParams = this.tenantId
+        ? [toStateId, Date.now(), contentId, this.tenantId]
+        : [toStateId, Date.now(), contentId]
+      await this.db.prepare(updateContentSql).bind(...updateContentParams).run()
 
       // Record history
-      await this.db.prepare(`
-        INSERT INTO workflow_history 
+      const insertHistorySql = this.tenantId
+        ? `INSERT INTO workflow_history
+        (content_id, workflow_id, from_state_id, to_state_id, user_id, comment, metadata, tenant_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        : `INSERT INTO workflow_history
         (content_id, workflow_id, from_state_id, to_state_id, user_id, comment, metadata)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        contentId,
-        currentStatus.workflow_id,
-        currentStatus.current_state_id,
-        toStateId,
-        userId,
-        comment || null,
-        metadata ? JSON.stringify(metadata) : null
-      ).run()
+        VALUES (?, ?, ?, ?, ?, ?, ?)`
+      const insertHistoryParams = this.tenantId
+        ? [contentId, currentStatus.workflow_id, currentStatus.current_state_id, toStateId, userId, comment || null, metadata ? JSON.stringify(metadata) : null, this.tenantId]
+        : [contentId, currentStatus.workflow_id, currentStatus.current_state_id, toStateId, userId, comment || null, metadata ? JSON.stringify(metadata) : null]
+      await this.db.prepare(insertHistorySql).bind(...insertHistoryParams).run()
 
       // Auto-publish if state is 'published'
       if (toStateId === 'published') {
-        await this.db.prepare(`
-          UPDATE content 
-          SET status = 'published', published_at = ?
-          WHERE id = ?
-        `).bind(Date.now(), contentId).run()
+        const publishSql = this.tenantId
+          ? `UPDATE content SET status = 'published', published_at = ? WHERE id = ? AND tenant_id = ?`
+          : `UPDATE content SET status = 'published', published_at = ? WHERE id = ?`
+        const publishParams = this.tenantId
+          ? [Date.now(), contentId, this.tenantId]
+          : [Date.now(), contentId]
+        await this.db.prepare(publishSql).bind(...publishParams).run()
       }
 
       return true
@@ -224,11 +226,13 @@ export class WorkflowEngine {
       `).bind(contentId, workflow.id, initialState.id).run()
 
       // Update content table
-      await this.db.prepare(`
-        UPDATE content 
-        SET workflow_state_id = ?
-        WHERE id = ?
-      `).bind(initialState.id, contentId).run()
+      const updateSql = this.tenantId
+        ? `UPDATE content SET workflow_state_id = ? WHERE id = ? AND tenant_id = ?`
+        : `UPDATE content SET workflow_state_id = ? WHERE id = ?`
+      const updateParams = this.tenantId
+        ? [initialState.id, contentId, this.tenantId]
+        : [initialState.id, contentId]
+      await this.db.prepare(updateSql).bind(...updateParams).run()
 
       return true
     } catch (error) {
@@ -238,20 +242,32 @@ export class WorkflowEngine {
   }
 
   async getWorkflowHistory(contentId: string): Promise<WorkflowHistoryEntry[]> {
-    const { results } = await this.db.prepare(`
-      SELECT 
-        wh.*,
-        u.username as user_name,
-        fs.name as from_state_name,
-        ts.name as to_state_name
-      FROM workflow_history wh
-      LEFT JOIN users u ON wh.user_id = u.id
-      LEFT JOIN workflow_states fs ON wh.from_state_id = fs.id
-      LEFT JOIN workflow_states ts ON wh.to_state_id = ts.id
-      WHERE wh.content_id = ?
-      ORDER BY wh.created_at DESC
-    `).bind(contentId).all()
-    
+    const sql = this.tenantId
+      ? `SELECT
+          wh.*,
+          u.username as user_name,
+          fs.name as from_state_name,
+          ts.name as to_state_name
+        FROM workflow_history wh
+        LEFT JOIN users u ON wh.user_id = u.id
+        LEFT JOIN workflow_states fs ON wh.from_state_id = fs.id
+        LEFT JOIN workflow_states ts ON wh.to_state_id = ts.id
+        WHERE wh.content_id = ? AND wh.tenant_id = ?
+        ORDER BY wh.created_at DESC`
+      : `SELECT
+          wh.*,
+          u.username as user_name,
+          fs.name as from_state_name,
+          ts.name as to_state_name
+        FROM workflow_history wh
+        LEFT JOIN users u ON wh.user_id = u.id
+        LEFT JOIN workflow_states fs ON wh.from_state_id = fs.id
+        LEFT JOIN workflow_states ts ON wh.to_state_id = ts.id
+        WHERE wh.content_id = ?
+        ORDER BY wh.created_at DESC`
+    const params = this.tenantId ? [contentId, this.tenantId] : [contentId]
+    const { results } = await this.db.prepare(sql).bind(...params).all()
+
     return results as WorkflowHistoryEntry[]
   }
 
@@ -271,45 +287,76 @@ export class WorkflowEngine {
   }
 
   async getAssignedContent(userId: string): Promise<any[]> {
-    const { results } = await this.db.prepare(`
-      SELECT 
-        c.*,
-        cws.current_state_id,
-        cws.due_date,
-        ws.name as state_name,
-        ws.color as state_color,
-        col.name as collection_name
-      FROM content c
-      JOIN content_workflow_status cws ON c.id = cws.content_id
-      JOIN workflow_states ws ON cws.current_state_id = ws.id
-      JOIN collections col ON c.collection_id = col.id
-      WHERE cws.assigned_to = ?
-      ORDER BY cws.due_date ASC, c.updated_at DESC
-    `).bind(userId).all()
-    
+    const sql = this.tenantId
+      ? `SELECT
+          c.*,
+          cws.current_state_id,
+          cws.due_date,
+          ws.name as state_name,
+          ws.color as state_color,
+          col.name as collection_name
+        FROM content c
+        JOIN content_workflow_status cws ON c.id = cws.content_id
+        JOIN workflow_states ws ON cws.current_state_id = ws.id
+        JOIN collections col ON c.collection_id = col.id
+        WHERE cws.assigned_to = ? AND c.tenant_id = ?
+        ORDER BY cws.due_date ASC, c.updated_at DESC`
+      : `SELECT
+          c.*,
+          cws.current_state_id,
+          cws.due_date,
+          ws.name as state_name,
+          ws.color as state_color,
+          col.name as collection_name
+        FROM content c
+        JOIN content_workflow_status cws ON c.id = cws.content_id
+        JOIN workflow_states ws ON cws.current_state_id = ws.id
+        JOIN collections col ON c.collection_id = col.id
+        WHERE cws.assigned_to = ?
+        ORDER BY cws.due_date ASC, c.updated_at DESC`
+    const params = this.tenantId ? [userId, this.tenantId] : [userId]
+    const { results } = await this.db.prepare(sql).bind(...params).all()
+
     return results
   }
 
   async getContentByState(stateId: string, limit: number = 50): Promise<any[]> {
-    const { results } = await this.db.prepare(`
-      SELECT 
-        c.*,
-        cws.assigned_to,
-        cws.due_date,
-        ws.name as state_name,
-        ws.color as state_color,
-        col.name as collection_name,
-        u.username as assigned_to_name
-      FROM content c
-      JOIN content_workflow_status cws ON c.id = cws.content_id
-      JOIN workflow_states ws ON cws.current_state_id = ws.id
-      JOIN collections col ON c.collection_id = col.id
-      LEFT JOIN users u ON cws.assigned_to = u.id
-      WHERE cws.current_state_id = ?
-      ORDER BY c.updated_at DESC
-      LIMIT ?
-    `).bind(stateId, limit).all()
-    
+    const sql = this.tenantId
+      ? `SELECT
+          c.*,
+          cws.assigned_to,
+          cws.due_date,
+          ws.name as state_name,
+          ws.color as state_color,
+          col.name as collection_name,
+          u.username as assigned_to_name
+        FROM content c
+        JOIN content_workflow_status cws ON c.id = cws.content_id
+        JOIN workflow_states ws ON cws.current_state_id = ws.id
+        JOIN collections col ON c.collection_id = col.id
+        LEFT JOIN users u ON cws.assigned_to = u.id
+        WHERE cws.current_state_id = ? AND c.tenant_id = ?
+        ORDER BY c.updated_at DESC
+        LIMIT ?`
+      : `SELECT
+          c.*,
+          cws.assigned_to,
+          cws.due_date,
+          ws.name as state_name,
+          ws.color as state_color,
+          col.name as collection_name,
+          u.username as assigned_to_name
+        FROM content c
+        JOIN content_workflow_status cws ON c.id = cws.content_id
+        JOIN workflow_states ws ON cws.current_state_id = ws.id
+        JOIN collections col ON c.collection_id = col.id
+        LEFT JOIN users u ON cws.assigned_to = u.id
+        WHERE cws.current_state_id = ?
+        ORDER BY c.updated_at DESC
+        LIMIT ?`
+    const params = this.tenantId ? [stateId, this.tenantId, limit] : [stateId, limit]
+    const { results } = await this.db.prepare(sql).bind(...params).all()
+
     return results
   }
 }
@@ -419,6 +466,6 @@ export function createWorkflowService(db: D1Database): WorkflowService {
 }
 
 // Legacy export for backward compatibility
-export function createWorkflowEngine(db: D1Database): WorkflowEngine {
-  return new WorkflowEngine(db)
+export function createWorkflowEngine(db: D1Database, tenantId: string | null = null): WorkflowEngine {
+  return new WorkflowEngine(db, tenantId)
 }

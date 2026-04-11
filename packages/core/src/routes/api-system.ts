@@ -7,6 +7,7 @@
 
 import { Hono } from 'hono'
 import type { Bindings, Variables } from '../app'
+import { getTenantIdOrNull } from '../utils/tenant'
 
 export const apiSystemRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
@@ -130,28 +131,49 @@ apiSystemRoutes.get('/info', (c) => {
 apiSystemRoutes.get('/stats', async (c) => {
   try {
     const db = c.env.DB
+    const tenantId = getTenantIdOrNull(c)
 
     // Get content statistics
-    const contentStats = await db.prepare(`
-      SELECT COUNT(*) as total_content
-      FROM content
-      WHERE deleted_at IS NULL
-    `).first() as any
+    const contentStats = tenantId
+      ? await db.prepare(`
+          SELECT COUNT(*) as total_content
+          FROM content
+          WHERE deleted_at IS NULL AND tenant_id = ?
+        `).bind(tenantId).first() as any
+      : await db.prepare(`
+          SELECT COUNT(*) as total_content
+          FROM content
+          WHERE deleted_at IS NULL
+        `).first() as any
 
     // Get media statistics
-    const mediaStats = await db.prepare(`
-      SELECT
-        COUNT(*) as total_files,
-        SUM(size) as total_size
-      FROM media
-      WHERE deleted_at IS NULL
-    `).first() as any
+    const mediaStats = tenantId
+      ? await db.prepare(`
+          SELECT
+            COUNT(*) as total_files,
+            SUM(size) as total_size
+          FROM media
+          WHERE deleted_at IS NULL AND tenant_id = ?
+        `).bind(tenantId).first() as any
+      : await db.prepare(`
+          SELECT
+            COUNT(*) as total_files,
+            SUM(size) as total_size
+          FROM media
+          WHERE deleted_at IS NULL
+        `).first() as any
 
     // Get user statistics
-    const userStats = await db.prepare(`
-      SELECT COUNT(*) as total_users
-      FROM users
-    `).first() as any
+    const userStats = tenantId
+      ? await db.prepare(`
+          SELECT COUNT(*) as total_users
+          FROM users
+          WHERE tenant_id = ?
+        `).bind(tenantId).first() as any
+      : await db.prepare(`
+          SELECT COUNT(*) as total_users
+          FROM users
+        `).first() as any
 
     return c.json({
       content: {

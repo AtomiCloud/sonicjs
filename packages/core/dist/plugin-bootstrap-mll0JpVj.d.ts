@@ -47,28 +47,28 @@ declare function validateCollectionConfig(config: CollectionConfig): {
 /**
  * Sync all collection configurations to the database
  */
-declare function syncCollections(db: D1Database): Promise<CollectionSyncResult[]>;
+declare function syncCollections(db: D1Database, tenantId?: string | null): Promise<CollectionSyncResult[]>;
 /**
  * Sync a single collection configuration to the database
  */
-declare function syncCollection(db: D1Database, config: CollectionConfig): Promise<CollectionSyncResult>;
+declare function syncCollection(db: D1Database, config: CollectionConfig, tenantId?: string | null): Promise<CollectionSyncResult>;
 /**
  * Check if a collection is managed by config
  */
-declare function isCollectionManaged(db: D1Database, collectionName: string): Promise<boolean>;
+declare function isCollectionManaged(db: D1Database, collectionName: string, tenantId?: string | null): Promise<boolean>;
 /**
  * Get all managed collections from database
  */
-declare function getManagedCollections(db: D1Database): Promise<string[]>;
+declare function getManagedCollections(db: D1Database, tenantId?: string | null): Promise<string[]>;
 /**
  * Remove collections that are no longer in config files
  * (Only removes managed collections that aren't in the config)
  */
-declare function cleanupRemovedCollections(db: D1Database): Promise<string[]>;
+declare function cleanupRemovedCollections(db: D1Database, tenantId?: string | null): Promise<string[]>;
 /**
  * Full sync: sync all configs and cleanup removed
  */
-declare function fullCollectionSync(db: D1Database): Promise<{
+declare function fullCollectionSync(db: D1Database, tenantId?: string | null): Promise<{
     results: CollectionSyncResult[];
     removed: string[];
 }>;
@@ -104,14 +104,14 @@ declare function syncFormCollection(db: D1Database, form: {
     description?: string | null;
     formio_schema: any;
     is_active: number | boolean;
-}): Promise<{
+}, tenantId?: string | null): Promise<{
     collectionId: string;
     status: 'created' | 'updated' | 'unchanged';
 }>;
 /**
  * Sync all active forms to shadow collections
  */
-declare function syncAllFormCollections(db: D1Database): Promise<void>;
+declare function syncAllFormCollections(db: D1Database, tenantId?: string | null): Promise<void>;
 /**
  * Create a content item from a form submission
  */
@@ -124,11 +124,11 @@ declare function createContentFromSubmission(db: D1Database, submissionData: Rec
     userAgent?: string | null;
     userEmail?: string | null;
     userId?: string | null;
-}): Promise<string | null>;
+}, tenantId?: string | null): Promise<string | null>;
 /**
  * Backfill existing form submissions that don't have a content_id
  */
-declare function backfillFormSubmissions(db: D1Database, formId: string, collectionId: string): Promise<number>;
+declare function backfillFormSubmissions(db: D1Database, formId: string, collectionId: string, tenantId?: string | null): Promise<number>;
 
 interface Migration {
     id: string;
@@ -11799,7 +11799,8 @@ declare class PluginBootstrapService {
     private pluginService;
     constructor(db: D1Database$1);
     /**
-     * Core plugins that should always be available in the system
+     * Core plugins derived from the auto-generated plugin registry.
+     * Only plugins listed in BOOTSTRAP_PLUGIN_IDS are included.
      */
     private readonly CORE_PLUGINS;
     /**

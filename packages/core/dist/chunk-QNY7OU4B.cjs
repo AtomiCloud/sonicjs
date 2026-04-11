@@ -131,7 +131,7 @@ function validateCollectionConfig(config) {
 }
 
 // src/services/collection-sync.ts
-async function syncCollections(db) {
+async function syncCollections(db, tenantId = null) {
   console.log("\u{1F504} Starting collection sync...");
   const results = [];
   const configs = await loadCollectionConfigs();
@@ -140,7 +140,7 @@ async function syncCollections(db) {
     return results;
   }
   for (const config of configs) {
-    const result = await syncCollection(db, config);
+    const result = await syncCollection(db, config, tenantId);
     results.push(result);
   }
   const created = results.filter((r) => r.status === "created").length;
@@ -150,7 +150,7 @@ async function syncCollections(db) {
   console.log(`\u2705 Collection sync complete: ${created} created, ${updated} updated, ${unchanged} unchanged, ${errors} errors`);
   return results;
 }
-async function syncCollection(db, config) {
+async function syncCollection(db, config, tenantId = null) {
   try {
     const validation = validateCollectionConfig(config);
     if (!validation.valid) {
@@ -160,29 +160,24 @@ async function syncCollection(db, config) {
         error: `Validation failed: ${validation.errors.join(", ")}`
       };
     }
-    const existingStmt = db.prepare("SELECT * FROM collections WHERE name = ?");
-    const existing = await existingStmt.bind(config.name).first();
+    const existingQuery = tenantId ? "SELECT * FROM collections WHERE name = ? AND tenant_id = ?" : "SELECT * FROM collections WHERE name = ?";
+    const existingStmt = tenantId ? db.prepare(existingQuery).bind(config.name, tenantId) : db.prepare(existingQuery).bind(config.name);
+    const existing = await existingStmt.first();
     const now = Date.now();
     const collectionId = existing?.id || `col-${config.name}-${crypto.randomUUID().slice(0, 8)}`;
     const schemaJson = JSON.stringify(config.schema);
     const isActive = config.isActive !== false ? 1 : 0;
     const managed = config.managed !== false ? 1 : 0;
     if (!existing) {
-      const insertStmt = db.prepare(`
-        INSERT INTO collections (id, name, display_name, description, schema, is_active, managed, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-      await insertStmt.bind(
-        collectionId,
-        config.name,
-        config.displayName,
-        config.description || null,
-        schemaJson,
-        isActive,
-        managed,
-        now,
-        now
-      ).run();
+      const insertStmt = tenantId ? db.prepare(`
+            INSERT INTO collections (id, name, display_name, description, schema, is_active, managed, tenant_id, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `) : db.prepare(`
+            INSERT INTO collections (id, name, display_name, description, schema, is_active, managed, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `);
+      const bindArgs = tenantId ? [collectionId, config.name, config.displayName, config.description || null, schemaJson, isActive, managed, tenantId, now, now] : [collectionId, config.name, config.displayName, config.description || null, schemaJson, isActive, managed, now, now];
+      await insertStmt.bind(...bindArgs).run();
       console.log(`  \u2713 Created collection: ${config.name}`);
       return {
         name: config.name,
@@ -203,20 +198,9 @@ async function syncCollection(db, config) {
           message: `Collection "${config.displayName}" is up to date`
         };
       }
-      const updateStmt = db.prepare(`
-        UPDATE collections
-        SET display_name = ?, description = ?, schema = ?, is_active = ?, managed = ?, updated_at = ?
-        WHERE name = ?
-      `);
-      await updateStmt.bind(
-        config.displayName,
-        config.description || null,
-        schemaJson,
-        isActive,
-        managed,
-        now,
-        config.name
-      ).run();
+      const updateQuery = tenantId ? `UPDATE collections SET display_name = ?, description = ?, schema = ?, is_active = ?, managed = ?, updated_at = ? WHERE name = ? AND tenant_id = ?` : `UPDATE collections SET display_name = ?, description = ?, schema = ?, is_active = ?, managed = ?, updated_at = ? WHERE name = ?`;
+      const updateBindArgs = tenantId ? [config.displayName, config.description || null, schemaJson, isActive, managed, now, config.name, tenantId] : [config.displayName, config.description || null, schemaJson, isActive, managed, now, config.name];
+      await db.prepare(updateQuery).bind(...updateBindArgs).run();
       console.log(`  \u2713 Updated collection: ${config.name}`);
       return {
         name: config.name,
@@ -233,19 +217,21 @@ async function syncCollection(db, config) {
     };
   }
 }
-async function isCollectionManaged(db, collectionName) {
+async function isCollectionManaged(db, collectionName, tenantId = null) {
   try {
-    const stmt = db.prepare("SELECT managed FROM collections WHERE name = ?");
-    const result = await stmt.bind(collectionName).first();
+    const query = tenantId ? "SELECT managed FROM collections WHERE name = ? AND tenant_id = ?" : "SELECT managed FROM collections WHERE name = ?";
+    const stmt = tenantId ? db.prepare(query).bind(collectionName, tenantId) : db.prepare(query).bind(collectionName);
+    const result = await stmt.first();
     return result?.managed === 1;
   } catch (error) {
     console.error(`Error checking if collection is managed:`, error);
     return false;
   }
 }
-async function getManagedCollections(db) {
+async function getManagedCollections(db, tenantId = null) {
   try {
-    const stmt = db.prepare("SELECT name FROM collections WHERE managed = 1");
+    const query = tenantId ? "SELECT name FROM collections WHERE managed = 1 AND tenant_id = ?" : "SELECT name FROM collections WHERE managed = 1";
+    const stmt = tenantId ? db.prepare(query).bind(tenantId) : db.prepare(query);
     const { results } = await stmt.all();
     return (results || []).map((row) => row.name);
   } catch (error) {
@@ -253,20 +239,17 @@ async function getManagedCollections(db) {
     return [];
   }
 }
-async function cleanupRemovedCollections(db) {
+async function cleanupRemovedCollections(db, tenantId = null) {
   try {
     const configs = await loadCollectionConfigs();
     const configNames = new Set(configs.map((c) => c.name));
-    const managedCollections = await getManagedCollections(db);
+    const managedCollections = await getManagedCollections(db, tenantId);
     const removed = [];
     for (const managedName of managedCollections) {
       if (!configNames.has(managedName)) {
-        const updateStmt = db.prepare(`
-          UPDATE collections
-          SET is_active = 0, updated_at = ?
-          WHERE name = ? AND managed = 1
-        `);
-        await updateStmt.bind(Date.now(), managedName).run();
+        const updateQuery = tenantId ? `UPDATE collections SET is_active = 0, updated_at = ? WHERE name = ? AND managed = 1 AND tenant_id = ?` : `UPDATE collections SET is_active = 0, updated_at = ? WHERE name = ? AND managed = 1`;
+        const updateBindArgs = tenantId ? [Date.now(), managedName, tenantId] : [Date.now(), managedName];
+        await db.prepare(updateQuery).bind(...updateBindArgs).run();
         removed.push(managedName);
         console.log(`  \u26A0\uFE0F  Deactivated removed collection: ${managedName}`);
       }
@@ -277,9 +260,9 @@ async function cleanupRemovedCollections(db) {
     return [];
   }
 }
-async function fullCollectionSync(db) {
-  const results = await syncCollections(db);
-  const removed = await cleanupRemovedCollections(db);
+async function fullCollectionSync(db, tenantId = null) {
+  const results = await syncCollections(db, tenantId);
+  const removed = await cleanupRemovedCollections(db, tenantId);
   return { results, removed };
 }
 
@@ -435,7 +418,7 @@ function mapFormStatusToContentStatus(formStatus) {
       return "published";
   }
 }
-async function syncFormCollection(db, form) {
+async function syncFormCollection(db, form, tenantId = null) {
   const collectionName = `form_${form.name}`;
   const displayName = `${form.display_name} (Form)`;
   const formioSchema = typeof form.formio_schema === "string" ? JSON.parse(form.formio_schema) : form.formio_schema;
@@ -443,25 +426,43 @@ async function syncFormCollection(db, form) {
   const schemaJson = JSON.stringify(schema);
   const now = Date.now();
   const isActive = form.is_active ? 1 : 0;
-  const existing = await db.prepare(
-    "SELECT id, schema, display_name, description, is_active FROM collections WHERE source_type = ? AND source_id = ?"
-  ).bind("form", form.id).first();
+  const existingQuery = tenantId ? "SELECT id, schema, display_name, description, is_active FROM collections WHERE source_type = ? AND source_id = ? AND tenant_id = ?" : "SELECT id, schema, display_name, description, is_active FROM collections WHERE source_type = ? AND source_id = ?";
+  const existingStmt = tenantId ? db.prepare(existingQuery).bind("form", form.id, tenantId) : db.prepare(existingQuery).bind("form", form.id);
+  const existing = await existingStmt.first();
   if (!existing) {
     const collectionId = `col-form-${form.name}-${crypto.randomUUID().slice(0, 8)}`;
-    await db.prepare(`
-      INSERT INTO collections (id, name, display_name, description, schema, is_active, managed, source_type, source_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, 1, 'form', ?, ?, ?)
-    `).bind(
-      collectionId,
-      collectionName,
-      displayName,
-      form.description || null,
-      schemaJson,
-      isActive,
-      form.id,
-      now,
-      now
-    ).run();
+    if (tenantId) {
+      await db.prepare(`
+        INSERT INTO collections (id, name, display_name, description, schema, is_active, managed, source_type, source_id, tenant_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, 1, 'form', ?, ?, ?, ?)
+      `).bind(
+        collectionId,
+        collectionName,
+        displayName,
+        form.description || null,
+        schemaJson,
+        isActive,
+        form.id,
+        tenantId,
+        now,
+        now
+      ).run();
+    } else {
+      await db.prepare(`
+        INSERT INTO collections (id, name, display_name, description, schema, is_active, managed, source_type, source_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, 1, 'form', ?, ?, ?)
+      `).bind(
+        collectionId,
+        collectionName,
+        displayName,
+        form.description || null,
+        schemaJson,
+        isActive,
+        form.id,
+        now,
+        now
+      ).run();
+    }
     console.log(`[FormSync] Created shadow collection: ${collectionName}`);
     return { collectionId, status: "created" };
   }
@@ -484,7 +485,7 @@ async function syncFormCollection(db, form) {
   console.log(`[FormSync] Updated shadow collection: ${collectionName}`);
   return { collectionId: existing.id, status: "updated" };
 }
-async function syncAllFormCollections(db) {
+async function syncAllFormCollections(db, tenantId = null) {
   try {
     const tableCheck = await db.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='forms'"
@@ -493,9 +494,9 @@ async function syncAllFormCollections(db) {
       console.log("[FormSync] Forms table does not exist, skipping form sync");
       return;
     }
-    const { results: forms } = await db.prepare(
-      "SELECT id, name, display_name, description, formio_schema, is_active FROM forms"
-    ).all();
+    const formsQuery = tenantId ? "SELECT id, name, display_name, description, formio_schema, is_active FROM forms WHERE tenant_id = ?" : "SELECT id, name, display_name, description, formio_schema, is_active FROM forms";
+    const formsStmt = tenantId ? db.prepare(formsQuery).bind(tenantId) : db.prepare(formsQuery);
+    const { results: forms } = await formsStmt.all();
     if (!forms || forms.length === 0) {
       console.log("[FormSync] No forms found, skipping");
       return;
@@ -504,10 +505,10 @@ async function syncAllFormCollections(db) {
     let updated = 0;
     for (const form of forms) {
       try {
-        const result = await syncFormCollection(db, form);
+        const result = await syncFormCollection(db, form, tenantId);
         if (result.status === "created") created++;
         if (result.status === "updated") updated++;
-        await backfillFormSubmissions(db, form.id, result.collectionId);
+        await backfillFormSubmissions(db, form.id, result.collectionId, tenantId);
       } catch (error) {
         console.error(`[FormSync] Error syncing form ${form.name}:`, error);
       }
@@ -517,17 +518,15 @@ async function syncAllFormCollections(db) {
     console.error("[FormSync] Error syncing form collections:", error);
   }
 }
-async function createContentFromSubmission(db, submissionData, form, submissionId, metadata = {}) {
+async function createContentFromSubmission(db, submissionData, form, submissionId, metadata = {}, tenantId = null) {
   try {
-    let collection = await db.prepare(
-      "SELECT id FROM collections WHERE source_type = ? AND source_id = ?"
-    ).bind("form", form.id).first();
+    const collectionQuery = tenantId ? "SELECT id FROM collections WHERE source_type = ? AND source_id = ? AND tenant_id = ?" : "SELECT id FROM collections WHERE source_type = ? AND source_id = ?";
+    let collection = tenantId ? await db.prepare(collectionQuery).bind("form", form.id, tenantId).first() : await db.prepare(collectionQuery).bind("form", form.id).first();
     if (!collection) {
       console.warn(`[FormSync] No shadow collection found for form ${form.name}, attempting to create...`);
       try {
-        const fullForm = await db.prepare(
-          "SELECT id, name, display_name, description, formio_schema, is_active FROM forms WHERE id = ?"
-        ).bind(form.id).first();
+        const formQuery = tenantId ? "SELECT id, name, display_name, description, formio_schema, is_active FROM forms WHERE id = ? AND tenant_id = ?" : "SELECT id, name, display_name, description, formio_schema, is_active FROM forms WHERE id = ?";
+        const fullForm = tenantId ? await db.prepare(formQuery).bind(form.id, tenantId).first() : await db.prepare(formQuery).bind(form.id).first();
         if (fullForm) {
           const schema = typeof fullForm.formio_schema === "string" ? JSON.parse(fullForm.formio_schema) : fullForm.formio_schema;
           const result = await syncFormCollection(db, {
@@ -537,10 +536,8 @@ async function createContentFromSubmission(db, submissionData, form, submissionI
             description: fullForm.description,
             formio_schema: schema,
             is_active: fullForm.is_active ?? 1
-          });
-          collection = await db.prepare(
-            "SELECT id FROM collections WHERE source_type = ? AND source_id = ?"
-          ).bind("form", form.id).first();
+          }, tenantId);
+          collection = tenantId ? await db.prepare(collectionQuery).bind("form", form.id, tenantId).first() : await db.prepare(collectionQuery).bind("form", form.id).first();
           console.log(`[FormSync] On-the-fly sync result: ${result.status}, collectionId: ${result.collectionId}`);
         }
       } catch (syncErr) {
@@ -570,33 +567,61 @@ async function createContentFromSubmission(db, submissionData, form, submissionI
     };
     const authorId = metadata.userId || SYSTEM_FORM_USER_ID;
     if (authorId === SYSTEM_FORM_USER_ID) {
-      const systemUser = await db.prepare("SELECT id FROM users WHERE id = ?").bind(SYSTEM_FORM_USER_ID).first();
+      const userQuery = tenantId ? "SELECT id FROM users WHERE id = ? AND tenant_id = ?" : "SELECT id FROM users WHERE id = ?";
+      const systemUser = tenantId ? await db.prepare(userQuery).bind(SYSTEM_FORM_USER_ID, tenantId).first() : await db.prepare(userQuery).bind(SYSTEM_FORM_USER_ID).first();
       if (!systemUser) {
         console.log("[FormSync] System form user missing, creating...");
         const sysNow = Date.now();
-        await db.prepare(`
-          INSERT OR IGNORE INTO users (id, email, username, first_name, last_name, password_hash, role, is_active, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, NULL, 'viewer', 0, ?, ?)
-        `).bind(SYSTEM_FORM_USER_ID, "system-forms@sonicjs.internal", "system-forms", "Form", "Submission", sysNow, sysNow).run();
+        if (tenantId) {
+          await db.prepare(`
+            INSERT OR IGNORE INTO users (id, email, username, first_name, last_name, password_hash, role, is_active, tenant_id, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, NULL, 'viewer', 0, ?, ?, ?)
+          `).bind(SYSTEM_FORM_USER_ID, "system-forms@sonicjs.internal", "system-forms", "Form", "Submission", tenantId, sysNow, sysNow).run();
+        } else {
+          await db.prepare(`
+            INSERT OR IGNORE INTO users (id, email, username, first_name, last_name, password_hash, role, is_active, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, NULL, 'viewer', 0, ?, ?)
+          `).bind(SYSTEM_FORM_USER_ID, "system-forms@sonicjs.internal", "system-forms", "Form", "Submission", sysNow, sysNow).run();
+        }
       }
     }
     console.log(`[FormSync] Inserting content: id=${contentId}, collection=${collection.id}, slug=${slug}, title=${title}, author=${authorId}`);
-    await db.prepare(`
-      INSERT INTO content (id, collection_id, slug, title, data, status, author_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, 'published', ?, ?, ?)
-    `).bind(
-      contentId,
-      collection.id,
-      slug,
-      title,
-      JSON.stringify(contentData),
-      authorId,
-      now,
-      now
-    ).run();
-    await db.prepare(
-      "UPDATE form_submissions SET content_id = ? WHERE id = ?"
-    ).bind(contentId, submissionId).run();
+    if (tenantId) {
+      await db.prepare(`
+        INSERT INTO content (id, collection_id, slug, title, data, status, author_id, tenant_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, 'published', ?, ?, ?, ?)
+      `).bind(
+        contentId,
+        collection.id,
+        slug,
+        title,
+        JSON.stringify(contentData),
+        authorId,
+        tenantId,
+        now,
+        now
+      ).run();
+    } else {
+      await db.prepare(`
+        INSERT INTO content (id, collection_id, slug, title, data, status, author_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, 'published', ?, ?, ?)
+      `).bind(
+        contentId,
+        collection.id,
+        slug,
+        title,
+        JSON.stringify(contentData),
+        authorId,
+        now,
+        now
+      ).run();
+    }
+    const updateSubQuery = tenantId ? "UPDATE form_submissions SET content_id = ? WHERE id = ? AND tenant_id = ?" : "UPDATE form_submissions SET content_id = ? WHERE id = ?";
+    if (tenantId) {
+      await db.prepare(updateSubQuery).bind(contentId, submissionId, tenantId).run();
+    } else {
+      await db.prepare(updateSubQuery).bind(contentId, submissionId).run();
+    }
     console.log(`[FormSync] Content created successfully: ${contentId}`);
     return contentId;
   } catch (error) {
@@ -604,17 +629,16 @@ async function createContentFromSubmission(db, submissionData, form, submissionI
     return null;
   }
 }
-async function backfillFormSubmissions(db, formId, collectionId) {
+async function backfillFormSubmissions(db, formId, collectionId, tenantId = null) {
   try {
-    const { results: submissions } = await db.prepare(
-      "SELECT id, submission_data, user_email, ip_address, user_agent, user_id, submitted_at FROM form_submissions WHERE form_id = ? AND content_id IS NULL"
-    ).bind(formId).all();
+    const subsQuery = tenantId ? "SELECT id, submission_data, user_email, ip_address, user_agent, user_id, submitted_at FROM form_submissions WHERE form_id = ? AND content_id IS NULL AND tenant_id = ?" : "SELECT id, submission_data, user_email, ip_address, user_agent, user_id, submitted_at FROM form_submissions WHERE form_id = ? AND content_id IS NULL";
+    const subsStmt = tenantId ? db.prepare(subsQuery).bind(formId, tenantId) : db.prepare(subsQuery).bind(formId);
+    const { results: submissions } = await subsStmt.all();
     if (!submissions || submissions.length === 0) {
       return 0;
     }
-    const form = await db.prepare(
-      "SELECT id, name, display_name FROM forms WHERE id = ?"
-    ).bind(formId).first();
+    const formQuery = tenantId ? "SELECT id, name, display_name FROM forms WHERE id = ? AND tenant_id = ?" : "SELECT id, name, display_name FROM forms WHERE id = ?";
+    const form = tenantId ? await db.prepare(formQuery).bind(formId, tenantId).first() : await db.prepare(formQuery).bind(formId).first();
     if (!form) return 0;
     let count = 0;
     for (const sub of submissions) {
@@ -630,7 +654,8 @@ async function backfillFormSubmissions(db, formId, collectionId) {
             userAgent: sub.user_agent,
             userEmail: sub.user_email,
             userId: sub.user_id
-          }
+          },
+          tenantId
         );
         if (contentId) count++;
       } catch (error) {
@@ -1768,5 +1793,5 @@ exports.syncCollection = syncCollection;
 exports.syncCollections = syncCollections;
 exports.syncFormCollection = syncFormCollection;
 exports.validateCollectionConfig = validateCollectionConfig;
-//# sourceMappingURL=chunk-NA3BD6LU.cjs.map
-//# sourceMappingURL=chunk-NA3BD6LU.cjs.map
+//# sourceMappingURL=chunk-QNY7OU4B.cjs.map
+//# sourceMappingURL=chunk-QNY7OU4B.cjs.map

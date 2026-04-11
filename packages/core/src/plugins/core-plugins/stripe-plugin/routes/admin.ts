@@ -9,6 +9,7 @@ import { renderStripeTabBar } from '../components/tab-bar'
 import type { Bindings, Variables } from '../../../../app'
 import type { StripePluginSettings, SubscriptionStatus } from '../types'
 import { DEFAULT_SETTINGS } from '../types'
+import { getTenantIdOrNull } from '../../../../utils/tenant'
 
 const adminRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
@@ -39,7 +40,8 @@ async function getSettings(db: any): Promise<StripePluginSettings> {
 adminRoutes.get('/', async (c) => {
   const db = c.env.DB
   const user = c.get('user')
-  const subscriptionService = new SubscriptionService(db)
+  const tenantId = getTenantIdOrNull(c)
+  const subscriptionService = new SubscriptionService(db, tenantId)
   await subscriptionService.ensureTable()
 
   const page = parseInt(c.req.query('page') || '1')

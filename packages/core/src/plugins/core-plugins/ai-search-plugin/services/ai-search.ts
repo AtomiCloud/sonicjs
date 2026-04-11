@@ -16,15 +16,18 @@ import { CustomRAGService } from './custom-rag.service'
  */
 export class AISearchService {
   private customRAG?: CustomRAGService
+  private tenantId: string | null
 
   constructor(
     private db: D1Database,
     private ai?: any, // Workers AI for embeddings
-    private vectorize?: any // Vectorize for vector search
+    private vectorize?: any, // Vectorize for vector search
+    tenantId: string | null = null
   ) {
+    this.tenantId = tenantId
     // Initialize Custom RAG if bindings are available
     if (this.ai && this.vectorize) {
-      this.customRAG = new CustomRAGService(db, ai, vectorize)
+      this.customRAG = new CustomRAGService(db, ai, vectorize, tenantId)
       console.log('[AISearchService] Custom RAG initialized')
     } else {
       console.log('[AISearchService] Custom RAG not available, using keyword search only')
@@ -104,9 +107,12 @@ export class AISearchService {
     try {
       // Get all collections (exclude test collections)
       // Note: D1 doesn't support parameterized LIKE, so we filter in JavaScript
-      const collectionsStmt = this.db.prepare(
-        'SELECT id, name, display_name, description FROM collections WHERE is_active = 1'
-      )
+      const collectionsQuery = this.tenantId
+        ? 'SELECT id, name, display_name, description FROM collections WHERE is_active = 1 AND tenant_id = ?'
+        : 'SELECT id, name, display_name, description FROM collections WHERE is_active = 1'
+      const collectionsStmt = this.tenantId
+        ? this.db.prepare(collectionsQuery).bind(this.tenantId)
+        : this.db.prepare(collectionsQuery)
       const { results: allCollections } = await collectionsStmt.all<{
         id: number
         name: string
@@ -145,10 +151,13 @@ export class AISearchService {
         }
 
         // Get item count
-        const countStmt = this.db.prepare(
-          'SELECT COUNT(*) as count FROM content WHERE collection_id = ?'
-        )
-        const countResult = await countStmt.bind(collectionId).first<{ count: number }>()
+        const contentCountQuery = this.tenantId
+          ? 'SELECT COUNT(*) as count FROM content WHERE collection_id = ? AND tenant_id = ?'
+          : 'SELECT COUNT(*) as count FROM content WHERE collection_id = ?'
+        const countStmt = this.tenantId
+          ? this.db.prepare(contentCountQuery).bind(collectionId, this.tenantId)
+          : this.db.prepare(contentCountQuery).bind(collectionId)
+        const countResult = await countStmt.first<{ count: number }>()
         const itemCount = countResult?.count || 0
 
         notifications.push({
@@ -179,9 +188,12 @@ export class AISearchService {
   async getAllCollections(): Promise<CollectionInfo[]> {
     try {
       // Get all collections (same query as content page)
-      const collectionsStmt = this.db.prepare(
-        'SELECT id, name, display_name, description FROM collections WHERE is_active = 1 ORDER BY display_name'
-      )
+      const allCollQuery = this.tenantId
+        ? 'SELECT id, name, display_name, description FROM collections WHERE is_active = 1 AND tenant_id = ? ORDER BY display_name'
+        : 'SELECT id, name, display_name, description FROM collections WHERE is_active = 1 ORDER BY display_name'
+      const collectionsStmt = this.tenantId
+        ? this.db.prepare(allCollQuery).bind(this.tenantId)
+        : this.db.prepare(allCollQuery)
       const { results: allCollections } = await collectionsStmt.all<{
         id: string
         name: string
@@ -231,10 +243,13 @@ export class AISearchService {
         }
 
         // Get item count
-        const countStmt = this.db.prepare(
-          'SELECT COUNT(*) as count FROM content WHERE collection_id = ?'
-        )
-        const countResult = await countStmt.bind(collectionId).first<{ count: number }>()
+        const itemCountQuery = this.tenantId
+          ? 'SELECT COUNT(*) as count FROM content WHERE collection_id = ? AND tenant_id = ?'
+          : 'SELECT COUNT(*) as count FROM content WHERE collection_id = ?'
+        const countStmt = this.tenantId
+          ? this.db.prepare(itemCountQuery).bind(collectionId, this.tenantId)
+          : this.db.prepare(itemCountQuery).bind(collectionId)
+        const countResult = await countStmt.first<{ count: number }>()
         const itemCount = countResult?.count || 0
 
         collectionInfos.push({
@@ -373,6 +388,12 @@ export class AISearchService {
       if (query.filters?.author) {
         conditions.push('c.author_id = ?')
         params.push(query.filters.author)
+      }
+
+      // Tenant isolation
+      if (this.tenantId) {
+        conditions.push('c.tenant_id = ?')
+        params.push(this.tenantId)
       }
 
       const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''

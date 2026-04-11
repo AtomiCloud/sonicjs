@@ -11,7 +11,7 @@ import type {
  * Manages subscription records in D1
  */
 export class SubscriptionService {
-  constructor(private db: D1Database) {}
+  constructor(private db: D1Database, private tenantId: string | null = null) {}
 
   /**
    * Ensure the subscriptions table exists
@@ -187,16 +187,22 @@ export class SubscriptionService {
     const values: any[] = []
 
     if (filters.status) {
-      where.push('status = ?')
+      where.push('s.status = ?')
       values.push(filters.status)
     }
     if (filters.userId) {
-      where.push('user_id = ?')
+      where.push('s.user_id = ?')
       values.push(filters.userId)
     }
     if (filters.stripeCustomerId) {
-      where.push('stripe_customer_id = ?')
+      where.push('s.stripe_customer_id = ?')
       values.push(filters.stripeCustomerId)
+    }
+
+    // Tenant isolation: filter subscriptions to users belonging to this tenant
+    if (this.tenantId) {
+      where.push('s.user_id IN (SELECT id FROM users WHERE tenant_id = ?)')
+      values.push(this.tenantId)
     }
 
     const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : ''
@@ -208,12 +214,12 @@ export class SubscriptionService {
 
     // Get total count
     const countResult = await this.db.prepare(
-      `SELECT COUNT(*) as count FROM subscriptions ${whereClause}`
+      `SELECT COUNT(*) as count FROM subscriptions s ${whereClause}`
     ).bind(...values).first() as { count: number }
 
     // Get paginated results
     const results = await this.db.prepare(
-      `SELECT s.*, u.email as user_email FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id ${whereClause} ORDER BY ${sortBy} ${sortOrder} LIMIT ? OFFSET ?`
+      `SELECT s.*, u.email as user_email FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id ${whereClause} ORDER BY s.${sortBy} ${sortOrder} LIMIT ? OFFSET ?`
     ).bind(...values, limit, offset).all()
 
     return {
@@ -226,15 +232,25 @@ export class SubscriptionService {
    * Get subscription stats
    */
   async getStats(): Promise<SubscriptionStats> {
-    const result = await this.db.prepare(`
-      SELECT
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
-        SUM(CASE WHEN status = 'canceled' THEN 1 ELSE 0 END) as canceled,
-        SUM(CASE WHEN status = 'past_due' THEN 1 ELSE 0 END) as past_due,
-        SUM(CASE WHEN status = 'trialing' THEN 1 ELSE 0 END) as trialing
-      FROM subscriptions
-    `).first() as any
+    const statsQuery = this.tenantId
+      ? `SELECT
+          COUNT(*) as total,
+          SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
+          SUM(CASE WHEN status = 'canceled' THEN 1 ELSE 0 END) as canceled,
+          SUM(CASE WHEN status = 'past_due' THEN 1 ELSE 0 END) as past_due,
+          SUM(CASE WHEN status = 'trialing' THEN 1 ELSE 0 END) as trialing
+        FROM subscriptions WHERE user_id IN (SELECT id FROM users WHERE tenant_id = ?)`
+      : `SELECT
+          COUNT(*) as total,
+          SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
+          SUM(CASE WHEN status = 'canceled' THEN 1 ELSE 0 END) as canceled,
+          SUM(CASE WHEN status = 'past_due' THEN 1 ELSE 0 END) as past_due,
+          SUM(CASE WHEN status = 'trialing' THEN 1 ELSE 0 END) as trialing
+        FROM subscriptions`
+    const result = await (this.tenantId
+      ? this.db.prepare(statsQuery).bind(this.tenantId)
+      : this.db.prepare(statsQuery)
+    ).first() as any
 
     return {
       total: result?.total || 0,

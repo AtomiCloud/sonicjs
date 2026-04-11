@@ -10,6 +10,7 @@ import { z } from 'zod'
 import type { Plugin, PluginContext } from '../../types'
 import type { D1Database } from '@cloudflare/workers-types'
 import { AuthManager } from '../../../middleware/auth'
+import { getTenantIdOrNull } from '../../../utils/tenant'
 
 const magicLinkRequestSchema = z.object({
   email: z.string().email('Valid email is required')
@@ -51,11 +52,14 @@ export function createMagicLinkAuthPlugin(): Plugin {
       }
 
       // Check if user exists
-      const user = await db.prepare(`
-        SELECT id, email, role, is_active
-        FROM users
-        WHERE email = ?
-      `).bind(normalizedEmail).first() as any
+      const tenantId = getTenantIdOrNull(c)
+      const userLookupQuery = tenantId
+        ? 'SELECT id, email, role, is_active FROM users WHERE email = ? AND tenant_id = ?'
+        : 'SELECT id, email, role, is_active FROM users WHERE email = ?'
+      const user = await (tenantId
+        ? db.prepare(userLookupQuery).bind(normalizedEmail, tenantId)
+        : db.prepare(userLookupQuery).bind(normalizedEmail)
+      ).first() as any
 
       const allowNewUsers = false // TODO: Get from plugin settings
 
@@ -156,9 +160,14 @@ export function createMagicLinkAuthPlugin(): Plugin {
       }
 
       // Get or create user
-      let user = await db.prepare(`
-        SELECT * FROM users WHERE email = ? AND is_active = 1
-      `).bind(magicLink.user_email).first() as any
+      const verifyTenantId = getTenantIdOrNull(c)
+      const verifyUserQuery = verifyTenantId
+        ? 'SELECT * FROM users WHERE email = ? AND is_active = 1 AND tenant_id = ?'
+        : 'SELECT * FROM users WHERE email = ? AND is_active = 1'
+      let user = await (verifyTenantId
+        ? db.prepare(verifyUserQuery).bind(magicLink.user_email, verifyTenantId)
+        : db.prepare(verifyUserQuery).bind(magicLink.user_email)
+      ).first() as any
 
       const allowNewUsers = false // TODO: Get from plugin settings
 
@@ -168,20 +177,38 @@ export function createMagicLinkAuthPlugin(): Plugin {
         const username = magicLink.user_email.split('@')[0]
         const now = Date.now()
 
-        await db.prepare(`
-          INSERT INTO users (
-            id, email, username, first_name, last_name,
-            password_hash, role, is_active, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, NULL, 'viewer', 1, ?, ?)
-        `).bind(
-          userId,
-          magicLink.user_email,
-          username,
-          username,
-          '',
-          now,
-          now
-        ).run()
+        if (verifyTenantId) {
+          await db.prepare(`
+            INSERT INTO users (
+              id, email, username, first_name, last_name,
+              password_hash, role, is_active, created_at, updated_at, tenant_id
+            ) VALUES (?, ?, ?, ?, ?, NULL, 'viewer', 1, ?, ?, ?)
+          `).bind(
+            userId,
+            magicLink.user_email,
+            username,
+            username,
+            '',
+            now,
+            now,
+            verifyTenantId
+          ).run()
+        } else {
+          await db.prepare(`
+            INSERT INTO users (
+              id, email, username, first_name, last_name,
+              password_hash, role, is_active, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, NULL, 'viewer', 1, ?, ?)
+          `).bind(
+            userId,
+            magicLink.user_email,
+            username,
+            username,
+            '',
+            now,
+            now
+          ).run()
+        }
 
         user = {
           id: userId,

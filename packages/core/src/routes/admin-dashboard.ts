@@ -11,6 +11,7 @@ import {
 } from '../templates/pages/admin-dashboard.template'
 import { getCoreVersion } from '../utils/version'
 import { metricsTracker } from '../utils/metrics'
+import { getTenantId } from '../utils/tenant'
 
 const VERSION = getCoreVersion()
 
@@ -73,12 +74,13 @@ router.get('/', async (c) => {
 router.get('/stats', async (c) => {
   try {
     const db = c.env.DB
+    const tenantId = getTenantId(c)
 
     // Get collections count
     let collectionsCount = 0
     try {
-      const collectionsStmt = db.prepare("SELECT COUNT(*) as count FROM collections WHERE is_active = 1 AND (source_type IS NULL OR source_type = 'user')")
-      const collectionsResult = await collectionsStmt.first()
+      const collectionsStmt = db.prepare("SELECT COUNT(*) as count FROM collections WHERE is_active = 1 AND (source_type IS NULL OR source_type = 'user') AND tenant_id = ?")
+      const collectionsResult = await collectionsStmt.bind(tenantId).first()
       collectionsCount = (collectionsResult as any)?.count || 0
     } catch (error) {
       console.error('Error fetching collections count:', error)
@@ -87,8 +89,8 @@ router.get('/stats', async (c) => {
     // Get content count
     let contentCount = 0
     try {
-      const contentStmt = db.prepare("SELECT COUNT(*) as count FROM content c JOIN collections col ON c.collection_id = col.id WHERE (col.source_type IS NULL OR col.source_type = 'user')")
-      const contentResult = await contentStmt.first()
+      const contentStmt = db.prepare("SELECT COUNT(*) as count FROM content c JOIN collections col ON c.collection_id = col.id WHERE (col.source_type IS NULL OR col.source_type = 'user') AND c.tenant_id = ?")
+      const contentResult = await contentStmt.bind(tenantId).first()
       contentCount = (contentResult as any)?.count || 0
     } catch (error) {
       console.error('Error fetching content count:', error)
@@ -98,8 +100,8 @@ router.get('/stats', async (c) => {
     let mediaCount = 0
     let mediaSize = 0
     try {
-      const mediaStmt = db.prepare('SELECT COUNT(*) as count, COALESCE(SUM(size), 0) as total_size FROM media WHERE deleted_at IS NULL')
-      const mediaResult = await mediaStmt.first()
+      const mediaStmt = db.prepare('SELECT COUNT(*) as count, COALESCE(SUM(size), 0) as total_size FROM media WHERE deleted_at IS NULL AND tenant_id = ?')
+      const mediaResult = await mediaStmt.bind(tenantId).first()
       mediaCount = (mediaResult as any)?.count || 0
       mediaSize = (mediaResult as any)?.total_size || 0
     } catch (error) {
@@ -109,8 +111,8 @@ router.get('/stats', async (c) => {
     // Get users count
     let usersCount = 0
     try {
-      const usersStmt = db.prepare('SELECT COUNT(*) as count FROM users WHERE is_active = 1')
-      const usersResult = await usersStmt.first()
+      const usersStmt = db.prepare('SELECT COUNT(*) as count FROM users WHERE is_active = 1 AND tenant_id = ?')
+      const usersResult = await usersStmt.bind(tenantId).first()
       usersCount = (usersResult as any)?.count || 0
     } catch (error) {
       console.error('Error fetching users count:', error)
@@ -137,6 +139,7 @@ router.get('/stats', async (c) => {
 router.get('/storage', async (c) => {
   try {
     const db = c.env.DB
+    const tenantId = getTenantId(c)
 
     // Get database size from D1 metadata
     let databaseSize = 0
@@ -150,8 +153,8 @@ router.get('/storage', async (c) => {
     // Get media total size
     let mediaSize = 0
     try {
-      const mediaStmt = db.prepare('SELECT COALESCE(SUM(size), 0) as total_size FROM media WHERE deleted_at IS NULL')
-      const mediaResult = await mediaStmt.first()
+      const mediaStmt = db.prepare('SELECT COALESCE(SUM(size), 0) as total_size FROM media WHERE deleted_at IS NULL AND tenant_id = ?')
+      const mediaResult = await mediaStmt.bind(tenantId).first()
       mediaSize = (mediaResult as any)?.total_size || 0
     } catch (error) {
       console.error('Error fetching media size:', error)
@@ -171,6 +174,7 @@ router.get('/storage', async (c) => {
 router.get('/recent-activity', async (c) => {
   try {
     const db = c.env.DB
+    const tenantId = getTenantId(c)
     const limit = parseInt(c.req.query('limit') || '5')
 
     // Get recent activities from activity_logs table
@@ -186,13 +190,13 @@ router.get('/recent-activity', async (c) => {
         u.first_name,
         u.last_name
       FROM activity_logs a
-      LEFT JOIN users u ON a.user_id = u.id
+      LEFT JOIN users u ON a.user_id = u.id AND u.tenant_id = ?
       WHERE a.resource_type IN ('content', 'collections', 'users', 'media')
       ORDER BY a.created_at DESC
       LIMIT ?
     `)
 
-    const { results } = await activityStmt.bind(limit).all()
+    const { results } = await activityStmt.bind(tenantId, limit).all()
 
     const activities: ActivityItem[] = (results || []).map((row: any) => {
       const userName = row.first_name && row.last_name

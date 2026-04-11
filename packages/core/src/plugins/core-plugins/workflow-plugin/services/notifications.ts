@@ -22,7 +22,7 @@ export interface NotificationPreference {
 }
 
 export class NotificationService {
-  constructor(private db: D1Database) {}
+  constructor(private db: D1Database, private tenantId: string | null = null) {}
 
   async createNotification(
     userId: string,
@@ -192,23 +192,34 @@ export class NotificationService {
     userId: string
   ): Promise<void> {
     // Get content details
-    const content = await this.db.prepare(`
-      SELECT c.title, c.slug, col.name as collection_name
+    const contentSql = this.tenantId
+      ? `SELECT c.title, c.slug, col.name as collection_name
       FROM content c
       JOIN collections col ON c.collection_id = col.id
-      WHERE c.id = ?
-    `).bind(contentId).first()
+      WHERE c.id = ? AND c.tenant_id = ?`
+      : `SELECT c.title, c.slug, col.name as collection_name
+      FROM content c
+      JOIN collections col ON c.collection_id = col.id
+      WHERE c.id = ?`
+    const contentParams = this.tenantId ? [contentId, this.tenantId] : [contentId]
+    const content = await this.db.prepare(contentSql).bind(...contentParams).first()
 
     if (!content) return
 
     // Get users who should be notified (assignees, reviewers, etc.)
-    const { results: usersToNotify } = await this.db.prepare(`
-      SELECT DISTINCT u.id
+    const usersSql = this.tenantId
+      ? `SELECT DISTINCT u.id
       FROM users u
       JOIN content_workflow_status cws ON u.id = cws.assigned_to
       WHERE cws.content_id = ?
-      AND u.id != ?
-    `).bind(contentId, userId).all()
+      AND u.id != ? AND u.tenant_id = ?`
+      : `SELECT DISTINCT u.id
+      FROM users u
+      JOIN content_workflow_status cws ON u.id = cws.assigned_to
+      WHERE cws.content_id = ?
+      AND u.id != ?`
+    const usersParams = this.tenantId ? [contentId, userId, this.tenantId] : [contentId, userId]
+    const { results: usersToNotify } = await this.db.prepare(usersSql).bind(...usersParams).all()
 
     const title = `Content "${content.title}" moved to ${toState}`
     const message = `The content "${content.title}" in ${content.collection_name} has been moved from ${fromState} to ${toState}.`
@@ -230,12 +241,17 @@ export class NotificationService {
     scheduledAt: string,
     userId: string
   ): Promise<void> {
-    const content = await this.db.prepare(`
-      SELECT c.title, c.slug, col.name as collection_name
+    const schedContentSql = this.tenantId
+      ? `SELECT c.title, c.slug, col.name as collection_name
       FROM content c
       JOIN collections col ON c.collection_id = col.id
-      WHERE c.id = ?
-    `).bind(contentId).first()
+      WHERE c.id = ? AND c.tenant_id = ?`
+      : `SELECT c.title, c.slug, col.name as collection_name
+      FROM content c
+      JOIN collections col ON c.collection_id = col.id
+      WHERE c.id = ?`
+    const schedContentParams = this.tenantId ? [contentId, this.tenantId] : [contentId]
+    const content = await this.db.prepare(schedContentSql).bind(...schedContentParams).first()
 
     if (!content) return
 
@@ -257,18 +273,25 @@ export class NotificationService {
     assignedByUserId: string,
     dueDate?: string
   ): Promise<void> {
-    const content = await this.db.prepare(`
-      SELECT c.title, c.slug, col.name as collection_name
+    const assignContentSql = this.tenantId
+      ? `SELECT c.title, c.slug, col.name as collection_name
       FROM content c
       JOIN collections col ON c.collection_id = col.id
-      WHERE c.id = ?
-    `).bind(contentId).first()
+      WHERE c.id = ? AND c.tenant_id = ?`
+      : `SELECT c.title, c.slug, col.name as collection_name
+      FROM content c
+      JOIN collections col ON c.collection_id = col.id
+      WHERE c.id = ?`
+    const assignContentParams = this.tenantId ? [contentId, this.tenantId] : [contentId]
+    const content = await this.db.prepare(assignContentSql).bind(...assignContentParams).first()
 
     if (!content) return
 
-    const assignedBy = await this.db.prepare(`
-      SELECT username FROM users WHERE id = ?
-    `).bind(assignedByUserId).first()
+    const assignedBySql = this.tenantId
+      ? `SELECT username FROM users WHERE id = ? AND tenant_id = ?`
+      : `SELECT username FROM users WHERE id = ?`
+    const assignedByParams = this.tenantId ? [assignedByUserId, this.tenantId] : [assignedByUserId]
+    const assignedBy = await this.db.prepare(assignedBySql).bind(...assignedByParams).first()
 
     const dueDateText = dueDate ? ` (due: ${new Date(dueDate).toLocaleDateString()})` : ''
     const title = `You've been assigned content: "${content.title}"`
@@ -292,12 +315,17 @@ export class NotificationService {
     }[frequency]
 
     // Get users who want digest notifications for this frequency
-    const { results: users } = await this.db.prepare(`
-      SELECT DISTINCT np.user_id, u.email, u.username
+    const digestSql = this.tenantId
+      ? `SELECT DISTINCT np.user_id, u.email, u.username
       FROM notification_preferences np
       JOIN users u ON np.user_id = u.id
-      WHERE np.digest_frequency = ? AND np.email_enabled = 1
-    `).bind(frequency).all()
+      WHERE np.digest_frequency = ? AND np.email_enabled = 1 AND u.tenant_id = ?`
+      : `SELECT DISTINCT np.user_id, u.email, u.username
+      FROM notification_preferences np
+      JOIN users u ON np.user_id = u.id
+      WHERE np.digest_frequency = ? AND np.email_enabled = 1`
+    const digestParams = this.tenantId ? [frequency, this.tenantId] : [frequency]
+    const { results: users } = await this.db.prepare(digestSql).bind(...digestParams).all()
 
     let sentCount = 0
 

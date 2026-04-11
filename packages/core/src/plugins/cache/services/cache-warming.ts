@@ -10,7 +10,7 @@ import { CACHE_CONFIGS } from './cache-config.js'
 /**
  * Warm cache with common queries
  */
-export async function warmCommonCaches(db: D1Database): Promise<{
+export async function warmCommonCaches(db: D1Database, tenantId: string | null = null): Promise<{
   warmed: number
   errors: number
   details: Array<{ namespace: string; count: number }>
@@ -21,17 +21,17 @@ export async function warmCommonCaches(db: D1Database): Promise<{
 
   try {
     // Warm collection cache
-    const collectionCount = await warmCollections(db)
+    const collectionCount = await warmCollections(db, tenantId)
     totalWarmed += collectionCount
     details.push({ namespace: 'collection', count: collectionCount })
 
     // Warm content cache (most recent items)
-    const contentCount = await warmRecentContent(db)
+    const contentCount = await warmRecentContent(db, 50, tenantId)
     totalWarmed += contentCount
     details.push({ namespace: 'content', count: contentCount })
 
     // Warm media cache (most recent items)
-    const mediaCount = await warmRecentMedia(db)
+    const mediaCount = await warmRecentMedia(db, 50, tenantId)
     totalWarmed += mediaCount
     details.push({ namespace: 'media', count: mediaCount })
 
@@ -50,14 +50,16 @@ export async function warmCommonCaches(db: D1Database): Promise<{
 /**
  * Warm collections cache
  */
-async function warmCollections(db: D1Database): Promise<number> {
+async function warmCollections(db: D1Database, tenantId: string | null = null): Promise<number> {
   const config = CACHE_CONFIGS.collection
   if (!config) return 0
   const collectionCache = getCacheService(config)
   let count = 0
 
   try {
-    const stmt = db.prepare('SELECT * FROM collections WHERE is_active = 1')
+    const stmt = tenantId
+      ? db.prepare('SELECT * FROM collections WHERE is_active = 1 AND tenant_id = ?').bind(tenantId)
+      : db.prepare('SELECT * FROM collections WHERE is_active = 1')
     const { results } = await stmt.all()
 
     for (const collection of results as any[]) {
@@ -81,14 +83,16 @@ async function warmCollections(db: D1Database): Promise<number> {
 /**
  * Warm recent content cache
  */
-async function warmRecentContent(db: D1Database, limit: number = 50): Promise<number> {
+async function warmRecentContent(db: D1Database, limit: number = 50, tenantId: string | null = null): Promise<number> {
   const config = CACHE_CONFIGS.content
   if (!config) return 0
   const contentCache = getCacheService(config)
   let count = 0
 
   try {
-    const stmt = db.prepare(`SELECT * FROM content ORDER BY created_at DESC LIMIT ${limit}`)
+    const stmt = tenantId
+      ? db.prepare(`SELECT * FROM content WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ${limit}`).bind(tenantId)
+      : db.prepare(`SELECT * FROM content ORDER BY created_at DESC LIMIT ${limit}`)
     const { results } = await stmt.all()
 
     for (const content of results as any[]) {
@@ -112,14 +116,16 @@ async function warmRecentContent(db: D1Database, limit: number = 50): Promise<nu
 /**
  * Warm recent media cache
  */
-async function warmRecentMedia(db: D1Database, limit: number = 50): Promise<number> {
+async function warmRecentMedia(db: D1Database, limit: number = 50, tenantId: string | null = null): Promise<number> {
   const config = CACHE_CONFIGS.media
   if (!config) return 0
   const mediaCache = getCacheService(config)
   let count = 0
 
   try {
-    const stmt = db.prepare(`SELECT * FROM media WHERE deleted_at IS NULL ORDER BY uploaded_at DESC LIMIT ${limit}`)
+    const stmt = tenantId
+      ? db.prepare(`SELECT * FROM media WHERE deleted_at IS NULL AND tenant_id = ? ORDER BY uploaded_at DESC LIMIT ${limit}`).bind(tenantId)
+      : db.prepare(`SELECT * FROM media WHERE deleted_at IS NULL ORDER BY uploaded_at DESC LIMIT ${limit}`)
     const { results } = await stmt.all()
 
     for (const media of results as any[]) {
@@ -161,10 +167,10 @@ export async function warmNamespace(
 /**
  * Preload cache on application startup
  */
-export async function preloadCache(db: D1Database): Promise<void> {
+export async function preloadCache(db: D1Database, tenantId: string | null = null): Promise<void> {
   console.log('🔥 Preloading cache...')
 
-  const result = await warmCommonCaches(db)
+  const result = await warmCommonCaches(db, tenantId)
 
   console.log(`✅ Cache preloaded: ${result.warmed} entries across ${result.details.length} namespaces`)
   result.details.forEach(detail => {
@@ -181,14 +187,15 @@ export async function preloadCache(db: D1Database): Promise<void> {
  */
 export function schedulePeriodicWarming(
   db: D1Database,
-  intervalMs: number = 300000 // 5 minutes default
+  intervalMs: number = 300000, // 5 minutes default
+  tenantId: string | null = null
 ): NodeJS.Timeout {
   console.log(`⏰ Scheduling periodic cache warming every ${intervalMs / 1000}s`)
 
   return setInterval(async () => {
     try {
       console.log('🔄 Running periodic cache warming...')
-      await warmCommonCaches(db)
+      await warmCommonCaches(db, tenantId)
     } catch (error) {
       console.error('Error during periodic cache warming:', error)
     }

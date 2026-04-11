@@ -156,7 +156,8 @@ export function createWorkflowPlugin(): Plugin {
   // Register hooks
   builder.addHook('content:create', async (data: any, context: any) => {
     if (context?.db) {
-      const workflowEngine = new WorkflowEngine(context.db)
+      const tenantId = context.tenantId ?? null
+      const workflowEngine = new WorkflowEngine(context.db, tenantId)
       await workflowEngine.initializeContentWorkflow(data.id, data.collectionId || data.collection_id)
     }
     return data

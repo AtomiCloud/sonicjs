@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { renderCodeExamplesList } from '../templates/pages/admin-code-examples-list.template'
 import { renderCodeExamplesForm } from '../templates/pages/admin-code-examples-form.template'
+import { getTenantId } from '../utils/tenant'
 
 type Bindings = {
   DB: D1Database
@@ -33,6 +34,7 @@ const adminCodeExamplesRoutes = new Hono<{ Bindings: Bindings; Variables: Variab
 
 adminCodeExamplesRoutes.get('/', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')
     const { published, language, search, page = '1' } = c.req.query()
     const currentPage = parseInt(page, 10) || 1
@@ -56,8 +58,8 @@ adminCodeExamplesRoutes.get('/', async (c) => {
       }))
     }
 
-    let whereClause = 'WHERE 1=1'
-    const params: any[] = []
+    let whereClause = 'WHERE tenant_id = ?'
+    const params: any[] = [tenantId]
 
     if (published !== undefined) {
       whereClause += ' AND isPublished = ?'
@@ -153,9 +155,10 @@ adminCodeExamplesRoutes.post('/', async (c) => {
       }))
     }
 
+    const tenantId = getTenantId(c)
     const { results } = await db.prepare(`
-      INSERT INTO code_examples (title, description, code, language, category, tags, isPublished, sortOrder)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO code_examples (title, description, code, language, category, tags, isPublished, sortOrder, tenant_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       RETURNING *
     `).bind(
       validatedData.title,
@@ -165,7 +168,8 @@ adminCodeExamplesRoutes.post('/', async (c) => {
       validatedData.category || null,
       validatedData.tags || null,
       validatedData.isPublished ? 1 : 0,
-      validatedData.sortOrder
+      validatedData.sortOrder,
+      tenantId
     ).all()
 
     if (results && results.length > 0) {
@@ -222,6 +226,7 @@ adminCodeExamplesRoutes.post('/', async (c) => {
 
 adminCodeExamplesRoutes.get('/:id', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const id = parseInt(c.req.param('id'))
     const user = c.get('user')
     const db = (c as any).env?.DB
@@ -239,7 +244,7 @@ adminCodeExamplesRoutes.get('/:id', async (c) => {
       }))
     }
 
-    const { results } = await db.prepare('SELECT * FROM code_examples WHERE id = ?').bind(id).all()
+    const { results } = await db.prepare('SELECT * FROM code_examples WHERE id = ? AND tenant_id = ?').bind(id, tenantId).all()
 
     if (!results || results.length === 0) {
       return c.redirect('/admin/code-examples?message=Code example not found&type=error')
@@ -305,10 +310,11 @@ adminCodeExamplesRoutes.put('/:id', async (c) => {
       }))
     }
 
+    const tenantId = getTenantId(c)
     const { results } = await db.prepare(`
       UPDATE code_examples
       SET title = ?, description = ?, code = ?, language = ?, category = ?, tags = ?, isPublished = ?, sortOrder = ?
-      WHERE id = ?
+      WHERE id = ? AND tenant_id = ?
       RETURNING *
     `).bind(
       validatedData.title,
@@ -319,7 +325,8 @@ adminCodeExamplesRoutes.put('/:id', async (c) => {
       validatedData.tags || null,
       validatedData.isPublished ? 1 : 0,
       validatedData.sortOrder,
-      id
+      id,
+      tenantId
     ).all()
 
     if (results && results.length > 0) {
@@ -410,6 +417,7 @@ adminCodeExamplesRoutes.put('/:id', async (c) => {
 
 adminCodeExamplesRoutes.delete('/:id', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const id = parseInt(c.req.param('id'))
     const db = (c as any).env?.DB
 
@@ -417,7 +425,7 @@ adminCodeExamplesRoutes.delete('/:id', async (c) => {
       return c.json({ error: 'Database not available' }, 500)
     }
 
-    const { changes } = await db.prepare('DELETE FROM code_examples WHERE id = ?').bind(id).run()
+    const { changes } = await db.prepare('DELETE FROM code_examples WHERE id = ? AND tenant_id = ?').bind(id, tenantId).run()
 
     if (changes === 0) {
       return c.json({ error: 'Code example not found' }, 404)

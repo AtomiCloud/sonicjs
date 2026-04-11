@@ -14,7 +14,7 @@ export interface ScheduledContent {
 }
 
 export class SchedulerService {
-  constructor(private db: D1Database) {}
+  constructor(private db: D1Database, private tenantId: string | null = null) {}
 
   async scheduleContent(
     contentId: string,
@@ -89,19 +89,30 @@ export class SchedulerService {
   }
 
   async getScheduledContentForUser(userId: string): Promise<any[]> {
-    const { results } = await this.db.prepare(`
-      SELECT 
-        sc.*,
-        c.title,
-        c.slug,
-        col.name as collection_name
-      FROM scheduled_content sc
-      JOIN content c ON sc.content_id = c.id
-      JOIN collections col ON c.collection_id = col.id
-      WHERE sc.user_id = ? AND sc.status = 'pending'
-      ORDER BY sc.scheduled_at ASC
-    `).bind(userId).all()
-    
+    const sql = this.tenantId
+      ? `SELECT
+          sc.*,
+          c.title,
+          c.slug,
+          col.name as collection_name
+        FROM scheduled_content sc
+        JOIN content c ON sc.content_id = c.id
+        JOIN collections col ON c.collection_id = col.id
+        WHERE sc.user_id = ? AND sc.status = 'pending' AND c.tenant_id = ?
+        ORDER BY sc.scheduled_at ASC`
+      : `SELECT
+          sc.*,
+          c.title,
+          c.slug,
+          col.name as collection_name
+        FROM scheduled_content sc
+        JOIN content c ON sc.content_id = c.id
+        JOIN collections col ON c.collection_id = col.id
+        WHERE sc.user_id = ? AND sc.status = 'pending'
+        ORDER BY sc.scheduled_at ASC`
+    const params = this.tenantId ? [userId, this.tenantId] : [userId]
+    const { results } = await this.db.prepare(sql).bind(...params).all()
+
     return results
   }
 
@@ -170,24 +181,26 @@ export class SchedulerService {
 
   private async publishContent(contentId: string): Promise<boolean> {
     try {
-      await this.db.prepare(`
-        UPDATE content 
-        SET status = 'published', published_at = ?, updated_at = ?
-        WHERE id = ?
-      `).bind(Date.now(), Date.now(), contentId).run()
+      const publishSql = this.tenantId
+        ? `UPDATE content SET status = 'published', published_at = ?, updated_at = ? WHERE id = ? AND tenant_id = ?`
+        : `UPDATE content SET status = 'published', published_at = ?, updated_at = ? WHERE id = ?`
+      const publishParams = this.tenantId
+        ? [Date.now(), Date.now(), contentId, this.tenantId]
+        : [Date.now(), Date.now(), contentId]
+      await this.db.prepare(publishSql).bind(...publishParams).run()
 
       // Update workflow state if exists
       await this.db.prepare(`
-        UPDATE content_workflow_status 
+        UPDATE content_workflow_status
         SET current_state_id = 'published', updated_at = CURRENT_TIMESTAMP
         WHERE content_id = ?
       `).bind(contentId).run()
 
-      await this.db.prepare(`
-        UPDATE content 
-        SET workflow_state_id = 'published'
-        WHERE id = ?
-      `).bind(contentId).run()
+      const updateWfSql = this.tenantId
+        ? `UPDATE content SET workflow_state_id = 'published' WHERE id = ? AND tenant_id = ?`
+        : `UPDATE content SET workflow_state_id = 'published' WHERE id = ?`
+      const updateWfParams = this.tenantId ? [contentId, this.tenantId] : [contentId]
+      await this.db.prepare(updateWfSql).bind(...updateWfParams).run()
 
       return true
     } catch (error) {
@@ -198,24 +211,26 @@ export class SchedulerService {
 
   private async unpublishContent(contentId: string): Promise<boolean> {
     try {
-      await this.db.prepare(`
-        UPDATE content 
-        SET status = 'draft', published_at = NULL, updated_at = ?
-        WHERE id = ?
-      `).bind(Date.now(), contentId).run()
+      const unpublishSql = this.tenantId
+        ? `UPDATE content SET status = 'draft', published_at = NULL, updated_at = ? WHERE id = ? AND tenant_id = ?`
+        : `UPDATE content SET status = 'draft', published_at = NULL, updated_at = ? WHERE id = ?`
+      const unpublishParams = this.tenantId
+        ? [Date.now(), contentId, this.tenantId]
+        : [Date.now(), contentId]
+      await this.db.prepare(unpublishSql).bind(...unpublishParams).run()
 
       // Update workflow state if exists
       await this.db.prepare(`
-        UPDATE content_workflow_status 
+        UPDATE content_workflow_status
         SET current_state_id = 'draft', updated_at = CURRENT_TIMESTAMP
         WHERE content_id = ?
       `).bind(contentId).run()
 
-      await this.db.prepare(`
-        UPDATE content 
-        SET workflow_state_id = 'draft'
-        WHERE id = ?
-      `).bind(contentId).run()
+      const updateWfSql = this.tenantId
+        ? `UPDATE content SET workflow_state_id = 'draft' WHERE id = ? AND tenant_id = ?`
+        : `UPDATE content SET workflow_state_id = 'draft' WHERE id = ?`
+      const updateWfParams = this.tenantId ? [contentId, this.tenantId] : [contentId]
+      await this.db.prepare(updateWfSql).bind(...updateWfParams).run()
 
       return true
     } catch (error) {
@@ -226,24 +241,26 @@ export class SchedulerService {
 
   private async archiveContent(contentId: string): Promise<boolean> {
     try {
-      await this.db.prepare(`
-        UPDATE content 
-        SET status = 'archived', updated_at = ?
-        WHERE id = ?
-      `).bind(Date.now(), contentId).run()
+      const archiveSql = this.tenantId
+        ? `UPDATE content SET status = 'archived', updated_at = ? WHERE id = ? AND tenant_id = ?`
+        : `UPDATE content SET status = 'archived', updated_at = ? WHERE id = ?`
+      const archiveParams = this.tenantId
+        ? [Date.now(), contentId, this.tenantId]
+        : [Date.now(), contentId]
+      await this.db.prepare(archiveSql).bind(...archiveParams).run()
 
       // Update workflow state if exists
       await this.db.prepare(`
-        UPDATE content_workflow_status 
+        UPDATE content_workflow_status
         SET current_state_id = 'archived', updated_at = CURRENT_TIMESTAMP
         WHERE content_id = ?
       `).bind(contentId).run()
 
-      await this.db.prepare(`
-        UPDATE content 
-        SET workflow_state_id = 'archived'
-        WHERE id = ?
-      `).bind(contentId).run()
+      const updateWfSql = this.tenantId
+        ? `UPDATE content SET workflow_state_id = 'archived' WHERE id = ? AND tenant_id = ?`
+        : `UPDATE content SET workflow_state_id = 'archived' WHERE id = ?`
+      const updateWfParams = this.tenantId ? [contentId, this.tenantId] : [contentId]
+      await this.db.prepare(updateWfSql).bind(...updateWfParams).run()
 
       return true
     } catch (error) {

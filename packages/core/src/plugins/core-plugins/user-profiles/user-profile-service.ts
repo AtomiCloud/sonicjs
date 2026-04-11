@@ -110,7 +110,7 @@ export function extractCustomFieldsFromForm(
   return result
 }
 
-export async function getCustomData(db: any, userId: string): Promise<Record<string, any>> {
+export async function getCustomData(db: any, userId: string, _tenantId: string | null = null): Promise<Record<string, any>> {
   const row = await db
     .prepare('SELECT data FROM user_profiles WHERE user_id = ?')
     .bind(userId)
@@ -127,7 +127,8 @@ export async function getCustomData(db: any, userId: string): Promise<Record<str
 export async function saveCustomData(
   db: any,
   userId: string,
-  newData: Record<string, any>
+  newData: Record<string, any>,
+  _tenantId: string | null = null
 ): Promise<void> {
   const existing = await getCustomData(db, userId)
   const merged = { ...existing, ...newData }

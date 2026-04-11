@@ -4,6 +4,7 @@ import { renderFormsListPage } from '../templates/pages/admin-forms-list.templat
 import { renderFormBuilderPage, type FormBuilderPageData } from '../templates/pages/admin-forms-builder.template'
 import { renderFormCreatePage } from '../templates/pages/admin-forms-create.template'
 import { TurnstileService } from '../plugins/core-plugins/turnstile-plugin/services/turnstile'
+import { getTenantId } from '../utils/tenant'
 
 // Type definitions for forms
 interface Form {
@@ -87,14 +88,15 @@ adminFormsRoutes.use('*', requireAuth())
 // Forms management - List all forms
 adminFormsRoutes.get('/', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')
     const db = c.env.DB
     const search = c.req.query('search') || ''
     const category = c.req.query('category') || ''
 
     // Build query
-    let query = 'SELECT * FROM forms WHERE 1=1'
-    const params: string[] = []
+    let query = 'SELECT * FROM forms WHERE tenant_id = ?'
+    const params: string[] = [tenantId]
 
     if (search) {
       query += ' AND (name LIKE ? OR display_name LIKE ?)'
@@ -207,6 +209,7 @@ adminFormsRoutes.get('/examples', async (c) => {
 // Create new form
 adminFormsRoutes.post('/', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')
     const db = c.env.DB
     const body = await c.req.parseBody()
@@ -223,14 +226,14 @@ adminFormsRoutes.post('/', async (c) => {
 
     // Validate name format (lowercase, numbers, underscores only)
     if (!/^[a-z0-9_]+$/.test(name)) {
-      return c.json({ 
-        error: 'Form name must contain only lowercase letters, numbers, and underscores' 
+      return c.json({
+        error: 'Form name must contain only lowercase letters, numbers, and underscores'
       }, 400)
     }
 
     // Check for duplicate name
-    const existing = await db.prepare('SELECT id FROM forms WHERE name = ?')
-      .bind(name)
+    const existing = await db.prepare('SELECT id FROM forms WHERE name = ? AND tenant_id = ?')
+      .bind(name, tenantId)
       .first()
 
     if (existing) {
@@ -246,8 +249,8 @@ adminFormsRoutes.post('/', async (c) => {
       INSERT INTO forms (
         id, name, display_name, description, category,
         formio_schema, settings, is_active, is_public,
-        created_by, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        created_by, created_at, updated_at, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       formId,
       name,
@@ -265,7 +268,8 @@ adminFormsRoutes.post('/', async (c) => {
       1, // is_public
       user?.userId || null,
       now,
-      now
+      now,
+      tenantId
     ).run()
 
     // Redirect to builder
@@ -279,14 +283,15 @@ adminFormsRoutes.post('/', async (c) => {
 // Show form builder
 adminFormsRoutes.get('/:id/builder', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')
     const db = c.env.DB
     const formId = c.req.param('id')
     const googleMapsApiKey = c.env.GOOGLE_MAPS_API_KEY || ''
 
     // Get form
-    const form = await db.prepare('SELECT * FROM forms WHERE id = ?')
-      .bind(formId)
+    const form = await db.prepare('SELECT * FROM forms WHERE id = ? AND tenant_id = ?')
+      .bind(formId, tenantId)
       .first()
 
     if (!form) {
@@ -327,14 +332,15 @@ adminFormsRoutes.get('/:id/builder', async (c) => {
 // Update form (save schema)
 adminFormsRoutes.put('/:id', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')
     const db = c.env.DB
     const formId = c.req.param('id')
     const body = await c.req.json()
 
     // Check if form exists
-    const form = await db.prepare('SELECT id FROM forms WHERE id = ?')
-      .bind(formId)
+    const form = await db.prepare('SELECT id FROM forms WHERE id = ? AND tenant_id = ?')
+      .bind(formId, tenantId)
       .first()
 
     if (!form) {
@@ -345,16 +351,17 @@ adminFormsRoutes.put('/:id', async (c) => {
 
     // Update form
     await db.prepare(`
-      UPDATE forms 
-      SET formio_schema = ?, 
-          updated_by = ?, 
+      UPDATE forms
+      SET formio_schema = ?,
+          updated_by = ?,
           updated_at = ?
-      WHERE id = ?
+      WHERE id = ? AND tenant_id = ?
     `).bind(
       JSON.stringify(body.formio_schema),
       user?.userId || null,
       now,
-      formId
+      formId,
+      tenantId
     ).run()
 
     return c.json({ success: true, message: 'Form saved successfully' })
@@ -367,12 +374,13 @@ adminFormsRoutes.put('/:id', async (c) => {
 // Delete form
 adminFormsRoutes.delete('/:id', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const db = c.env.DB
     const formId = c.req.param('id')
 
     // Check if form exists
-    const form = await db.prepare('SELECT id, submission_count FROM forms WHERE id = ?')
-      .bind(formId)
+    const form = await db.prepare('SELECT id, submission_count FROM forms WHERE id = ? AND tenant_id = ?')
+      .bind(formId, tenantId)
       .first()
 
     if (!form) {
@@ -382,13 +390,13 @@ adminFormsRoutes.delete('/:id', async (c) => {
     // Warn if form has submissions
     const submissionCount = form.submission_count as number || 0
     if (submissionCount > 0) {
-      return c.json({ 
-        error: `Cannot delete form with ${submissionCount} submissions. Archive it instead.` 
+      return c.json({
+        error: `Cannot delete form with ${submissionCount} submissions. Archive it instead.`
       }, 400)
     }
 
     // Delete form (cascade will delete submissions and files)
-    await db.prepare('DELETE FROM forms WHERE id = ?').bind(formId).run()
+    await db.prepare('DELETE FROM forms WHERE id = ? AND tenant_id = ?').bind(formId, tenantId).run()
 
     return c.json({ success: true, message: 'Form deleted successfully' })
   } catch (error: any) {
@@ -400,13 +408,14 @@ adminFormsRoutes.delete('/:id', async (c) => {
 // View form submissions
 adminFormsRoutes.get('/:id/submissions', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')
     const db = c.env.DB
     const formId = c.req.param('id')
 
     // Get form
-    const form = await db.prepare('SELECT * FROM forms WHERE id = ?')
-      .bind(formId)
+    const form = await db.prepare('SELECT * FROM forms WHERE id = ? AND tenant_id = ?')
+      .bind(formId, tenantId)
       .first()
 
     if (!form) {
@@ -415,8 +424,8 @@ adminFormsRoutes.get('/:id/submissions', async (c) => {
 
     // Get submissions
     const submissions = await db.prepare(
-      'SELECT * FROM form_submissions WHERE form_id = ? ORDER BY submitted_at DESC'
-    ).bind(formId).all()
+      'SELECT * FROM form_submissions WHERE form_id = ? AND tenant_id = ? ORDER BY submitted_at DESC'
+    ).bind(formId, tenantId).all()
 
     // Simple submissions page for now
     const html = `

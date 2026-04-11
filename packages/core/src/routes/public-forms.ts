@@ -569,12 +569,13 @@ publicFormsRoutes.post('/:identifier/submit', async (c) => {
     // Create submission
     const submissionId = crypto.randomUUID()
     const now = Date.now()
+    const formTenantId = form.tenant_id as string
 
     await db.prepare(`
       INSERT INTO form_submissions (
         id, form_id, submission_data, user_id, ip_address, user_agent,
-        submitted_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        submitted_at, updated_at, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       submissionId,
       form.id,
@@ -583,7 +584,8 @@ publicFormsRoutes.post('/:identifier/submit', async (c) => {
       c.req.header('cf-connecting-ip') || null,
       c.req.header('user-agent') || null,
       now,
-      now
+      now,
+      formTenantId
     ).run()
 
     // Update submission count
@@ -591,8 +593,8 @@ publicFormsRoutes.post('/:identifier/submit', async (c) => {
       UPDATE forms
       SET submission_count = submission_count + 1,
           updated_at = ?
-      WHERE id = ?
-    `).bind(now, form.id).run()
+      WHERE id = ? AND tenant_id = ?
+    `).bind(now, form.id, formTenantId).run()
 
     // Dual-write: create content item for this submission
     let contentId: string | null = null

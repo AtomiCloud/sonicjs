@@ -300,11 +300,15 @@ export class OAuthService {
   /**
    * Unlink an OAuth account from a user (only if they have another auth method).
    */
-  async unlinkOAuthAccount(userId: string, provider: string): Promise<boolean> {
+  async unlinkOAuthAccount(userId: string, provider: string, tenantId: string | null = null): Promise<boolean> {
     // Check user has a password or another OAuth link before unlinking
-    const user = await this.db.prepare(`
-      SELECT password_hash FROM users WHERE id = ?
-    `).bind(userId).first() as { password_hash: string | null } | null
+    const userQuery = tenantId
+      ? 'SELECT password_hash FROM users WHERE id = ? AND tenant_id = ?'
+      : 'SELECT password_hash FROM users WHERE id = ?'
+    const userStmt = tenantId
+      ? this.db.prepare(userQuery).bind(userId, tenantId)
+      : this.db.prepare(userQuery).bind(userId)
+    const user = await userStmt.first() as { password_hash: string | null } | null
 
     const otherLinks = await this.db.prepare(`
       SELECT COUNT(*) as count FROM oauth_accounts
@@ -328,7 +332,7 @@ export class OAuthService {
   /**
    * Find a user by email.
    */
-  async findUserByEmail(email: string): Promise<{
+  async findUserByEmail(email: string, tenantId: string | null = null): Promise<{
     id: string
     email: string
     role: string
@@ -336,16 +340,19 @@ export class OAuthService {
     first_name: string
     last_name: string
   } | null> {
-    return await this.db.prepare(`
-      SELECT id, email, role, is_active, first_name, last_name
-      FROM users WHERE email = ?
-    `).bind(email.toLowerCase()).first() as any
+    const query = tenantId
+      ? 'SELECT id, email, role, is_active, first_name, last_name FROM users WHERE email = ? AND tenant_id = ?'
+      : 'SELECT id, email, role, is_active, first_name, last_name FROM users WHERE email = ?'
+    const stmt = tenantId
+      ? this.db.prepare(query).bind(email.toLowerCase(), tenantId)
+      : this.db.prepare(query).bind(email.toLowerCase())
+    return await stmt.first() as any
   }
 
   /**
    * Create a new user from an OAuth profile.
    */
-  async createUserFromOAuth(profile: OAuthUserProfile): Promise<string> {
+  async createUserFromOAuth(profile: OAuthUserProfile, tenantId: string | null = null): Promise<string> {
     const id = crypto.randomUUID()
     const now = Date.now()
     const email = profile.email.toLowerCase()
@@ -355,23 +362,39 @@ export class OAuthService {
     const username = email.split('@')[0] || id.substring(0, 8)
 
     // Check for username collision and append random suffix if needed
-    const existing = await this.db.prepare(
-      'SELECT id FROM users WHERE username = ?'
-    ).bind(username).first()
+    const usernameQuery = tenantId
+      ? 'SELECT id FROM users WHERE username = ? AND tenant_id = ?'
+      : 'SELECT id FROM users WHERE username = ?'
+    const usernameStmt = tenantId
+      ? this.db.prepare(usernameQuery).bind(username, tenantId)
+      : this.db.prepare(usernameQuery).bind(username)
+    const existing = await usernameStmt.first()
 
     const finalUsername = existing
       ? `${username}-${id.substring(0, 6)}`
       : username
 
-    await this.db.prepare(`
-      INSERT INTO users (
-        id, email, username, first_name, last_name,
-        password_hash, role, avatar, is_active, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, NULL, 'viewer', ?, 1, ?, ?)
-    `).bind(
-      id, email, finalUsername, firstName, lastName,
-      profile.avatar || null, now, now
-    ).run()
+    if (tenantId) {
+      await this.db.prepare(`
+        INSERT INTO users (
+          id, tenant_id, email, username, first_name, last_name,
+          password_hash, role, avatar, is_active, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, NULL, 'viewer', ?, 1, ?, ?)
+      `).bind(
+        id, tenantId, email, finalUsername, firstName, lastName,
+        profile.avatar || null, now, now
+      ).run()
+    } else {
+      await this.db.prepare(`
+        INSERT INTO users (
+          id, email, username, first_name, last_name,
+          password_hash, role, avatar, is_active, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, NULL, 'viewer', ?, 1, ?, ?)
+      `).bind(
+        id, email, finalUsername, firstName, lastName,
+        profile.avatar || null, now, now
+      ).run()
+    }
 
     return id
   }

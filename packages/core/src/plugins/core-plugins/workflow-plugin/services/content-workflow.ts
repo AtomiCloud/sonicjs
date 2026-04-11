@@ -337,10 +337,12 @@ export class ContentWorkflow {
 export class WorkflowManager {
   private db: any
   private permissions: WorkflowPermissions
+  private tenantId: string | null
 
-  constructor(db: any, permissions: WorkflowPermissions = defaultWorkflowPermissions) {
+  constructor(db: any, permissions: WorkflowPermissions = defaultWorkflowPermissions, tenantId: string | null = null) {
     this.db = db
     this.permissions = permissions
+    this.tenantId = tenantId
   }
 
   // Check if user can perform action on content
@@ -352,8 +354,12 @@ export class WorkflowManager {
   ): Promise<boolean> {
     try {
       // Get content from database
-      const stmt = this.db.prepare('SELECT * FROM content WHERE id = ?')
-      const content = await stmt.bind(contentId).first()
+      const contentSql = this.tenantId
+        ? 'SELECT * FROM content WHERE id = ? AND tenant_id = ?'
+        : 'SELECT * FROM content WHERE id = ?'
+      const contentParams = this.tenantId ? [contentId, this.tenantId] : [contentId]
+      const stmt = this.db.prepare(contentSql)
+      const content = await stmt.bind(...contentParams).first()
       
       if (!content) {
         return false
@@ -388,9 +394,13 @@ export class WorkflowManager {
       }
 
       // Get content
-      const stmt = this.db.prepare('SELECT * FROM content WHERE id = ?')
-      const content = await stmt.bind(contentId).first()
-      
+      const getContentSql = this.tenantId
+        ? 'SELECT * FROM content WHERE id = ? AND tenant_id = ?'
+        : 'SELECT * FROM content WHERE id = ?'
+      const getContentParams = this.tenantId ? [contentId, this.tenantId] : [contentId]
+      const stmt = this.db.prepare(getContentSql)
+      const content = await stmt.bind(...getContentParams).first()
+
       if (!content) {
         return { success: false, error: 'Content not found' }
       }
@@ -417,12 +427,14 @@ export class WorkflowManager {
       )
 
       // Update content in database
-      const updateStmt = this.db.prepare(`
-        UPDATE content 
-        SET status = ?, updated_at = ? 
-        WHERE id = ?
-      `)
-      await updateStmt.bind(updatedContent.status, updatedContent.updatedAt, contentId).run()
+      const updateSql = this.tenantId
+        ? `UPDATE content SET status = ?, updated_at = ? WHERE id = ? AND tenant_id = ?`
+        : `UPDATE content SET status = ?, updated_at = ? WHERE id = ?`
+      const updateStmt = this.db.prepare(updateSql)
+      const updateParams = this.tenantId
+        ? [updatedContent.status, updatedContent.updatedAt, contentId, this.tenantId]
+        : [updatedContent.status, updatedContent.updatedAt, contentId]
+      await updateStmt.bind(...updateParams).run()
 
       // Log action to audit trail
       const auditStmt = this.db.prepare(`
@@ -469,8 +481,12 @@ export class WorkflowManager {
     userRole: string
   ): Promise<WorkflowAction[]> {
     try {
-      const stmt = this.db.prepare('SELECT * FROM content WHERE id = ?')
-      const content = await stmt.bind(contentId).first()
+      const actionsSql = this.tenantId
+        ? 'SELECT * FROM content WHERE id = ? AND tenant_id = ?'
+        : 'SELECT * FROM content WHERE id = ?'
+      const actionsParams = this.tenantId ? [contentId, this.tenantId] : [contentId]
+      const stmt = this.db.prepare(actionsSql)
+      const content = await stmt.bind(...actionsParams).first()
       
       if (!content) {
         return []
@@ -507,8 +523,14 @@ export class WorkflowManager {
     for (const contentId of contentIds) {
       try {
         // Update content status
-        const updateStmt = this.db.prepare('UPDATE content SET status = ?, updated_at = ? WHERE id = ?')
-        await updateStmt.bind(newStatus, Date.now(), contentId).run()
+        const bulkUpdateSql = this.tenantId
+          ? 'UPDATE content SET status = ?, updated_at = ? WHERE id = ? AND tenant_id = ?'
+          : 'UPDATE content SET status = ?, updated_at = ? WHERE id = ?'
+        const bulkUpdateParams = this.tenantId
+          ? [newStatus, Date.now(), contentId, this.tenantId]
+          : [newStatus, Date.now(), contentId]
+        const updateStmt = this.db.prepare(bulkUpdateSql)
+        await updateStmt.bind(...bulkUpdateParams).run()
 
         // Log audit entry
         const auditStmt = this.db.prepare(`

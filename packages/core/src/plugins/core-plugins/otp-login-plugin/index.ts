@@ -14,6 +14,7 @@ import { OTPService, type OTPSettings } from './otp-service'
 import { renderOTPEmail } from './email-templates'
 import { AuthManager } from '../../../middleware'
 import { SettingsService } from '../../../services/settings'
+import { getTenantIdOrNull } from '../../../utils/tenant'
 
 // Validation schemas
 const otpRequestSchema = z.object({
@@ -99,12 +100,15 @@ export function createOTPLoginPlugin(): Plugin {
         }, 429)
       }
 
-      // Check if user exists
-      const user = await db.prepare(`
-        SELECT id, email, role, is_active
-        FROM users
-        WHERE email = ?
-      `).bind(normalizedEmail).first() as any
+      // Check if user exists (tenant-scoped)
+      const tenantId = getTenantIdOrNull(c)
+      const userQuery = tenantId
+        ? 'SELECT id, email, role, is_active FROM users WHERE email = ? AND tenant_id = ?'
+        : 'SELECT id, email, role, is_active FROM users WHERE email = ?'
+      const userStmt = tenantId
+        ? db.prepare(userQuery).bind(normalizedEmail, tenantId)
+        : db.prepare(userQuery).bind(normalizedEmail)
+      const user = await userStmt.first() as any
 
       if (!user && !settings.allowNewUserRegistration) {
         // Don't reveal if user exists or not (security)
@@ -263,12 +267,15 @@ export function createOTPLoginPlugin(): Plugin {
         }, 401)
       }
 
-      // Code is valid - get user
-      let user = await db.prepare(`
-        SELECT id, email, role, is_active
-        FROM users
-        WHERE email = ?
-      `).bind(normalizedEmail).first() as any
+      // Code is valid - get user (tenant-scoped)
+      const tenantId = getTenantIdOrNull(c)
+      const verifyUserQuery = tenantId
+        ? 'SELECT id, email, role, is_active FROM users WHERE email = ? AND tenant_id = ?'
+        : 'SELECT id, email, role, is_active FROM users WHERE email = ?'
+      const verifyUserStmt = tenantId
+        ? db.prepare(verifyUserQuery).bind(normalizedEmail, tenantId)
+        : db.prepare(verifyUserQuery).bind(normalizedEmail)
+      let user = await verifyUserStmt.first() as any
 
       if (!user && settings.allowNewUserRegistration) {
         // Auto-create new user on first OTP verification
@@ -276,12 +283,21 @@ export function createOTPLoginPlugin(): Plugin {
         const now = Date.now()
         const username = normalizedEmail.split('@')[0] + '_' + userId.slice(0, 6)
 
-        await db.prepare(`
-          INSERT INTO users (
-            id, email, username, first_name, last_name,
-            password_hash, role, is_active, email_verified, created_at, updated_at
-          ) VALUES (?, ?, ?, '', '', NULL, 'viewer', 1, 1, ?, ?)
-        `).bind(userId, normalizedEmail, username, now, now).run()
+        if (tenantId) {
+          await db.prepare(`
+            INSERT INTO users (
+              id, tenant_id, email, username, first_name, last_name,
+              password_hash, role, is_active, email_verified, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, '', '', NULL, 'viewer', 1, 1, ?, ?)
+          `).bind(userId, tenantId, normalizedEmail, username, now, now).run()
+        } else {
+          await db.prepare(`
+            INSERT INTO users (
+              id, email, username, first_name, last_name,
+              password_hash, role, is_active, email_verified, created_at, updated_at
+            ) VALUES (?, ?, ?, '', '', NULL, 'viewer', 1, 1, ?, ?)
+          `).bind(userId, normalizedEmail, username, now, now).run()
+        }
 
         user = { id: userId, email: normalizedEmail, role: 'viewer', is_active: 1 }
       }

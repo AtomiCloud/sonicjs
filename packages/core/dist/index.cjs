@@ -1,10 +1,10 @@
 'use strict';
 
-var chunkPAQC3HAA_cjs = require('./chunk-PAQC3HAA.cjs');
+var chunk3DRZA2HL_cjs = require('./chunk-3DRZA2HL.cjs');
 var chunkNZWFCUDA_cjs = require('./chunk-NZWFCUDA.cjs');
-var chunkUT7K7CJZ_cjs = require('./chunk-UT7K7CJZ.cjs');
-var chunkNA3BD6LU_cjs = require('./chunk-NA3BD6LU.cjs');
-var chunkR6AJ5T3M_cjs = require('./chunk-R6AJ5T3M.cjs');
+var chunk6VPVJN4S_cjs = require('./chunk-6VPVJN4S.cjs');
+var chunkQNY7OU4B_cjs = require('./chunk-QNY7OU4B.cjs');
+var chunkA2XCPDQS_cjs = require('./chunk-A2XCPDQS.cjs');
 var chunk4ZSNJDLS_cjs = require('./chunk-4ZSNJDLS.cjs');
 var chunkOHYBNCVL_cjs = require('./chunk-OHYBNCVL.cjs');
 var chunkUYJ6TJHX_cjs = require('./chunk-UYJ6TJHX.cjs');
@@ -23,8 +23,9 @@ var d1 = require('drizzle-orm/d1');
 
 // src/plugins/core-plugins/database-tools-plugin/services/database-service.ts
 var DatabaseToolsService = class {
-  constructor(db) {
+  constructor(db, tenantId = null) {
     this.db = db;
+    this.tenantId = tenantId;
   }
   /**
    * Get database statistics
@@ -70,9 +71,8 @@ var DatabaseToolsService = class {
     const tablesCleared = [];
     let adminUserPreserved = false;
     try {
-      const adminUser = await this.db.prepare(
-        "SELECT * FROM users WHERE email = ? AND role = ?"
-      ).bind(adminEmail, "admin").first();
+      const adminUserQuery = this.tenantId ? "SELECT * FROM users WHERE email = ? AND role = ? AND tenant_id = ?" : "SELECT * FROM users WHERE email = ? AND role = ?";
+      const adminUser = await (this.tenantId ? this.db.prepare(adminUserQuery).bind(adminEmail, "admin", this.tenantId) : this.db.prepare(adminUserQuery).bind(adminEmail, "admin")).first();
       if (!adminUser) {
         return {
           success: false,
@@ -114,7 +114,11 @@ var DatabaseToolsService = class {
         }
       }
       try {
-        await this.db.prepare("DELETE FROM users WHERE email != ? OR role != ?").bind(adminEmail, "admin").run();
+        if (this.tenantId) {
+          await this.db.prepare("DELETE FROM users WHERE (email != ? OR role != ?) AND tenant_id = ?").bind(adminEmail, "admin", this.tenantId).run();
+        } else {
+          await this.db.prepare("DELETE FROM users WHERE email != ? OR role != ?").bind(adminEmail, "admin").run();
+        }
         const verifyAdmin = await this.db.prepare(
           "SELECT id FROM users WHERE email = ? AND role = ?"
         ).bind(adminEmail, "admin").first();
@@ -211,9 +215,8 @@ var DatabaseToolsService = class {
           issues.push(`Critical table missing: ${table}`);
         }
       }
-      const adminCount = await this.db.prepare(
-        "SELECT COUNT(*) as count FROM users WHERE role = ?"
-      ).bind("admin").first();
+      const adminCountQuery = this.tenantId ? "SELECT COUNT(*) as count FROM users WHERE role = ? AND tenant_id = ?" : "SELECT COUNT(*) as count FROM users WHERE role = ?";
+      const adminCount = await (this.tenantId ? this.db.prepare(adminCountQuery).bind("admin", this.tenantId) : this.db.prepare(adminCountQuery).bind("admin")).first();
       if (adminCount?.count === 0) {
         issues.push("No admin users found");
       }
@@ -559,9 +562,9 @@ function formatCellValue(value) {
 
 // src/plugins/core-plugins/database-tools-plugin/admin-routes.ts
 function createDatabaseToolsAdminRoutes() {
-  const router3 = new hono.Hono();
-  router3.use("*", chunkUT7K7CJZ_cjs.requireAuth());
-  router3.get("/api/stats", async (c) => {
+  const router4 = new hono.Hono();
+  router4.use("*", chunk6VPVJN4S_cjs.requireAuth());
+  router4.get("/api/stats", async (c) => {
     try {
       const user = c.get("user");
       if (!user || user.role !== "admin") {
@@ -585,7 +588,7 @@ function createDatabaseToolsAdminRoutes() {
       }, 500);
     }
   });
-  router3.post("/api/truncate", async (c) => {
+  router4.post("/api/truncate", async (c) => {
     try {
       const user = c.get("user");
       if (!user || user.role !== "admin") {
@@ -622,7 +625,7 @@ function createDatabaseToolsAdminRoutes() {
       }, 500);
     }
   });
-  router3.post("/api/backup", async (c) => {
+  router4.post("/api/backup", async (c) => {
     try {
       const user = c.get("user");
       if (!user || user.role !== "admin") {
@@ -649,7 +652,7 @@ function createDatabaseToolsAdminRoutes() {
       }, 500);
     }
   });
-  router3.get("/api/validate", async (c) => {
+  router4.get("/api/validate", async (c) => {
     try {
       const user = c.get("user");
       if (!user || user.role !== "admin") {
@@ -673,7 +676,7 @@ function createDatabaseToolsAdminRoutes() {
       }, 500);
     }
   });
-  router3.get("/api/tables/:tableName", async (c) => {
+  router4.get("/api/tables/:tableName", async (c) => {
     try {
       const user = c.get("user");
       if (!user || user.role !== "admin") {
@@ -702,7 +705,7 @@ function createDatabaseToolsAdminRoutes() {
       }, 500);
     }
   });
-  router3.get("/tables/:tableName", async (c) => {
+  router4.get("/tables/:tableName", async (c) => {
     try {
       const user = c.get("user");
       if (!user || user.role !== "admin") {
@@ -738,13 +741,14 @@ function createDatabaseToolsAdminRoutes() {
       return c.text(`Error: ${error}`, 500);
     }
   });
-  return router3;
+  return router4;
 }
 
 // src/plugins/core-plugins/seed-data-plugin/services/seed-data-service.ts
 var SeedDataService = class {
-  constructor(db) {
+  constructor(db, tenantId = null) {
     this.db = db;
+    this.tenantId = tenantId;
   }
   // First names for generating realistic users
   firstNames = [
@@ -883,11 +887,14 @@ var SeedDataService = class {
       const email = `${username}@example.com`;
       const createdAt = this.randomDate();
       const createdAtTimestamp = Math.floor(createdAt.getTime() / 1e3);
-      const stmt = this.db.prepare(`
-        INSERT INTO users (id, email, username, first_name, last_name, password_hash, role, is_active, last_login_at, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-      await stmt.bind(
+      const stmt = this.tenantId ? this.db.prepare(`
+          INSERT INTO users (id, email, username, first_name, last_name, password_hash, role, is_active, last_login_at, created_at, updated_at, tenant_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `) : this.db.prepare(`
+          INSERT INTO users (id, email, username, first_name, last_name, password_hash, role, is_active, last_login_at, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+      const bindValues = [
         this.generateId(),
         email,
         username,
@@ -900,16 +907,20 @@ var SeedDataService = class {
         Math.random() > 0.3 ? createdAtTimestamp : null,
         createdAtTimestamp,
         createdAtTimestamp
-      ).run();
+      ];
+      if (this.tenantId) {
+        bindValues.push(this.tenantId);
+      }
+      await stmt.bind(...bindValues).run();
       count++;
     }
     return count;
   }
   // Create 200 content items across different types
   async createContent() {
-    const usersStmt = this.db.prepare("SELECT * FROM users");
+    const usersStmt = this.tenantId ? this.db.prepare("SELECT * FROM users WHERE tenant_id = ?").bind(this.tenantId) : this.db.prepare("SELECT * FROM users");
     const { results: allUsers } = await usersStmt.all();
-    const collectionsStmt = this.db.prepare("SELECT * FROM collections");
+    const collectionsStmt = this.tenantId ? this.db.prepare("SELECT * FROM collections WHERE tenant_id = ?").bind(this.tenantId) : this.db.prepare("SELECT * FROM collections");
     const { results: allCollections } = await collectionsStmt.all();
     if (!allUsers || allUsers.length === 0) {
       throw new Error("No users found. Please create users first.");
@@ -961,11 +972,14 @@ var SeedDataService = class {
       const createdAt = this.randomDate();
       const createdAtTimestamp = Math.floor(createdAt.getTime() / 1e3);
       const publishedAtTimestamp = status === "published" ? createdAtTimestamp : null;
-      const stmt = this.db.prepare(`
-        INSERT INTO content (id, collection_id, slug, title, data, status, published_at, author_id, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-      await stmt.bind(
+      const contentStmt = this.tenantId ? this.db.prepare(`
+          INSERT INTO content (id, collection_id, slug, title, data, status, published_at, author_id, created_at, updated_at, tenant_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `) : this.db.prepare(`
+          INSERT INTO content (id, collection_id, slug, title, data, status, published_at, author_id, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+      const contentBindValues = [
         this.generateId(),
         collection.id,
         slug,
@@ -976,7 +990,11 @@ var SeedDataService = class {
         author.id,
         createdAtTimestamp,
         createdAtTimestamp
-      ).run();
+      ];
+      if (this.tenantId) {
+        contentBindValues.push(this.tenantId);
+      }
+      await contentStmt.bind(...contentBindValues).run();
       count++;
     }
     return count;
@@ -1015,12 +1033,13 @@ var SeedDataService = class {
   }
   // Clear all seed data (optional cleanup method)
   async clearSeedData() {
-    const deleteContentStmt = this.db.prepare("DELETE FROM content");
-    await deleteContentStmt.run();
-    const deleteUsersStmt = this.db.prepare(
-      "DELETE FROM users WHERE role != 'admin'"
-    );
-    await deleteUsersStmt.run();
+    if (this.tenantId) {
+      await this.db.prepare("DELETE FROM content WHERE tenant_id = ?").bind(this.tenantId).run();
+      await this.db.prepare("DELETE FROM users WHERE role != 'admin' AND tenant_id = ?").bind(this.tenantId).run();
+    } else {
+      await this.db.prepare("DELETE FROM content").run();
+      await this.db.prepare("DELETE FROM users WHERE role != 'admin'").run();
+    }
   }
 };
 
@@ -1307,6 +1326,140 @@ function createSeedDataAdminRoutes() {
   });
   return routes;
 }
+var router3 = new hono.Hono();
+router3.use("*", chunk6VPVJN4S_cjs.requireAuth());
+router3.use("*", async (c, next) => {
+  const user = c.get("user");
+  if (user?.role !== "super_admin") {
+    return c.json({ error: "Super admin access required" }, 403);
+  }
+  return next();
+});
+router3.get("/", async (c) => {
+  try {
+    const db = c.env.DB;
+    const result = await db.prepare("SELECT * FROM tenants ORDER BY created_at DESC").all();
+    return c.json(result.results);
+  } catch (error) {
+    console.error("Error listing tenants:", error);
+    return c.json({ error: "Failed to list tenants" }, 500);
+  }
+});
+router3.post("/", async (c) => {
+  try {
+    const db = c.env.DB;
+    const body = await c.req.json();
+    const { name, slug, adminEmail, adminPassword } = body;
+    if (!name || !slug || !adminEmail || !adminPassword) {
+      return c.json({ error: "name, slug, adminEmail, and adminPassword are required" }, 400);
+    }
+    const existing = await db.prepare("SELECT id FROM tenants WHERE slug = ?").bind(slug).first();
+    if (existing) {
+      return c.json({ error: "A tenant with this slug already exists" }, 409);
+    }
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    const tenantId = crypto.randomUUID();
+    await db.prepare(
+      "INSERT INTO tenants (id, name, slug, is_active, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)"
+    ).bind(tenantId, name, slug, now, now).run();
+    const hashedPassword = await chunk6VPVJN4S_cjs.AuthManager.hashPassword(adminPassword);
+    const userId = crypto.randomUUID();
+    await db.prepare(
+      "INSERT INTO users (id, email, password, role, tenant_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ).bind(userId, adminEmail, hashedPassword, "admin", tenantId, now, now).run();
+    const tokenBytes = new Uint8Array(16);
+    crypto.getRandomValues(tokenBytes);
+    const tokenHex = Array.from(tokenBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+    const apiToken = `ffx_${tokenHex}`;
+    const tokenId = crypto.randomUUID();
+    await db.prepare(
+      "INSERT INTO api_tokens (id, token, tenant_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
+    ).bind(tokenId, apiToken, tenantId, now, now).run();
+    const tenant = await db.prepare("SELECT * FROM tenants WHERE id = ?").bind(tenantId).first();
+    const adminUser = await db.prepare("SELECT id, email, role, tenant_id, created_at, updated_at FROM users WHERE id = ?").bind(userId).first();
+    return c.json({ tenant, adminUser, apiToken }, 201);
+  } catch (error) {
+    console.error("Error creating tenant:", error);
+    return c.json({ error: "Failed to create tenant" }, 500);
+  }
+});
+router3.get("/:id", async (c) => {
+  try {
+    const db = c.env.DB;
+    const id = c.req.param("id");
+    const tenant = await db.prepare("SELECT * FROM tenants WHERE id = ?").bind(id).first();
+    if (!tenant) {
+      return c.json({ error: "Tenant not found" }, 404);
+    }
+    return c.json(tenant);
+  } catch (error) {
+    console.error("Error fetching tenant:", error);
+    return c.json({ error: "Failed to fetch tenant" }, 500);
+  }
+});
+router3.put("/:id", async (c) => {
+  try {
+    const db = c.env.DB;
+    const id = c.req.param("id");
+    const body = await c.req.json();
+    const existing = await db.prepare("SELECT * FROM tenants WHERE id = ?").bind(id).first();
+    if (!existing) {
+      return c.json({ error: "Tenant not found" }, 404);
+    }
+    const updates = [];
+    const values = [];
+    if (body.name !== void 0) {
+      updates.push("name = ?");
+      values.push(body.name);
+    }
+    if (body.slug !== void 0) {
+      const slugCheck = await db.prepare("SELECT id FROM tenants WHERE slug = ? AND id != ?").bind(body.slug, id).first();
+      if (slugCheck) {
+        return c.json({ error: "A tenant with this slug already exists" }, 409);
+      }
+      updates.push("slug = ?");
+      values.push(body.slug);
+    }
+    if (body.is_active !== void 0) {
+      updates.push("is_active = ?");
+      values.push(body.is_active);
+    }
+    if (body.settings !== void 0) {
+      updates.push("settings = ?");
+      values.push(body.settings);
+    }
+    if (updates.length === 0) {
+      return c.json({ error: "No fields to update" }, 400);
+    }
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    updates.push("updated_at = ?");
+    values.push(now);
+    values.push(id);
+    await db.prepare(`UPDATE tenants SET ${updates.join(", ")} WHERE id = ?`).bind(...values).run();
+    const updated = await db.prepare("SELECT * FROM tenants WHERE id = ?").bind(id).first();
+    return c.json(updated);
+  } catch (error) {
+    console.error("Error updating tenant:", error);
+    return c.json({ error: "Failed to update tenant" }, 500);
+  }
+});
+router3.delete("/:id", async (c) => {
+  try {
+    const db = c.env.DB;
+    const id = c.req.param("id");
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    const existing = await db.prepare("SELECT * FROM tenants WHERE id = ?").bind(id).first();
+    if (!existing) {
+      return c.json({ error: "Tenant not found" }, 404);
+    }
+    await db.prepare("UPDATE tenants SET is_active = 0, updated_at = ? WHERE id = ?").bind(now, id).run();
+    return c.json({ message: "Tenant deactivated successfully" });
+  } catch (error) {
+    console.error("Error deactivating tenant:", error);
+    return c.json({ error: "Failed to deactivate tenant" }, 500);
+  }
+});
+var admin_tenants_default = router3;
 function createEmailPlugin() {
   const builder = chunk635JAMSE_cjs.PluginBuilder.create({
     name: "email",
@@ -1786,11 +1939,10 @@ function createOTPLoginPlugin() {
           error: "Too many requests. Please try again in an hour."
         }, 429);
       }
-      const user = await db.prepare(`
-        SELECT id, email, role, is_active
-        FROM users
-        WHERE email = ?
-      `).bind(normalizedEmail).first();
+      const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+      const userQuery = tenantId ? "SELECT id, email, role, is_active FROM users WHERE email = ? AND tenant_id = ?" : "SELECT id, email, role, is_active FROM users WHERE email = ?";
+      const userStmt = tenantId ? db.prepare(userQuery).bind(normalizedEmail, tenantId) : db.prepare(userQuery).bind(normalizedEmail);
+      const user = await userStmt.first();
       if (!user && !settings.allowNewUserRegistration) {
         return c.json({
           message: "If an account exists for this email, you will receive a verification code shortly.",
@@ -1912,21 +2064,29 @@ function createOTPLoginPlugin() {
           attemptsRemaining: verification.attemptsRemaining
         }, 401);
       }
-      let user = await db.prepare(`
-        SELECT id, email, role, is_active
-        FROM users
-        WHERE email = ?
-      `).bind(normalizedEmail).first();
+      const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+      const verifyUserQuery = tenantId ? "SELECT id, email, role, is_active FROM users WHERE email = ? AND tenant_id = ?" : "SELECT id, email, role, is_active FROM users WHERE email = ?";
+      const verifyUserStmt = tenantId ? db.prepare(verifyUserQuery).bind(normalizedEmail, tenantId) : db.prepare(verifyUserQuery).bind(normalizedEmail);
+      let user = await verifyUserStmt.first();
       if (!user && settings.allowNewUserRegistration) {
         const userId = crypto.randomUUID();
         const now = Date.now();
         const username = normalizedEmail.split("@")[0] + "_" + userId.slice(0, 6);
-        await db.prepare(`
-          INSERT INTO users (
-            id, email, username, first_name, last_name,
-            password_hash, role, is_active, email_verified, created_at, updated_at
-          ) VALUES (?, ?, ?, '', '', NULL, 'viewer', 1, 1, ?, ?)
-        `).bind(userId, normalizedEmail, username, now, now).run();
+        if (tenantId) {
+          await db.prepare(`
+            INSERT INTO users (
+              id, tenant_id, email, username, first_name, last_name,
+              password_hash, role, is_active, email_verified, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, '', '', NULL, 'viewer', 1, 1, ?, ?)
+          `).bind(userId, tenantId, normalizedEmail, username, now, now).run();
+        } else {
+          await db.prepare(`
+            INSERT INTO users (
+              id, email, username, first_name, last_name,
+              password_hash, role, is_active, email_verified, created_at, updated_at
+            ) VALUES (?, ?, ?, '', '', NULL, 'viewer', 1, 1, ?, ?)
+          `).bind(userId, normalizedEmail, username, now, now).run();
+        }
         user = { id: userId, email: normalizedEmail, role: "viewer", is_active: 1 };
       }
       if (!user) {
@@ -1939,7 +2099,7 @@ function createOTPLoginPlugin() {
           error: "Account is deactivated"
         }, 403);
       }
-      const token = await chunkUT7K7CJZ_cjs.AuthManager.generateToken(user.id, user.email, user.role, c.env.JWT_SECRET);
+      const token = await chunk6VPVJN4S_cjs.AuthManager.generateToken(user.id, user.email, user.role, c.env.JWT_SECRET);
       cookie.setCookie(c, "auth_token", token, {
         httpOnly: true,
         secure: true,
@@ -2200,10 +2360,10 @@ var OAuthService = class {
   /**
    * Unlink an OAuth account from a user (only if they have another auth method).
    */
-  async unlinkOAuthAccount(userId, provider) {
-    const user = await this.db.prepare(`
-      SELECT password_hash FROM users WHERE id = ?
-    `).bind(userId).first();
+  async unlinkOAuthAccount(userId, provider, tenantId = null) {
+    const userQuery = tenantId ? "SELECT password_hash FROM users WHERE id = ? AND tenant_id = ?" : "SELECT password_hash FROM users WHERE id = ?";
+    const userStmt = tenantId ? this.db.prepare(userQuery).bind(userId, tenantId) : this.db.prepare(userQuery).bind(userId);
+    const user = await userStmt.first();
     const otherLinks = await this.db.prepare(`
       SELECT COUNT(*) as count FROM oauth_accounts
       WHERE user_id = ? AND provider != ?
@@ -2221,16 +2381,15 @@ var OAuthService = class {
   /**
    * Find a user by email.
    */
-  async findUserByEmail(email) {
-    return await this.db.prepare(`
-      SELECT id, email, role, is_active, first_name, last_name
-      FROM users WHERE email = ?
-    `).bind(email.toLowerCase()).first();
+  async findUserByEmail(email, tenantId = null) {
+    const query = tenantId ? "SELECT id, email, role, is_active, first_name, last_name FROM users WHERE email = ? AND tenant_id = ?" : "SELECT id, email, role, is_active, first_name, last_name FROM users WHERE email = ?";
+    const stmt = tenantId ? this.db.prepare(query).bind(email.toLowerCase(), tenantId) : this.db.prepare(query).bind(email.toLowerCase());
+    return await stmt.first();
   }
   /**
    * Create a new user from an OAuth profile.
    */
-  async createUserFromOAuth(profile) {
+  async createUserFromOAuth(profile, tenantId = null) {
     const id = crypto.randomUUID();
     const now = Date.now();
     const email = profile.email.toLowerCase();
@@ -2238,25 +2397,44 @@ var OAuthService = class {
     const firstName = nameParts[0] || "User";
     const lastName = nameParts.slice(1).join(" ") || "";
     const username = email.split("@")[0] || id.substring(0, 8);
-    const existing = await this.db.prepare(
-      "SELECT id FROM users WHERE username = ?"
-    ).bind(username).first();
+    const usernameQuery = tenantId ? "SELECT id FROM users WHERE username = ? AND tenant_id = ?" : "SELECT id FROM users WHERE username = ?";
+    const usernameStmt = tenantId ? this.db.prepare(usernameQuery).bind(username, tenantId) : this.db.prepare(usernameQuery).bind(username);
+    const existing = await usernameStmt.first();
     const finalUsername = existing ? `${username}-${id.substring(0, 6)}` : username;
-    await this.db.prepare(`
-      INSERT INTO users (
-        id, email, username, first_name, last_name,
-        password_hash, role, avatar, is_active, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, NULL, 'viewer', ?, 1, ?, ?)
-    `).bind(
-      id,
-      email,
-      finalUsername,
-      firstName,
-      lastName,
-      profile.avatar || null,
-      now,
-      now
-    ).run();
+    if (tenantId) {
+      await this.db.prepare(`
+        INSERT INTO users (
+          id, tenant_id, email, username, first_name, last_name,
+          password_hash, role, avatar, is_active, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, NULL, 'viewer', ?, 1, ?, ?)
+      `).bind(
+        id,
+        tenantId,
+        email,
+        finalUsername,
+        firstName,
+        lastName,
+        profile.avatar || null,
+        now,
+        now
+      ).run();
+    } else {
+      await this.db.prepare(`
+        INSERT INTO users (
+          id, email, username, first_name, last_name,
+          password_hash, role, avatar, is_active, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, NULL, 'viewer', ?, 1, ?, ?)
+      `).bind(
+        id,
+        email,
+        finalUsername,
+        firstName,
+        lastName,
+        profile.avatar || null,
+        now,
+        now
+      ).run();
+    }
     return id;
   }
   /**
@@ -2381,6 +2559,7 @@ function createOAuthProvidersPlugin() {
       if (!creds) {
         return c.redirect("/auth/login?error=OAuth provider not configured");
       }
+      const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
       const oauthService = new OAuthService(db);
       const redirectUri = getCallbackUrl(c, providerId);
       const tokens = await oauthService.exchangeCode(
@@ -2403,22 +2582,22 @@ function createOAuthProvidersPlugin() {
           tokens.refresh_token,
           tokenExpiresAt ?? void 0
         );
-        const user = await db.prepare(
-          "SELECT id, email, role, is_active FROM users WHERE id = ?"
-        ).bind(existingOAuth.user_id).first();
+        const userQuery = tenantId ? "SELECT id, email, role, is_active FROM users WHERE id = ? AND tenant_id = ?" : "SELECT id, email, role, is_active FROM users WHERE id = ?";
+        const userStmt = tenantId ? db.prepare(userQuery).bind(existingOAuth.user_id, tenantId) : db.prepare(userQuery).bind(existingOAuth.user_id);
+        const user = await userStmt.first();
         if (!user || !user.is_active) {
           return c.redirect("/auth/login?error=Account is deactivated");
         }
-        const jwt2 = await chunkUT7K7CJZ_cjs.AuthManager.generateToken(
+        const jwt2 = await chunk6VPVJN4S_cjs.AuthManager.generateToken(
           user.id,
           user.email,
           user.role,
           c.env.JWT_SECRET
         );
-        chunkUT7K7CJZ_cjs.AuthManager.setAuthCookie(c, jwt2, { sameSite: "Lax" });
+        chunk6VPVJN4S_cjs.AuthManager.setAuthCookie(c, jwt2, { sameSite: "Lax" });
         return c.redirect("/admin");
       }
-      const existingUser = await oauthService.findUserByEmail(profile.email);
+      const existingUser = await oauthService.findUserByEmail(profile.email, tenantId);
       if (existingUser) {
         if (!existingUser.is_active) {
           return c.redirect("/auth/login?error=Account is deactivated");
@@ -2432,16 +2611,16 @@ function createOAuthProvidersPlugin() {
           tokenExpiresAt: tokenExpiresAt ?? void 0,
           profileData: JSON.stringify(profile)
         });
-        const jwt2 = await chunkUT7K7CJZ_cjs.AuthManager.generateToken(
+        const jwt2 = await chunk6VPVJN4S_cjs.AuthManager.generateToken(
           existingUser.id,
           existingUser.email,
           existingUser.role,
           c.env.JWT_SECRET
         );
-        chunkUT7K7CJZ_cjs.AuthManager.setAuthCookie(c, jwt2, { sameSite: "Lax" });
+        chunk6VPVJN4S_cjs.AuthManager.setAuthCookie(c, jwt2, { sameSite: "Lax" });
         return c.redirect("/admin");
       }
-      const newUserId = await oauthService.createUserFromOAuth(profile);
+      const newUserId = await oauthService.createUserFromOAuth(profile, tenantId);
       await oauthService.createOAuthAccount({
         userId: newUserId,
         provider: providerId,
@@ -2451,13 +2630,13 @@ function createOAuthProvidersPlugin() {
         tokenExpiresAt: tokenExpiresAt ?? void 0,
         profileData: JSON.stringify(profile)
       });
-      const jwt = await chunkUT7K7CJZ_cjs.AuthManager.generateToken(
+      const jwt = await chunk6VPVJN4S_cjs.AuthManager.generateToken(
         newUserId,
         profile.email.toLowerCase(),
         "viewer",
         c.env.JWT_SECRET
       );
-      chunkUT7K7CJZ_cjs.AuthManager.setAuthCookie(c, jwt, { sameSite: "Lax" });
+      chunk6VPVJN4S_cjs.AuthManager.setAuthCookie(c, jwt, { sameSite: "Lax" });
       return c.redirect("/admin");
     } catch (error) {
       console.error("OAuth callback error:", error);
@@ -2516,8 +2695,9 @@ function createOAuthProvidersPlugin() {
         return c.json({ error: "Provider is required" }, 400);
       }
       const db = c.env.DB;
+      const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
       const oauthService = new OAuthService(db);
-      const success = await oauthService.unlinkOAuthAccount(user.userId, provider);
+      const success = await oauthService.unlinkOAuthAccount(user.userId, provider, tenantId);
       if (!success) {
         return c.json({
           error: "Cannot unlink the only authentication method. Set a password first."
@@ -2774,29 +2954,35 @@ var ChunkingService = class {
 
 // src/plugins/core-plugins/ai-search-plugin/services/custom-rag.service.ts
 var CustomRAGService = class {
-  constructor(db, ai, vectorize) {
+  constructor(db, ai, vectorize, tenantId = null) {
     this.db = db;
     this.ai = ai;
     this.vectorize = vectorize;
+    this.tenantId = tenantId;
     this.embeddingService = new EmbeddingService(ai);
     this.chunkingService = new ChunkingService();
   }
   embeddingService;
   chunkingService;
+  tenantId;
   /**
    * Index all content from a collection
    */
   async indexCollection(collectionId) {
     console.log(`[CustomRAG] Starting indexing for collection: ${collectionId}`);
     try {
-      const { results: contentItems } = await this.db.prepare(`
-          SELECT c.id, c.title, c.data, c.collection_id, c.status,
+      const indexQuery = this.tenantId ? `SELECT c.id, c.title, c.data, c.collection_id, c.status,
                  c.created_at, c.updated_at, c.author_id,
                  col.name as collection_name, col.display_name as collection_display_name
           FROM content c
           JOIN collections col ON c.collection_id = col.id
-          WHERE c.collection_id = ? AND c.status = 'published'
-        `).bind(collectionId).all();
+          WHERE c.collection_id = ? AND c.status = 'published' AND c.tenant_id = ?` : `SELECT c.id, c.title, c.data, c.collection_id, c.status,
+                 c.created_at, c.updated_at, c.author_id,
+                 col.name as collection_name, col.display_name as collection_display_name
+          FROM content c
+          JOIN collections col ON c.collection_id = col.id
+          WHERE c.collection_id = ? AND c.status = 'published'`;
+      const { results: contentItems } = await (this.tenantId ? this.db.prepare(indexQuery).bind(collectionId, this.tenantId) : this.db.prepare(indexQuery).bind(collectionId)).all();
       const totalItems = contentItems?.length || 0;
       if (totalItems === 0) {
         console.log(`[CustomRAG] No content found in collection ${collectionId}`);
@@ -2916,14 +3102,18 @@ ${c.text}`)
         vectorResults.matches.map((m) => m.metadata.content_id)
       )];
       const placeholders = contentIds.map(() => "?").join(",");
-      const { results: contentItems } = await this.db.prepare(`
-          SELECT c.id, c.title, c.slug, c.collection_id, c.status,
+      const searchContentQuery = this.tenantId ? `SELECT c.id, c.title, c.slug, c.collection_id, c.status,
                  c.created_at, c.updated_at, c.author_id,
                  col.display_name as collection_name
           FROM content c
           JOIN collections col ON c.collection_id = col.id
-          WHERE c.id IN (${placeholders})
-        `).bind(...contentIds).all();
+          WHERE c.id IN (${placeholders}) AND c.tenant_id = ?` : `SELECT c.id, c.title, c.slug, c.collection_id, c.status,
+                 c.created_at, c.updated_at, c.author_id,
+                 col.display_name as collection_name
+          FROM content c
+          JOIN collections col ON c.collection_id = col.id
+          WHERE c.id IN (${placeholders})`;
+      const { results: contentItems } = await (this.tenantId ? this.db.prepare(searchContentQuery).bind(...contentIds, this.tenantId) : this.db.prepare(searchContentQuery).bind(...contentIds)).all();
       const searchResults = (contentItems || []).map((item) => {
         const matchingChunks = vectorResults.matches.filter(
           (m) => m.metadata.content_id === item.id
@@ -2964,14 +3154,18 @@ ${c.text}`)
    */
   async updateContentIndex(contentId) {
     try {
-      const content2 = await this.db.prepare(`
-          SELECT c.id, c.title, c.data, c.collection_id, c.status,
+      const updateQuery = this.tenantId ? `SELECT c.id, c.title, c.data, c.collection_id, c.status,
                  c.created_at, c.updated_at, c.author_id,
                  col.name as collection_name, col.display_name as collection_display_name
           FROM content c
           JOIN collections col ON c.collection_id = col.id
-          WHERE c.id = ?
-        `).bind(contentId).first();
+          WHERE c.id = ? AND c.tenant_id = ?` : `SELECT c.id, c.title, c.data, c.collection_id, c.status,
+                 c.created_at, c.updated_at, c.author_id,
+                 col.name as collection_name, col.display_name as collection_display_name
+          FROM content c
+          JOIN collections col ON c.collection_id = col.id
+          WHERE c.id = ?`;
+      const content2 = await (this.tenantId ? this.db.prepare(updateQuery).bind(contentId, this.tenantId) : this.db.prepare(updateQuery).bind(contentId)).first();
       if (!content2) {
         console.warn(`[CustomRAG] Content ${contentId} not found`);
         return;
@@ -3060,18 +3254,20 @@ ${c.text}`)
 
 // src/plugins/core-plugins/ai-search-plugin/services/ai-search.ts
 var AISearchService = class {
-  constructor(db, ai, vectorize) {
+  constructor(db, ai, vectorize, tenantId = null) {
     this.db = db;
     this.ai = ai;
     this.vectorize = vectorize;
+    this.tenantId = tenantId;
     if (this.ai && this.vectorize) {
-      this.customRAG = new CustomRAGService(db, ai, vectorize);
+      this.customRAG = new CustomRAGService(db, ai, vectorize, tenantId);
       console.log("[AISearchService] Custom RAG initialized");
     } else {
       console.log("[AISearchService] Custom RAG not available, using keyword search only");
     }
   }
   customRAG;
+  tenantId;
   /**
    * Get plugin settings
    */
@@ -3129,9 +3325,8 @@ var AISearchService = class {
    */
   async detectNewCollections() {
     try {
-      const collectionsStmt = this.db.prepare(
-        "SELECT id, name, display_name, description FROM collections WHERE is_active = 1"
-      );
+      const collectionsQuery = this.tenantId ? "SELECT id, name, display_name, description FROM collections WHERE is_active = 1 AND tenant_id = ?" : "SELECT id, name, display_name, description FROM collections WHERE is_active = 1";
+      const collectionsStmt = this.tenantId ? this.db.prepare(collectionsQuery).bind(this.tenantId) : this.db.prepare(collectionsQuery);
       const { results: allCollections } = await collectionsStmt.all();
       const collections2 = (allCollections || []).filter(
         (col) => {
@@ -3149,10 +3344,9 @@ var AISearchService = class {
         if (selected.includes(collectionId) || dismissed.includes(collectionId)) {
           continue;
         }
-        const countStmt = this.db.prepare(
-          "SELECT COUNT(*) as count FROM content WHERE collection_id = ?"
-        );
-        const countResult = await countStmt.bind(collectionId).first();
+        const contentCountQuery = this.tenantId ? "SELECT COUNT(*) as count FROM content WHERE collection_id = ? AND tenant_id = ?" : "SELECT COUNT(*) as count FROM content WHERE collection_id = ?";
+        const countStmt = this.tenantId ? this.db.prepare(contentCountQuery).bind(collectionId, this.tenantId) : this.db.prepare(contentCountQuery).bind(collectionId);
+        const countResult = await countStmt.first();
         const itemCount = countResult?.count || 0;
         notifications.push({
           collection: {
@@ -3179,9 +3373,8 @@ var AISearchService = class {
    */
   async getAllCollections() {
     try {
-      const collectionsStmt = this.db.prepare(
-        "SELECT id, name, display_name, description FROM collections WHERE is_active = 1 ORDER BY display_name"
-      );
+      const allCollQuery = this.tenantId ? "SELECT id, name, display_name, description FROM collections WHERE is_active = 1 AND tenant_id = ? ORDER BY display_name" : "SELECT id, name, display_name, description FROM collections WHERE is_active = 1 ORDER BY display_name";
+      const collectionsStmt = this.tenantId ? this.db.prepare(allCollQuery).bind(this.tenantId) : this.db.prepare(allCollQuery);
       const { results: allCollections } = await collectionsStmt.all();
       console.log("[AISearchService.getAllCollections] Raw collections from DB:", allCollections?.length || 0);
       const firstCollection = allCollections?.[0];
@@ -3213,10 +3406,9 @@ var AISearchService = class {
           console.warn("[AISearchService] Skipping invalid collection:", collection);
           continue;
         }
-        const countStmt = this.db.prepare(
-          "SELECT COUNT(*) as count FROM content WHERE collection_id = ?"
-        );
-        const countResult = await countStmt.bind(collectionId).first();
+        const itemCountQuery = this.tenantId ? "SELECT COUNT(*) as count FROM content WHERE collection_id = ? AND tenant_id = ?" : "SELECT COUNT(*) as count FROM content WHERE collection_id = ?";
+        const countStmt = this.tenantId ? this.db.prepare(itemCountQuery).bind(collectionId, this.tenantId) : this.db.prepare(itemCountQuery).bind(collectionId);
+        const countResult = await countStmt.first();
         const itemCount = countResult?.count || 0;
         collectionInfos.push({
           id: collectionId,
@@ -3322,6 +3514,10 @@ var AISearchService = class {
       if (query.filters?.author) {
         conditions.push("c.author_id = ?");
         params.push(query.filters.author);
+      }
+      if (this.tenantId) {
+        conditions.push("c.tenant_id = ?");
+        params.push(this.tenantId);
       }
       const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
       const countStmt = this.db.prepare(`
@@ -3511,25 +3707,26 @@ var AISearchService = class {
 
 // src/plugins/core-plugins/ai-search-plugin/services/indexer.ts
 var IndexManager = class {
-  constructor(db, ai, vectorize) {
+  constructor(db, ai, vectorize, tenantId = null) {
     this.db = db;
     this.ai = ai;
     this.vectorize = vectorize;
+    this.tenantId = tenantId;
     if (this.ai && this.vectorize) {
       this.customRAG = new CustomRAGService(db, ai, vectorize);
       console.log("[IndexManager] Custom RAG initialized");
     }
   }
   customRAG;
+  tenantId;
   /**
    * Index all content items within a collection using Custom RAG
    */
   async indexCollection(collectionId) {
     try {
-      const collectionStmt = this.db.prepare(
-        "SELECT id, name, display_name FROM collections WHERE id = ?"
-      );
-      const collection = await collectionStmt.bind(collectionId).first();
+      const collectionQuery = this.tenantId ? "SELECT id, name, display_name FROM collections WHERE id = ? AND tenant_id = ?" : "SELECT id, name, display_name FROM collections WHERE id = ?";
+      const collectionStmt = this.tenantId ? this.db.prepare(collectionQuery).bind(collectionId, this.tenantId) : this.db.prepare(collectionQuery).bind(collectionId);
+      const collection = await collectionStmt.first();
       if (!collection) {
         throw new Error(`Collection ${collectionId} not found`);
       }
@@ -3641,16 +3838,21 @@ var IndexManager = class {
    */
   async updateIndex(collectionId, contentId) {
     try {
-      const stmt = this.db.prepare(`
-            SELECT 
+      const contentQuery = this.tenantId ? `SELECT
               c.id, c.title, c.slug, c.data, c.status,
               c.created_at, c.updated_at, c.author_id,
               col.name as collection_name, col.display_name as collection_display_name
             FROM content c
             JOIN collections col ON c.collection_id = col.id
-            WHERE c.id = ? AND c.collection_id = ?
-          `);
-      const item = await stmt.bind(contentId, collectionId).first();
+            WHERE c.id = ? AND c.collection_id = ? AND c.tenant_id = ?` : `SELECT
+              c.id, c.title, c.slug, c.data, c.status,
+              c.created_at, c.updated_at, c.author_id,
+              col.name as collection_name, col.display_name as collection_display_name
+            FROM content c
+            JOIN collections col ON c.collection_id = col.id
+            WHERE c.id = ? AND c.collection_id = ?`;
+      const stmt = this.tenantId ? this.db.prepare(contentQuery).bind(contentId, collectionId, this.tenantId) : this.db.prepare(contentQuery).bind(contentId, collectionId);
+      const item = await stmt.first();
       if (!item) {
         throw new Error(`Content item ${contentId} not found`);
       }
@@ -4150,21 +4352,22 @@ function renderSettingsPage(data) {
 
 // src/plugins/core-plugins/ai-search-plugin/routes/admin.ts
 var adminRoutes = new hono.Hono();
-adminRoutes.use("*", chunkUT7K7CJZ_cjs.requireAuth());
+adminRoutes.use("*", chunk6VPVJN4S_cjs.requireAuth());
 adminRoutes.get("/", async (c) => {
   try {
     const user = c.get("user");
     const db = c.env.DB;
     const ai = c.env.AI;
     const vectorize = c.env.VECTORIZE_INDEX;
-    const service = new AISearchService(db, ai, vectorize);
-    const indexer = new IndexManager(db, ai, vectorize);
+    const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+    const service = new AISearchService(db, ai, vectorize, tenantId);
+    const indexer = new IndexManager(db, ai, vectorize, tenantId);
     const settings = await service.getSettings();
     console.log("[AI Search Settings Route] Settings loaded:", !!settings);
     const collections2 = await service.getAllCollections();
     console.log("[AI Search Settings Route] Collections returned:", collections2.length);
     if (collections2.length === 0) {
-      const directQuery = await db.prepare("SELECT id, name, display_name FROM collections WHERE is_active = 1").all();
+      const directQuery = tenantId ? await db.prepare("SELECT id, name, display_name FROM collections WHERE is_active = 1 AND tenant_id = ?").bind(tenantId).all() : await db.prepare("SELECT id, name, display_name FROM collections WHERE is_active = 1").all();
       console.log("[AI Search Settings Route] Direct DB query found:", directQuery.results?.length || 0, "collections");
       if (directQuery.results && directQuery.results.length > 0) {
         console.log("[AI Search Settings Route] Sample from DB:", directQuery.results[0]);
@@ -4205,8 +4408,9 @@ adminRoutes.post("/", async (c) => {
     const db = c.env.DB;
     const ai = c.env.AI;
     const vectorize = c.env.VECTORIZE_INDEX;
-    const service = new AISearchService(db, ai, vectorize);
-    const indexer = new IndexManager(db, ai, vectorize);
+    const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+    const service = new AISearchService(db, ai, vectorize, tenantId);
+    const indexer = new IndexManager(db, ai, vectorize, tenantId);
     const body = await c.req.json();
     console.log("[AI Search POST] Received body:", JSON.stringify(body, null, 2));
     const currentSettings = await service.getSettings();
@@ -4242,7 +4446,8 @@ adminRoutes.get("/api/settings", async (c) => {
     const db = c.env.DB;
     const ai = c.env.AI;
     const vectorize = c.env.VECTORIZE_INDEX;
-    const service = new AISearchService(db, ai, vectorize);
+    const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+    const service = new AISearchService(db, ai, vectorize, tenantId);
     const settings = await service.getSettings();
     return c.json({ success: true, data: settings });
   } catch (error) {
@@ -4255,7 +4460,8 @@ adminRoutes.get("/api/new-collections", async (c) => {
     const db = c.env.DB;
     const ai = c.env.AI;
     const vectorize = c.env.VECTORIZE_INDEX;
-    const service = new AISearchService(db, ai, vectorize);
+    const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+    const service = new AISearchService(db, ai, vectorize, tenantId);
     const notifications = await service.detectNewCollections();
     return c.json({ success: true, data: notifications });
   } catch (error) {
@@ -4268,7 +4474,8 @@ adminRoutes.get("/api/status", async (c) => {
     const db = c.env.DB;
     const ai = c.env.AI;
     const vectorize = c.env.VECTORIZE_INDEX;
-    const indexer = new IndexManager(db, ai, vectorize);
+    const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+    const indexer = new IndexManager(db, ai, vectorize, tenantId);
     const status = await indexer.getAllIndexStatus();
     return c.json({ success: true, data: status });
   } catch (error) {
@@ -4281,7 +4488,8 @@ adminRoutes.post("/api/reindex", async (c) => {
     const db = c.env.DB;
     const ai = c.env.AI;
     const vectorize = c.env.VECTORIZE_INDEX;
-    const indexer = new IndexManager(db, ai, vectorize);
+    const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+    const indexer = new IndexManager(db, ai, vectorize, tenantId);
     const body = await c.req.json();
     const collectionIdRaw = body.collection_id;
     const collectionId = collectionIdRaw ? String(collectionIdRaw) : "";
@@ -4435,11 +4643,9 @@ function createMagicLinkAuthPlugin() {
           error: "Too many requests. Please try again later."
         }, 429);
       }
-      const user = await db.prepare(`
-        SELECT id, email, role, is_active
-        FROM users
-        WHERE email = ?
-      `).bind(normalizedEmail).first();
+      const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+      const userLookupQuery = tenantId ? "SELECT id, email, role, is_active FROM users WHERE email = ? AND tenant_id = ?" : "SELECT id, email, role, is_active FROM users WHERE email = ?";
+      const user = await (tenantId ? db.prepare(userLookupQuery).bind(normalizedEmail, tenantId) : db.prepare(userLookupQuery).bind(normalizedEmail)).first();
       const allowNewUsers = false;
       if (!user && !allowNewUsers) {
         return c.json({
@@ -4515,28 +4721,46 @@ function createMagicLinkAuthPlugin() {
       if (magicLink.expires_at < Date.now()) {
         return c.redirect("/auth/login?error=This magic link has expired");
       }
-      let user = await db.prepare(`
-        SELECT * FROM users WHERE email = ? AND is_active = 1
-      `).bind(magicLink.user_email).first();
+      const verifyTenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+      const verifyUserQuery = verifyTenantId ? "SELECT * FROM users WHERE email = ? AND is_active = 1 AND tenant_id = ?" : "SELECT * FROM users WHERE email = ? AND is_active = 1";
+      let user = await (verifyTenantId ? db.prepare(verifyUserQuery).bind(magicLink.user_email, verifyTenantId) : db.prepare(verifyUserQuery).bind(magicLink.user_email)).first();
       const allowNewUsers = false;
       if (!user && allowNewUsers) {
         const userId = crypto.randomUUID();
         const username = magicLink.user_email.split("@")[0];
         const now = Date.now();
-        await db.prepare(`
-          INSERT INTO users (
-            id, email, username, first_name, last_name,
-            password_hash, role, is_active, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, NULL, 'viewer', 1, ?, ?)
-        `).bind(
-          userId,
-          magicLink.user_email,
-          username,
-          username,
-          "",
-          now,
-          now
-        ).run();
+        if (verifyTenantId) {
+          await db.prepare(`
+            INSERT INTO users (
+              id, email, username, first_name, last_name,
+              password_hash, role, is_active, created_at, updated_at, tenant_id
+            ) VALUES (?, ?, ?, ?, ?, NULL, 'viewer', 1, ?, ?, ?)
+          `).bind(
+            userId,
+            magicLink.user_email,
+            username,
+            username,
+            "",
+            now,
+            now,
+            verifyTenantId
+          ).run();
+        } else {
+          await db.prepare(`
+            INSERT INTO users (
+              id, email, username, first_name, last_name,
+              password_hash, role, is_active, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, NULL, 'viewer', 1, ?, ?)
+          `).bind(
+            userId,
+            magicLink.user_email,
+            username,
+            username,
+            "",
+            now,
+            now
+          ).run();
+        }
         user = {
           id: userId,
           email: magicLink.user_email,
@@ -4551,13 +4775,13 @@ function createMagicLinkAuthPlugin() {
         SET used = 1, used_at = ?
         WHERE id = ?
       `).bind(Date.now(), magicLink.id).run();
-      const jwtToken = await chunkUT7K7CJZ_cjs.AuthManager.generateToken(
+      const jwtToken = await chunk6VPVJN4S_cjs.AuthManager.generateToken(
         user.id,
         user.email,
         user.role,
         c.env.JWT_SECRET
       );
-      chunkUT7K7CJZ_cjs.AuthManager.setAuthCookie(c, jwtToken);
+      chunk6VPVJN4S_cjs.AuthManager.setAuthCookie(c, jwtToken);
       await db.prepare(`
         UPDATE users SET last_login_at = ? WHERE id = ?
       `).bind(Date.now(), user.id).run();
@@ -4728,37 +4952,65 @@ var DEFAULT_SETTINGS2 = {
 
 // src/plugins/core-plugins/security-audit-plugin/services/security-audit-service.ts
 var SecurityAuditService = class {
-  constructor(db, settings = DEFAULT_SETTINGS2) {
+  constructor(db, settings = DEFAULT_SETTINGS2, tenantId = null) {
     this.db = db;
     this.settings = settings;
+    this.tenantId = tenantId;
   }
   async logEvent(event) {
     const id = crypto.randomUUID();
     const now = Date.now();
-    await this.db.prepare(`
-      INSERT INTO security_events (id, event_type, severity, user_id, email, ip_address, user_agent, country_code, request_path, request_method, details, fingerprint, blocked, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      id,
-      event.eventType,
-      event.severity || "info",
-      event.userId || null,
-      event.email || null,
-      event.ipAddress || null,
-      event.userAgent || null,
-      event.countryCode || null,
-      event.requestPath || null,
-      event.requestMethod || null,
-      event.details ? JSON.stringify(event.details) : null,
-      event.fingerprint || null,
-      event.blocked ? 1 : 0,
-      now
-    ).run();
+    if (this.tenantId) {
+      await this.db.prepare(`
+        INSERT INTO security_events (id, tenant_id, event_type, severity, user_id, email, ip_address, user_agent, country_code, request_path, request_method, details, fingerprint, blocked, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        id,
+        this.tenantId,
+        event.eventType,
+        event.severity || "info",
+        event.userId || null,
+        event.email || null,
+        event.ipAddress || null,
+        event.userAgent || null,
+        event.countryCode || null,
+        event.requestPath || null,
+        event.requestMethod || null,
+        event.details ? JSON.stringify(event.details) : null,
+        event.fingerprint || null,
+        event.blocked ? 1 : 0,
+        now
+      ).run();
+    } else {
+      await this.db.prepare(`
+        INSERT INTO security_events (id, event_type, severity, user_id, email, ip_address, user_agent, country_code, request_path, request_method, details, fingerprint, blocked, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        id,
+        event.eventType,
+        event.severity || "info",
+        event.userId || null,
+        event.email || null,
+        event.ipAddress || null,
+        event.userAgent || null,
+        event.countryCode || null,
+        event.requestPath || null,
+        event.requestMethod || null,
+        event.details ? JSON.stringify(event.details) : null,
+        event.fingerprint || null,
+        event.blocked ? 1 : 0,
+        now
+      ).run();
+    }
     return id;
   }
   async getEvents(filters = {}) {
     const conditions = [];
     const params = [];
+    if (this.tenantId) {
+      conditions.push("tenant_id = ?");
+      params.push(this.tenantId);
+    }
     if (filters.eventType) {
       if (Array.isArray(filters.eventType)) {
         conditions.push(`event_type IN (${filters.eventType.map(() => "?").join(",")})`);
@@ -4833,9 +5085,9 @@ var SecurityAuditService = class {
     return { events, total };
   }
   async getEvent(id) {
-    const row = await this.db.prepare(
-      "SELECT * FROM security_events WHERE id = ?"
-    ).bind(id).first();
+    const query = this.tenantId ? "SELECT * FROM security_events WHERE id = ? AND tenant_id = ?" : "SELECT * FROM security_events WHERE id = ?";
+    const stmt = this.tenantId ? this.db.prepare(query).bind(id, this.tenantId) : this.db.prepare(query).bind(id);
+    const row = await stmt.first();
     if (!row) return null;
     return {
       id: row.id,
@@ -4858,40 +5110,43 @@ var SecurityAuditService = class {
     const now = Date.now();
     const h24 = now - 24 * 60 * 60 * 1e3;
     const h48 = now - 48 * 60 * 60 * 1e3;
+    const tenantFilter = this.tenantId ? " AND tenant_id = ?" : "";
+    const tenantFilterWhere = this.tenantId ? " WHERE tenant_id = ?" : "";
+    const tParams = this.tenantId ? [this.tenantId] : [];
     const totalResult = await this.db.prepare(
-      "SELECT COUNT(*) as count FROM security_events"
-    ).first();
+      `SELECT COUNT(*) as count FROM security_events${tenantFilterWhere}`
+    ).bind(...tParams).first();
     const failed24hResult = await this.db.prepare(
-      "SELECT COUNT(*) as count FROM security_events WHERE event_type = 'login_failure' AND created_at >= ?"
-    ).bind(h24).first();
+      `SELECT COUNT(*) as count FROM security_events WHERE event_type = 'login_failure' AND created_at >= ?${tenantFilter}`
+    ).bind(h24, ...tParams).first();
     const failedPrior24hResult = await this.db.prepare(
-      "SELECT COUNT(*) as count FROM security_events WHERE event_type = 'login_failure' AND created_at >= ? AND created_at < ?"
-    ).bind(h48, h24).first();
+      `SELECT COUNT(*) as count FROM security_events WHERE event_type = 'login_failure' AND created_at >= ? AND created_at < ?${tenantFilter}`
+    ).bind(h48, h24, ...tParams).first();
     const failed24h = failed24hResult?.count || 0;
     const failedPrior24h = failedPrior24hResult?.count || 0;
     const trend = failedPrior24h > 0 ? Math.round((failed24h - failedPrior24h) / failedPrior24h * 100) : failed24h > 0 ? 100 : 0;
     const lockoutWindow = now - this.settings.bruteForce.lockoutDurationMinutes * 60 * 1e3;
     const lockoutsResult = await this.db.prepare(
-      "SELECT COUNT(DISTINCT ip_address) as count FROM security_events WHERE event_type = 'account_lockout' AND created_at >= ?"
-    ).bind(lockoutWindow).first();
+      `SELECT COUNT(DISTINCT ip_address) as count FROM security_events WHERE event_type = 'account_lockout' AND created_at >= ?${tenantFilter}`
+    ).bind(lockoutWindow, ...tParams).first();
     const windowStart = now - this.settings.bruteForce.windowMinutes * 60 * 1e3;
     const flaggedResult = await this.db.prepare(
       `SELECT COUNT(*) as count FROM (
         SELECT ip_address FROM security_events
-        WHERE event_type = 'login_failure' AND created_at >= ?
+        WHERE event_type = 'login_failure' AND created_at >= ?${tenantFilter}
         GROUP BY ip_address HAVING COUNT(*) >= ?
       )`
-    ).bind(windowStart, this.settings.bruteForce.maxFailedAttemptsPerIP).first();
+    ).bind(windowStart, ...tParams, this.settings.bruteForce.maxFailedAttemptsPerIP).first();
     const typeResults = await this.db.prepare(
-      "SELECT event_type, COUNT(*) as count FROM security_events WHERE created_at >= ? GROUP BY event_type"
-    ).bind(h24).all();
+      `SELECT event_type, COUNT(*) as count FROM security_events WHERE created_at >= ?${tenantFilter} GROUP BY event_type`
+    ).bind(h24, ...tParams).all();
     const eventsByType = {};
     for (const row of typeResults.results || []) {
       eventsByType[row.event_type] = row.count;
     }
     const severityResults = await this.db.prepare(
-      "SELECT severity, COUNT(*) as count FROM security_events WHERE created_at >= ? GROUP BY severity"
-    ).bind(h24).all();
+      `SELECT severity, COUNT(*) as count FROM security_events WHERE created_at >= ?${tenantFilter} GROUP BY severity`
+    ).bind(h24, ...tParams).all();
     const eventsBySeverity = {};
     for (const row of severityResults.results || []) {
       eventsBySeverity[row.severity] = row.count;
@@ -4909,6 +5164,8 @@ var SecurityAuditService = class {
   async getTopIPs(limit = 10) {
     const now = Date.now();
     const h24 = now - 24 * 60 * 60 * 1e3;
+    const tenantFilter = this.tenantId ? " AND tenant_id = ?" : "";
+    const tParams = this.tenantId ? [this.tenantId] : [];
     const results = await this.db.prepare(`
       SELECT
         ip_address,
@@ -4916,15 +5173,15 @@ var SecurityAuditService = class {
         COUNT(*) as failed_attempts,
         MAX(created_at) as last_seen
       FROM security_events
-      WHERE event_type = 'login_failure' AND created_at >= ?
+      WHERE event_type = 'login_failure' AND created_at >= ?${tenantFilter}
       GROUP BY ip_address
       ORDER BY failed_attempts DESC
       LIMIT ?
-    `).bind(h24, limit).all();
+    `).bind(h24, ...tParams, limit).all();
     const lockoutWindow = now - this.settings.bruteForce.lockoutDurationMinutes * 60 * 1e3;
     const lockoutResults = await this.db.prepare(
-      "SELECT DISTINCT ip_address FROM security_events WHERE event_type = 'account_lockout' AND created_at >= ?"
-    ).bind(lockoutWindow).all();
+      `SELECT DISTINCT ip_address FROM security_events WHERE event_type = 'account_lockout' AND created_at >= ?${tenantFilter}`
+    ).bind(lockoutWindow, ...tParams).all();
     const lockedIPs = new Set((lockoutResults.results || []).map((r) => r.ip_address));
     return (results.results || []).map((row) => ({
       ipAddress: row.ip_address,
@@ -4946,15 +5203,17 @@ var SecurityAuditService = class {
         count: 0
       });
     }
+    const tenantFilter = this.tenantId ? " AND tenant_id = ?" : "";
+    const tParams = this.tenantId ? [this.tenantId] : [];
     const results = await this.db.prepare(`
       SELECT
         CAST((created_at - ?) / 3600000 AS INTEGER) as bucket,
         COUNT(*) as count
       FROM security_events
-      WHERE event_type = 'login_failure' AND created_at >= ?
+      WHERE event_type = 'login_failure' AND created_at >= ?${tenantFilter}
       GROUP BY bucket
       ORDER BY bucket
-    `).bind(start, start).all();
+    `).bind(start, start, ...tParams).all();
     for (const row of results.results || []) {
       const idx = row.bucket;
       if (idx >= 0 && idx < buckets.length) {
@@ -4966,15 +5225,15 @@ var SecurityAuditService = class {
   async purgeOldEvents(daysToKeep) {
     const days = daysToKeep || this.settings.retention.daysToKeep;
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1e3;
-    const result = await this.db.prepare(
-      "DELETE FROM security_events WHERE created_at < ?"
-    ).bind(cutoff).run();
+    const query = this.tenantId ? "DELETE FROM security_events WHERE created_at < ? AND tenant_id = ?" : "DELETE FROM security_events WHERE created_at < ?";
+    const stmt = this.tenantId ? this.db.prepare(query).bind(cutoff, this.tenantId) : this.db.prepare(query).bind(cutoff);
+    const result = await stmt.run();
     return result.meta?.changes || 0;
   }
   async getRecentCriticalEvents(limit = 20) {
-    const results = await this.db.prepare(
-      "SELECT * FROM security_events WHERE severity = 'critical' ORDER BY created_at DESC LIMIT ?"
-    ).bind(limit).all();
+    const query = this.tenantId ? "SELECT * FROM security_events WHERE severity = 'critical' AND tenant_id = ? ORDER BY created_at DESC LIMIT ?" : "SELECT * FROM security_events WHERE severity = 'critical' ORDER BY created_at DESC LIMIT ?";
+    const stmt = this.tenantId ? this.db.prepare(query).bind(this.tenantId, limit) : this.db.prepare(query).bind(limit);
+    const results = await stmt.all();
     return (results.results || []).map((row) => ({
       id: row.id,
       eventType: row.event_type,
@@ -5567,7 +5826,7 @@ function renderSecuritySettingsPage(data) {
 
 // src/plugins/core-plugins/security-audit-plugin/routes/admin.ts
 var adminRoutes2 = new hono.Hono();
-adminRoutes2.use("*", chunkUT7K7CJZ_cjs.requireAuth());
+adminRoutes2.use("*", chunk6VPVJN4S_cjs.requireAuth());
 adminRoutes2.use("*", async (c, next) => {
   const user = c.get("user");
   if (user?.role !== "admin") {
@@ -5577,7 +5836,7 @@ adminRoutes2.use("*", async (c, next) => {
 });
 async function getSettings(db) {
   try {
-    const pluginService = new chunkNA3BD6LU_cjs.PluginService(db);
+    const pluginService = new chunkQNY7OU4B_cjs.PluginService(db);
     const plugin2 = await pluginService.getPlugin("security-audit");
     if (plugin2?.settings) {
       const settings = typeof plugin2.settings === "string" ? JSON.parse(plugin2.settings) : plugin2.settings;
@@ -5682,7 +5941,7 @@ adminRoutes2.post("/settings", async (c) => {
       autoPurge: body["retention.autoPurge"] === "true"
     }
   };
-  const pluginService = new chunkNA3BD6LU_cjs.PluginService(db);
+  const pluginService = new chunkQNY7OU4B_cjs.PluginService(db);
   await pluginService.updatePluginSettings("security-audit", settings);
   if (c.req.header("HX-Request")) {
     return c.json({ success: true });
@@ -5837,7 +6096,7 @@ var BruteForceDetector = class {
 
 // src/plugins/core-plugins/security-audit-plugin/routes/api.ts
 var apiRoutes2 = new hono.Hono();
-apiRoutes2.use("*", chunkUT7K7CJZ_cjs.requireAuth());
+apiRoutes2.use("*", chunk6VPVJN4S_cjs.requireAuth());
 apiRoutes2.use("*", async (c, next) => {
   const user = c.get("user");
   if (user?.role !== "admin") {
@@ -5847,7 +6106,7 @@ apiRoutes2.use("*", async (c, next) => {
 });
 async function getSettings2(db) {
   try {
-    const pluginService = new chunkNA3BD6LU_cjs.PluginService(db);
+    const pluginService = new chunkQNY7OU4B_cjs.PluginService(db);
     const plugin2 = await pluginService.getPlugin("security-audit");
     if (plugin2?.settings) {
       const settings = typeof plugin2.settings === "string" ? JSON.parse(plugin2.settings) : plugin2.settings;
@@ -5995,7 +6254,7 @@ function generateFingerprint(ip, userAgent) {
 }
 async function getPluginSettings(db) {
   try {
-    const pluginService = new chunkNA3BD6LU_cjs.PluginService(db);
+    const pluginService = new chunkQNY7OU4B_cjs.PluginService(db);
     const plugin2 = await pluginService.getPlugin("security-audit");
     if (plugin2?.settings) {
       const settings = typeof plugin2.settings === "string" ? JSON.parse(plugin2.settings) : plugin2.settings;
@@ -6022,6 +6281,7 @@ function securityAuditMiddleware() {
       return next();
     }
     const db = c.env.DB;
+    const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
     if (!await isPluginActive2(db)) {
       return next();
     }
@@ -6046,7 +6306,7 @@ function securityAuditMiddleware() {
         const detector = new BruteForceDetector(c.env.CACHE_KV, settings.bruteForce);
         const lockStatus = await detector.isLocked(ip, preExtractedEmail);
         if (lockStatus.locked) {
-          const service = new SecurityAuditService(db, settings);
+          const service = new SecurityAuditService(db, settings, tenantId);
           const logPromise2 = service.logEvent({
             eventType: "login_failure",
             severity: "warning",
@@ -6070,15 +6330,15 @@ function securityAuditMiddleware() {
       }
     }
     await next();
-    const logPromise = logAuthEvent(c, db, settings, ip, userAgent, countryCode, fingerprint, path, method, preExtractedEmail);
+    const logPromise = logAuthEvent(c, db, settings, ip, userAgent, countryCode, fingerprint, path, method, preExtractedEmail, tenantId);
     if (c.executionCtx?.waitUntil) {
       c.executionCtx.waitUntil(logPromise);
     }
   };
 }
-async function logAuthEvent(c, db, settings, ip, userAgent, countryCode, fingerprint, path, method, preExtractedEmail = "") {
+async function logAuthEvent(c, db, settings, ip, userAgent, countryCode, fingerprint, path, method, preExtractedEmail = "", tenantId = null) {
   try {
-    const service = new SecurityAuditService(db, settings);
+    const service = new SecurityAuditService(db, settings, tenantId);
     const status = c.res.status;
     const isLoginPost = (path === "/auth/login" || path === "/auth/login/form") && method === "POST";
     const isFormLogin = path === "/auth/login/form";
@@ -6269,8 +6529,9 @@ var securityAuditPlugin = createSecurityAuditPlugin();
 
 // src/plugins/core-plugins/stripe-plugin/services/subscription-service.ts
 var SubscriptionService = class {
-  constructor(db) {
+  constructor(db, tenantId = null) {
     this.db = db;
+    this.tenantId = tenantId;
   }
   /**
    * Ensure the subscriptions table exists
@@ -6428,16 +6689,20 @@ var SubscriptionService = class {
     const where = [];
     const values = [];
     if (filters.status) {
-      where.push("status = ?");
+      where.push("s.status = ?");
       values.push(filters.status);
     }
     if (filters.userId) {
-      where.push("user_id = ?");
+      where.push("s.user_id = ?");
       values.push(filters.userId);
     }
     if (filters.stripeCustomerId) {
-      where.push("stripe_customer_id = ?");
+      where.push("s.stripe_customer_id = ?");
       values.push(filters.stripeCustomerId);
+    }
+    if (this.tenantId) {
+      where.push("s.user_id IN (SELECT id FROM users WHERE tenant_id = ?)");
+      values.push(this.tenantId);
     }
     const whereClause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
     const sortBy = filters.sortBy || "created_at";
@@ -6446,10 +6711,10 @@ var SubscriptionService = class {
     const page = filters.page || 1;
     const offset = (page - 1) * limit;
     const countResult = await this.db.prepare(
-      `SELECT COUNT(*) as count FROM subscriptions ${whereClause}`
+      `SELECT COUNT(*) as count FROM subscriptions s ${whereClause}`
     ).bind(...values).first();
     const results = await this.db.prepare(
-      `SELECT s.*, u.email as user_email FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id ${whereClause} ORDER BY ${sortBy} ${sortOrder} LIMIT ? OFFSET ?`
+      `SELECT s.*, u.email as user_email FROM subscriptions s LEFT JOIN users u ON s.user_id = u.id ${whereClause} ORDER BY s.${sortBy} ${sortOrder} LIMIT ? OFFSET ?`
     ).bind(...values, limit, offset).all();
     return {
       subscriptions: (results.results || []).map((r) => this.mapRow(r)),
@@ -6460,15 +6725,20 @@ var SubscriptionService = class {
    * Get subscription stats
    */
   async getStats() {
-    const result = await this.db.prepare(`
-      SELECT
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
-        SUM(CASE WHEN status = 'canceled' THEN 1 ELSE 0 END) as canceled,
-        SUM(CASE WHEN status = 'past_due' THEN 1 ELSE 0 END) as past_due,
-        SUM(CASE WHEN status = 'trialing' THEN 1 ELSE 0 END) as trialing
-      FROM subscriptions
-    `).first();
+    const statsQuery = this.tenantId ? `SELECT
+          COUNT(*) as total,
+          SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
+          SUM(CASE WHEN status = 'canceled' THEN 1 ELSE 0 END) as canceled,
+          SUM(CASE WHEN status = 'past_due' THEN 1 ELSE 0 END) as past_due,
+          SUM(CASE WHEN status = 'trialing' THEN 1 ELSE 0 END) as trialing
+        FROM subscriptions WHERE user_id IN (SELECT id FROM users WHERE tenant_id = ?)` : `SELECT
+          COUNT(*) as total,
+          SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
+          SUM(CASE WHEN status = 'canceled' THEN 1 ELSE 0 END) as canceled,
+          SUM(CASE WHEN status = 'past_due' THEN 1 ELSE 0 END) as past_due,
+          SUM(CASE WHEN status = 'trialing' THEN 1 ELSE 0 END) as trialing
+        FROM subscriptions`;
+    const result = await (this.tenantId ? this.db.prepare(statsQuery).bind(this.tenantId) : this.db.prepare(statsQuery)).first();
     return {
       total: result?.total || 0,
       active: result?.active || 0,
@@ -6992,7 +7262,7 @@ var DEFAULT_SETTINGS3 = {
 
 // src/plugins/core-plugins/stripe-plugin/routes/admin.ts
 var adminRoutes3 = new hono.Hono();
-adminRoutes3.use("*", chunkUT7K7CJZ_cjs.requireAuth());
+adminRoutes3.use("*", chunk6VPVJN4S_cjs.requireAuth());
 adminRoutes3.use("*", async (c, next) => {
   const user = c.get("user");
   if (user?.role !== "admin") {
@@ -7002,7 +7272,7 @@ adminRoutes3.use("*", async (c, next) => {
 });
 async function getSettings3(db) {
   try {
-    const pluginService = new chunkNA3BD6LU_cjs.PluginService(db);
+    const pluginService = new chunkQNY7OU4B_cjs.PluginService(db);
     const plugin2 = await pluginService.getPlugin("stripe");
     if (plugin2?.settings) {
       const settings = typeof plugin2.settings === "string" ? JSON.parse(plugin2.settings) : plugin2.settings;
@@ -7015,7 +7285,8 @@ async function getSettings3(db) {
 adminRoutes3.get("/", async (c) => {
   const db = c.env.DB;
   const user = c.get("user");
-  const subscriptionService = new SubscriptionService(db);
+  const tenantId = chunk3DRZA2HL_cjs.getTenantIdOrNull(c);
+  const subscriptionService = new SubscriptionService(db, tenantId);
   await subscriptionService.ensureTable();
   const page = parseInt(c.req.query("page") || "1");
   const limit = 50;
@@ -7324,7 +7595,7 @@ function timingSafeEqual(a, b) {
 var apiRoutes3 = new hono.Hono();
 async function getSettings4(db) {
   try {
-    const pluginService = new chunkNA3BD6LU_cjs.PluginService(db);
+    const pluginService = new chunkQNY7OU4B_cjs.PluginService(db);
     const plugin2 = await pluginService.getPlugin("stripe");
     if (plugin2?.settings) {
       const settings = typeof plugin2.settings === "string" ? JSON.parse(plugin2.settings) : plugin2.settings;
@@ -7475,7 +7746,7 @@ apiRoutes3.post("/webhook", async (c) => {
   }
   return c.json({ received: true });
 });
-apiRoutes3.post("/create-checkout-session", chunkUT7K7CJZ_cjs.requireAuth(), async (c) => {
+apiRoutes3.post("/create-checkout-session", chunk6VPVJN4S_cjs.requireAuth(), async (c) => {
   const db = c.env.DB;
   const user = c.get("user");
   if (!user) return c.json({ error: "Unauthorized" }, 401);
@@ -7515,7 +7786,7 @@ apiRoutes3.post("/create-checkout-session", chunkUT7K7CJZ_cjs.requireAuth(), asy
   });
   return c.json({ sessionId: session.id, url: session.url });
 });
-apiRoutes3.get("/subscription", chunkUT7K7CJZ_cjs.requireAuth(), async (c) => {
+apiRoutes3.get("/subscription", chunk6VPVJN4S_cjs.requireAuth(), async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: "Unauthorized" }, 401);
   const db = c.env.DB;
@@ -7527,7 +7798,7 @@ apiRoutes3.get("/subscription", chunkUT7K7CJZ_cjs.requireAuth(), async (c) => {
   }
   return c.json({ subscription });
 });
-apiRoutes3.get("/subscriptions", chunkUT7K7CJZ_cjs.requireAuth(), async (c) => {
+apiRoutes3.get("/subscriptions", chunk6VPVJN4S_cjs.requireAuth(), async (c) => {
   const user = c.get("user");
   if (user?.role !== "admin") return c.json({ error: "Access denied" }, 403);
   const db = c.env.DB;
@@ -7543,7 +7814,7 @@ apiRoutes3.get("/subscriptions", chunkUT7K7CJZ_cjs.requireAuth(), async (c) => {
   const result = await subscriptionService.list(filters);
   return c.json(result);
 });
-apiRoutes3.get("/stats", chunkUT7K7CJZ_cjs.requireAuth(), async (c) => {
+apiRoutes3.get("/stats", chunk6VPVJN4S_cjs.requireAuth(), async (c) => {
   const user = c.get("user");
   if (user?.role !== "admin") return c.json({ error: "Access denied" }, 403);
   const db = c.env.DB;
@@ -7552,7 +7823,7 @@ apiRoutes3.get("/stats", chunkUT7K7CJZ_cjs.requireAuth(), async (c) => {
   const stats = await subscriptionService.getStats();
   return c.json(stats);
 });
-apiRoutes3.post("/sync-subscriptions", chunkUT7K7CJZ_cjs.requireAuth(), async (c) => {
+apiRoutes3.post("/sync-subscriptions", chunk6VPVJN4S_cjs.requireAuth(), async (c) => {
   const user = c.get("user");
   if (user?.role !== "admin") return c.json({ error: "Access denied" }, 403);
   const db = c.env.DB;
@@ -7600,7 +7871,7 @@ apiRoutes3.post("/sync-subscriptions", chunkUT7K7CJZ_cjs.requireAuth(), async (c
     }, 500);
   }
 });
-apiRoutes3.get("/events", chunkUT7K7CJZ_cjs.requireAuth(), async (c) => {
+apiRoutes3.get("/events", chunk6VPVJN4S_cjs.requireAuth(), async (c) => {
   const user = c.get("user");
   if (user?.role !== "admin") return c.json({ error: "Access denied" }, 403);
   const db = c.env.DB;
@@ -7666,7 +7937,7 @@ function createStripePlugin() {
 var stripePlugin = createStripePlugin();
 
 // src/middleware/plugin-menu.ts
-var REGISTRY_MENU_PLUGINS = Object.values(chunkNA3BD6LU_cjs.PLUGIN_REGISTRY).filter((p) => p.adminMenu !== null).map((p) => ({
+var REGISTRY_MENU_PLUGINS = Object.values(chunkQNY7OU4B_cjs.PLUGIN_REGISTRY).filter((p) => p.adminMenu !== null).map((p) => ({
   codeName: p.codeName,
   label: p.adminMenu.label,
   path: p.adminMenu.path,
@@ -7754,6 +8025,33 @@ function pluginMenuMiddleware() {
         c.res = new Response(html, { status, headers });
       }
     }
+  };
+}
+
+// src/middleware/tenant.ts
+function tenantMiddleware() {
+  return async (c, next) => {
+    const user = c.get("user");
+    if (!user) {
+      return next();
+    }
+    let tenantId;
+    if (user.role === "super_admin") {
+      const headerTenantId = c.req.header("X-Tenant-Id");
+      if (headerTenantId) {
+        const tenant = await c.env.DB.prepare("SELECT id FROM tenants WHERE id = ? AND is_active = 1").bind(headerTenantId).first();
+        if (!tenant) {
+          return c.json({ error: "Tenant not found" }, 404);
+        }
+        tenantId = headerTenantId;
+      }
+    } else {
+      tenantId = user.tenantId;
+    }
+    if (tenantId) {
+      c.set("tenantId", tenantId);
+    }
+    return next();
   };
 }
 
@@ -8621,18 +8919,18 @@ function getRecentInvalidations(limit = 50) {
 }
 
 // src/plugins/cache/services/cache-warming.ts
-async function warmCommonCaches(db) {
+async function warmCommonCaches(db, tenantId = null) {
   let totalWarmed = 0;
   let totalErrors = 0;
   const details = [];
   try {
-    const collectionCount = await warmCollections(db);
+    const collectionCount = await warmCollections(db, tenantId);
     totalWarmed += collectionCount;
     details.push({ namespace: "collection", count: collectionCount });
-    const contentCount = await warmRecentContent(db);
+    const contentCount = await warmRecentContent(db, 50, tenantId);
     totalWarmed += contentCount;
     details.push({ namespace: "content", count: contentCount });
-    const mediaCount = await warmRecentMedia(db);
+    const mediaCount = await warmRecentMedia(db, 50, tenantId);
     totalWarmed += mediaCount;
     details.push({ namespace: "media", count: mediaCount });
   } catch (error) {
@@ -8645,13 +8943,13 @@ async function warmCommonCaches(db) {
     details
   };
 }
-async function warmCollections(db) {
+async function warmCollections(db, tenantId = null) {
   const config = CACHE_CONFIGS.collection;
   if (!config) return 0;
   const collectionCache = getCacheService(config);
   let count = 0;
   try {
-    const stmt = db.prepare("SELECT * FROM collections WHERE is_active = 1");
+    const stmt = tenantId ? db.prepare("SELECT * FROM collections WHERE is_active = 1 AND tenant_id = ?").bind(tenantId) : db.prepare("SELECT * FROM collections WHERE is_active = 1");
     const { results } = await stmt.all();
     for (const collection of results) {
       const key = collectionCache.generateKey("item", collection.id);
@@ -8666,13 +8964,13 @@ async function warmCollections(db) {
   }
   return count;
 }
-async function warmRecentContent(db, limit = 50) {
+async function warmRecentContent(db, limit = 50, tenantId = null) {
   const config = CACHE_CONFIGS.content;
   if (!config) return 0;
   const contentCache = getCacheService(config);
   let count = 0;
   try {
-    const stmt = db.prepare(`SELECT * FROM content ORDER BY created_at DESC LIMIT ${limit}`);
+    const stmt = tenantId ? db.prepare(`SELECT * FROM content WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ${limit}`).bind(tenantId) : db.prepare(`SELECT * FROM content ORDER BY created_at DESC LIMIT ${limit}`);
     const { results } = await stmt.all();
     for (const content2 of results) {
       const key = contentCache.generateKey("item", content2.id);
@@ -8687,13 +8985,13 @@ async function warmRecentContent(db, limit = 50) {
   }
   return count;
 }
-async function warmRecentMedia(db, limit = 50) {
+async function warmRecentMedia(db, limit = 50, tenantId = null) {
   const config = CACHE_CONFIGS.media;
   if (!config) return 0;
   const mediaCache = getCacheService(config);
   let count = 0;
   try {
-    const stmt = db.prepare(`SELECT * FROM media WHERE deleted_at IS NULL ORDER BY uploaded_at DESC LIMIT ${limit}`);
+    const stmt = tenantId ? db.prepare(`SELECT * FROM media WHERE deleted_at IS NULL AND tenant_id = ? ORDER BY uploaded_at DESC LIMIT ${limit}`).bind(tenantId) : db.prepare(`SELECT * FROM media WHERE deleted_at IS NULL ORDER BY uploaded_at DESC LIMIT ${limit}`);
     const { results } = await stmt.all();
     for (const media2 of results) {
       const key = mediaCache.generateKey("item", media2.id);
@@ -8898,7 +9196,7 @@ function renderCacheDashboard(data) {
     </script>
 
     <!-- Confirmation Dialogs -->
-    ${chunkPAQC3HAA_cjs.renderConfirmationDialog({
+    ${chunk3DRZA2HL_cjs.renderConfirmationDialog({
     id: "clear-all-cache-confirm",
     title: "Clear All Cache",
     message: "Are you sure you want to clear all cache entries? This cannot be undone.",
@@ -8909,7 +9207,7 @@ function renderCacheDashboard(data) {
     onConfirm: "performClearAllCaches()"
   })}
 
-    ${chunkPAQC3HAA_cjs.renderConfirmationDialog({
+    ${chunk3DRZA2HL_cjs.renderConfirmationDialog({
     id: "clear-namespace-cache-confirm",
     title: "Clear Namespace Cache",
     message: "Clear cache for this namespace?",
@@ -8920,7 +9218,7 @@ function renderCacheDashboard(data) {
     onConfirm: "performClearNamespaceCache()"
   })}
 
-    ${chunkPAQC3HAA_cjs.getConfirmationDialogScript()}
+    ${chunk3DRZA2HL_cjs.getConfirmationDialogScript()}
   `;
   const layoutData = {
     title: "Cache System",
@@ -9612,8 +9910,8 @@ function createSonicJSApp(config = {}) {
     c.set("appVersion", appVersion);
     await next();
   });
-  app2.use("*", chunkUT7K7CJZ_cjs.metricsMiddleware());
-  app2.use("*", chunkUT7K7CJZ_cjs.bootstrapMiddleware(config));
+  app2.use("*", chunk6VPVJN4S_cjs.metricsMiddleware());
+  app2.use("*", chunk6VPVJN4S_cjs.bootstrapMiddleware(config));
   if (config.middleware?.beforeAuth) {
     for (const middleware of config.middleware.beforeAuth) {
       app2.use("*", middleware);
@@ -9622,29 +9920,30 @@ function createSonicJSApp(config = {}) {
   app2.use("*", async (_c, next) => {
     await next();
   });
-  app2.use("*", chunkUT7K7CJZ_cjs.securityHeadersMiddleware());
-  app2.use("*", chunkUT7K7CJZ_cjs.csrfProtection());
+  app2.use("*", chunk6VPVJN4S_cjs.securityHeadersMiddleware());
+  app2.use("*", chunk6VPVJN4S_cjs.csrfProtection());
+  app2.use("*", tenantMiddleware());
   if (config.middleware?.afterAuth) {
     for (const middleware of config.middleware.afterAuth) {
       app2.use("*", middleware);
     }
   }
   app2.use("/admin/*", pluginMenuMiddleware());
-  app2.route("/api", chunkPAQC3HAA_cjs.api_default);
-  app2.route("/api/media", chunkPAQC3HAA_cjs.api_media_default);
-  app2.route("/api/system", chunkPAQC3HAA_cjs.api_system_default);
-  app2.route("/admin/api", chunkPAQC3HAA_cjs.admin_api_default);
-  app2.route("/admin/dashboard", chunkPAQC3HAA_cjs.router);
-  app2.route("/admin/collections", chunkPAQC3HAA_cjs.adminCollectionsRoutes);
-  app2.route("/admin/forms", chunkPAQC3HAA_cjs.adminFormsRoutes);
-  app2.route("/admin/settings", chunkPAQC3HAA_cjs.adminSettingsRoutes);
-  app2.route("/forms", chunkPAQC3HAA_cjs.public_forms_default);
-  app2.route("/api/forms", chunkPAQC3HAA_cjs.public_forms_default);
-  app2.route("/admin/api-reference", chunkPAQC3HAA_cjs.router2);
+  app2.route("/api", chunk3DRZA2HL_cjs.api_default);
+  app2.route("/api/media", chunk3DRZA2HL_cjs.api_media_default);
+  app2.route("/api/system", chunk3DRZA2HL_cjs.api_system_default);
+  app2.route("/admin/api", chunk3DRZA2HL_cjs.admin_api_default);
+  app2.route("/admin/dashboard", chunk3DRZA2HL_cjs.router);
+  app2.route("/admin/collections", chunk3DRZA2HL_cjs.adminCollectionsRoutes);
+  app2.route("/admin/forms", chunk3DRZA2HL_cjs.adminFormsRoutes);
+  app2.route("/admin/settings", chunk3DRZA2HL_cjs.adminSettingsRoutes);
+  app2.route("/forms", chunk3DRZA2HL_cjs.public_forms_default);
+  app2.route("/api/forms", chunk3DRZA2HL_cjs.public_forms_default);
+  app2.route("/admin/api-reference", chunk3DRZA2HL_cjs.router2);
   app2.route("/admin/database-tools", createDatabaseToolsAdminRoutes());
   app2.route("/admin/seed-data", createSeedDataAdminRoutes());
-  app2.route("/admin/content", chunkPAQC3HAA_cjs.admin_content_default);
-  app2.route("/admin/media", chunkPAQC3HAA_cjs.adminMediaRoutes);
+  app2.route("/admin/content", chunk3DRZA2HL_cjs.admin_content_default);
+  app2.route("/admin/media", chunk3DRZA2HL_cjs.adminMediaRoutes);
   app2.use("/auth/*", securityAuditMiddleware());
   if (securityAuditPlugin.routes && securityAuditPlugin.routes.length > 0) {
     for (const route of securityAuditPlugin.routes) {
@@ -9662,8 +9961,8 @@ function createSonicJSApp(config = {}) {
       app2.route(route.path, route.handler);
     }
   }
-  if (chunkPAQC3HAA_cjs.userProfilesPlugin.routes && chunkPAQC3HAA_cjs.userProfilesPlugin.routes.length > 0) {
-    for (const route of chunkPAQC3HAA_cjs.userProfilesPlugin.routes) {
+  if (chunk3DRZA2HL_cjs.userProfilesPlugin.routes && chunk3DRZA2HL_cjs.userProfilesPlugin.routes.length > 0) {
+    for (const route of chunk3DRZA2HL_cjs.userProfilesPlugin.routes) {
       app2.route(route.path, route.handler);
     }
   }
@@ -9677,11 +9976,12 @@ function createSonicJSApp(config = {}) {
       app2.route(route.path, route.handler);
     }
   }
-  app2.route("/admin/plugins", chunkPAQC3HAA_cjs.adminPluginRoutes);
-  app2.route("/admin/logs", chunkPAQC3HAA_cjs.adminLogsRoutes);
-  app2.route("/admin", chunkPAQC3HAA_cjs.userRoutes);
-  app2.route("/auth", chunkPAQC3HAA_cjs.auth_default);
-  app2.route("/", chunkPAQC3HAA_cjs.test_cleanup_default);
+  app2.route("/admin/tenants", admin_tenants_default);
+  app2.route("/admin/plugins", chunk3DRZA2HL_cjs.adminPluginRoutes);
+  app2.route("/admin/logs", chunk3DRZA2HL_cjs.adminLogsRoutes);
+  app2.route("/admin", chunk3DRZA2HL_cjs.userRoutes);
+  app2.route("/auth", chunk3DRZA2HL_cjs.auth_default);
+  app2.route("/", chunk3DRZA2HL_cjs.test_cleanup_default);
   if (emailPlugin.routes && emailPlugin.routes.length > 0) {
     for (const route of emailPlugin.routes) {
       app2.route(route.path, route.handler);
@@ -9769,95 +10069,107 @@ var VERSION = chunkVUISYUHY_cjs.package_default.version;
 
 Object.defineProperty(exports, "ROUTES_INFO", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.ROUTES_INFO; }
+  get: function () { return chunk3DRZA2HL_cjs.ROUTES_INFO; }
 });
 Object.defineProperty(exports, "adminApiRoutes", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.admin_api_default; }
+  get: function () { return chunk3DRZA2HL_cjs.admin_api_default; }
 });
 Object.defineProperty(exports, "adminCheckboxRoutes", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.adminCheckboxRoutes; }
+  get: function () { return chunk3DRZA2HL_cjs.adminCheckboxRoutes; }
 });
 Object.defineProperty(exports, "adminCodeExamplesRoutes", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.admin_code_examples_default; }
+  get: function () { return chunk3DRZA2HL_cjs.admin_code_examples_default; }
 });
 Object.defineProperty(exports, "adminCollectionsRoutes", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.adminCollectionsRoutes; }
+  get: function () { return chunk3DRZA2HL_cjs.adminCollectionsRoutes; }
 });
 Object.defineProperty(exports, "adminContentRoutes", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.admin_content_default; }
+  get: function () { return chunk3DRZA2HL_cjs.admin_content_default; }
 });
 Object.defineProperty(exports, "adminDashboardRoutes", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.router; }
+  get: function () { return chunk3DRZA2HL_cjs.router; }
 });
 Object.defineProperty(exports, "adminDesignRoutes", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.adminDesignRoutes; }
+  get: function () { return chunk3DRZA2HL_cjs.adminDesignRoutes; }
 });
 Object.defineProperty(exports, "adminLogsRoutes", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.adminLogsRoutes; }
+  get: function () { return chunk3DRZA2HL_cjs.adminLogsRoutes; }
 });
 Object.defineProperty(exports, "adminMediaRoutes", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.adminMediaRoutes; }
+  get: function () { return chunk3DRZA2HL_cjs.adminMediaRoutes; }
 });
 Object.defineProperty(exports, "adminPluginRoutes", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.adminPluginRoutes; }
+  get: function () { return chunk3DRZA2HL_cjs.adminPluginRoutes; }
 });
 Object.defineProperty(exports, "adminSettingsRoutes", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.adminSettingsRoutes; }
+  get: function () { return chunk3DRZA2HL_cjs.adminSettingsRoutes; }
 });
 Object.defineProperty(exports, "adminTestimonialsRoutes", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.admin_testimonials_default; }
+  get: function () { return chunk3DRZA2HL_cjs.admin_testimonials_default; }
 });
 Object.defineProperty(exports, "adminUsersRoutes", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.userRoutes; }
+  get: function () { return chunk3DRZA2HL_cjs.userRoutes; }
 });
 Object.defineProperty(exports, "apiContentCrudRoutes", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.api_content_crud_default; }
+  get: function () { return chunk3DRZA2HL_cjs.api_content_crud_default; }
 });
 Object.defineProperty(exports, "apiMediaRoutes", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.api_media_default; }
+  get: function () { return chunk3DRZA2HL_cjs.api_media_default; }
 });
 Object.defineProperty(exports, "apiRoutes", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.api_default; }
+  get: function () { return chunk3DRZA2HL_cjs.api_default; }
 });
 Object.defineProperty(exports, "apiSystemRoutes", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.api_system_default; }
+  get: function () { return chunk3DRZA2HL_cjs.api_system_default; }
 });
 Object.defineProperty(exports, "authRoutes", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.auth_default; }
+  get: function () { return chunk3DRZA2HL_cjs.auth_default; }
 });
 Object.defineProperty(exports, "createUserProfilesPlugin", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.createUserProfilesPlugin; }
+  get: function () { return chunk3DRZA2HL_cjs.createUserProfilesPlugin; }
 });
 Object.defineProperty(exports, "defineUserProfile", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.defineUserProfile; }
+  get: function () { return chunk3DRZA2HL_cjs.defineUserProfile; }
+});
+Object.defineProperty(exports, "getTenantId", {
+  enumerable: true,
+  get: function () { return chunk3DRZA2HL_cjs.getTenantId; }
+});
+Object.defineProperty(exports, "getTenantIdOrNull", {
+  enumerable: true,
+  get: function () { return chunk3DRZA2HL_cjs.getTenantIdOrNull; }
 });
 Object.defineProperty(exports, "getUserProfileConfig", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.getUserProfileConfig; }
+  get: function () { return chunk3DRZA2HL_cjs.getUserProfileConfig; }
+});
+Object.defineProperty(exports, "isSuperAdmin", {
+  enumerable: true,
+  get: function () { return chunk3DRZA2HL_cjs.isSuperAdmin; }
 });
 Object.defineProperty(exports, "userProfilesPlugin", {
   enumerable: true,
-  get: function () { return chunkPAQC3HAA_cjs.userProfilesPlugin; }
+  get: function () { return chunk3DRZA2HL_cjs.userProfilesPlugin; }
 });
 Object.defineProperty(exports, "Logger", {
   enumerable: true,
@@ -10025,167 +10337,167 @@ Object.defineProperty(exports, "workflowHistory", {
 });
 Object.defineProperty(exports, "AuthManager", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.AuthManager; }
+  get: function () { return chunk6VPVJN4S_cjs.AuthManager; }
 });
 Object.defineProperty(exports, "PermissionManager", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.PermissionManager; }
+  get: function () { return chunk6VPVJN4S_cjs.PermissionManager; }
 });
 Object.defineProperty(exports, "bootstrapMiddleware", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.bootstrapMiddleware; }
+  get: function () { return chunk6VPVJN4S_cjs.bootstrapMiddleware; }
 });
 Object.defineProperty(exports, "cacheHeaders", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.cacheHeaders; }
+  get: function () { return chunk6VPVJN4S_cjs.cacheHeaders; }
 });
 Object.defineProperty(exports, "compressionMiddleware", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.compressionMiddleware; }
+  get: function () { return chunk6VPVJN4S_cjs.compressionMiddleware; }
 });
 Object.defineProperty(exports, "detailedLoggingMiddleware", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.detailedLoggingMiddleware; }
+  get: function () { return chunk6VPVJN4S_cjs.detailedLoggingMiddleware; }
 });
 Object.defineProperty(exports, "getActivePlugins", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.getActivePlugins; }
+  get: function () { return chunk6VPVJN4S_cjs.getActivePlugins; }
 });
 Object.defineProperty(exports, "isPluginActive", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.isPluginActive; }
+  get: function () { return chunk6VPVJN4S_cjs.isPluginActive; }
 });
 Object.defineProperty(exports, "logActivity", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.logActivity; }
+  get: function () { return chunk6VPVJN4S_cjs.logActivity; }
 });
 Object.defineProperty(exports, "loggingMiddleware", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.loggingMiddleware; }
+  get: function () { return chunk6VPVJN4S_cjs.loggingMiddleware; }
 });
 Object.defineProperty(exports, "optionalAuth", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.optionalAuth; }
+  get: function () { return chunk6VPVJN4S_cjs.optionalAuth; }
 });
 Object.defineProperty(exports, "performanceLoggingMiddleware", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.performanceLoggingMiddleware; }
+  get: function () { return chunk6VPVJN4S_cjs.performanceLoggingMiddleware; }
 });
 Object.defineProperty(exports, "requireActivePlugin", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.requireActivePlugin; }
+  get: function () { return chunk6VPVJN4S_cjs.requireActivePlugin; }
 });
 Object.defineProperty(exports, "requireActivePlugins", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.requireActivePlugins; }
+  get: function () { return chunk6VPVJN4S_cjs.requireActivePlugins; }
 });
 Object.defineProperty(exports, "requireAnyPermission", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.requireAnyPermission; }
+  get: function () { return chunk6VPVJN4S_cjs.requireAnyPermission; }
 });
 Object.defineProperty(exports, "requireAuth", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.requireAuth; }
+  get: function () { return chunk6VPVJN4S_cjs.requireAuth; }
 });
 Object.defineProperty(exports, "requirePermission", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.requirePermission; }
+  get: function () { return chunk6VPVJN4S_cjs.requirePermission; }
 });
 Object.defineProperty(exports, "requireRole", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.requireRole; }
+  get: function () { return chunk6VPVJN4S_cjs.requireRole; }
 });
 Object.defineProperty(exports, "securityHeaders", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.securityHeadersMiddleware; }
+  get: function () { return chunk6VPVJN4S_cjs.securityHeadersMiddleware; }
 });
 Object.defineProperty(exports, "securityLoggingMiddleware", {
   enumerable: true,
-  get: function () { return chunkUT7K7CJZ_cjs.securityLoggingMiddleware; }
+  get: function () { return chunk6VPVJN4S_cjs.securityLoggingMiddleware; }
 });
 Object.defineProperty(exports, "PluginBootstrapService", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.PluginBootstrapService; }
+  get: function () { return chunkQNY7OU4B_cjs.PluginBootstrapService; }
 });
 Object.defineProperty(exports, "PluginServiceClass", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.PluginService; }
+  get: function () { return chunkQNY7OU4B_cjs.PluginService; }
 });
 Object.defineProperty(exports, "backfillFormSubmissions", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.backfillFormSubmissions; }
+  get: function () { return chunkQNY7OU4B_cjs.backfillFormSubmissions; }
 });
 Object.defineProperty(exports, "cleanupRemovedCollections", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.cleanupRemovedCollections; }
+  get: function () { return chunkQNY7OU4B_cjs.cleanupRemovedCollections; }
 });
 Object.defineProperty(exports, "createContentFromSubmission", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.createContentFromSubmission; }
+  get: function () { return chunkQNY7OU4B_cjs.createContentFromSubmission; }
 });
 Object.defineProperty(exports, "deriveCollectionSchemaFromFormio", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.deriveCollectionSchemaFromFormio; }
+  get: function () { return chunkQNY7OU4B_cjs.deriveCollectionSchemaFromFormio; }
 });
 Object.defineProperty(exports, "deriveSubmissionTitle", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.deriveSubmissionTitle; }
+  get: function () { return chunkQNY7OU4B_cjs.deriveSubmissionTitle; }
 });
 Object.defineProperty(exports, "fullCollectionSync", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.fullCollectionSync; }
+  get: function () { return chunkQNY7OU4B_cjs.fullCollectionSync; }
 });
 Object.defineProperty(exports, "getAvailableCollectionNames", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.getAvailableCollectionNames; }
+  get: function () { return chunkQNY7OU4B_cjs.getAvailableCollectionNames; }
 });
 Object.defineProperty(exports, "getManagedCollections", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.getManagedCollections; }
+  get: function () { return chunkQNY7OU4B_cjs.getManagedCollections; }
 });
 Object.defineProperty(exports, "isCollectionManaged", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.isCollectionManaged; }
+  get: function () { return chunkQNY7OU4B_cjs.isCollectionManaged; }
 });
 Object.defineProperty(exports, "loadCollectionConfig", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.loadCollectionConfig; }
+  get: function () { return chunkQNY7OU4B_cjs.loadCollectionConfig; }
 });
 Object.defineProperty(exports, "loadCollectionConfigs", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.loadCollectionConfigs; }
+  get: function () { return chunkQNY7OU4B_cjs.loadCollectionConfigs; }
 });
 Object.defineProperty(exports, "mapFormStatusToContentStatus", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.mapFormStatusToContentStatus; }
+  get: function () { return chunkQNY7OU4B_cjs.mapFormStatusToContentStatus; }
 });
 Object.defineProperty(exports, "registerCollections", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.registerCollections; }
+  get: function () { return chunkQNY7OU4B_cjs.registerCollections; }
 });
 Object.defineProperty(exports, "syncAllFormCollections", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.syncAllFormCollections; }
+  get: function () { return chunkQNY7OU4B_cjs.syncAllFormCollections; }
 });
 Object.defineProperty(exports, "syncCollection", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.syncCollection; }
+  get: function () { return chunkQNY7OU4B_cjs.syncCollection; }
 });
 Object.defineProperty(exports, "syncCollections", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.syncCollections; }
+  get: function () { return chunkQNY7OU4B_cjs.syncCollections; }
 });
 Object.defineProperty(exports, "syncFormCollection", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.syncFormCollection; }
+  get: function () { return chunkQNY7OU4B_cjs.syncFormCollection; }
 });
 Object.defineProperty(exports, "validateCollectionConfig", {
   enumerable: true,
-  get: function () { return chunkNA3BD6LU_cjs.validateCollectionConfig; }
+  get: function () { return chunkQNY7OU4B_cjs.validateCollectionConfig; }
 });
 Object.defineProperty(exports, "MigrationService", {
   enumerable: true,
-  get: function () { return chunkR6AJ5T3M_cjs.MigrationService; }
+  get: function () { return chunkA2XCPDQS_cjs.MigrationService; }
 });
 Object.defineProperty(exports, "renderFilterBar", {
   enumerable: true,

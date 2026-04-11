@@ -3,6 +3,7 @@ import { html, raw } from 'hono/html'
 import { z } from 'zod'
 import type { D1Database, KVNamespace, R2Bucket } from '@cloudflare/workers-types'
 import { requireAuth, requireRole } from '../middleware'
+import { getTenantId } from '../utils/tenant'
 import { renderMediaLibraryPage, MediaLibraryPageData, FolderStats, TypeStats } from '../templates/pages/admin-media-library.template'
 import { renderMediaFileDetails, MediaFileDetailsData } from '../templates/components/media-file-details.template'
 import { MediaFile, renderMediaFileCard } from '../templates/components/media-grid.template'
@@ -39,6 +40,7 @@ adminMediaRoutes.use('*', requireAuth())
 // Media library main page
 adminMediaRoutes.get('/', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')
     const { searchParams } = new URL(c.req.url)
     const folder = searchParams.get('folder') || 'all'
@@ -55,8 +57,8 @@ adminMediaRoutes.get('/', async (c) => {
 
     // Build query for media files
     let query = 'SELECT * FROM media'
-    const params: any[] = []
-    const conditions: string[] = ['deleted_at IS NULL']
+    const params: any[] = [tenantId]
+    const conditions: string[] = ['tenant_id = ?', 'deleted_at IS NULL']
     
     if (folder !== 'all') {
       conditions.push('folder = ?')
@@ -93,11 +95,11 @@ adminMediaRoutes.get('/', async (c) => {
     const foldersStmt = db.prepare(`
       SELECT folder, COUNT(*) as count, SUM(size) as totalSize
       FROM media
-      WHERE deleted_at IS NULL
+      WHERE tenant_id = ? AND deleted_at IS NULL
       GROUP BY folder
       ORDER BY folder
     `)
-    const { results: folders } = await foldersStmt.all()
+    const { results: folders } = await foldersStmt.bind(tenantId).all()
     
     // Get type statistics
     const typesStmt = db.prepare(`
@@ -110,10 +112,10 @@ adminMediaRoutes.get('/', async (c) => {
         END as type,
         COUNT(*) as count
       FROM media
-      WHERE deleted_at IS NULL
+      WHERE tenant_id = ? AND deleted_at IS NULL
       GROUP BY type
     `)
-    const { results: types } = await typesStmt.all()
+    const { results: types } = await typesStmt.bind(tenantId).all()
     
     // Process media files with local serving URLs
     const mediaFiles: MediaFile[] = results.map((row: any) => ({
@@ -172,13 +174,14 @@ adminMediaRoutes.get('/', async (c) => {
 // Media selector endpoint (HTMX endpoint for content form media selection)
 adminMediaRoutes.get('/selector', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const { searchParams } = new URL(c.req.url)
     const search = searchParams.get('search') || ''
     const db = c.env.DB
 
     // Build search query
-    let query = 'SELECT * FROM media WHERE deleted_at IS NULL'
-    const params: any[] = []
+    let query = 'SELECT * FROM media WHERE tenant_id = ? AND deleted_at IS NULL'
+    const params: any[] = [tenantId]
 
     if (search.trim()) {
       query += ' AND (filename LIKE ? OR original_name LIKE ? OR alt LIKE ?)'
@@ -296,16 +299,17 @@ adminMediaRoutes.get('/selector', async (c) => {
 // Search media files (HTMX endpoint)
 adminMediaRoutes.get('/search', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const { searchParams } = new URL(c.req.url)
     const search = searchParams.get('search') || ''
     const folder = searchParams.get('folder') || 'all'
     const type = searchParams.get('type') || 'all'
     const db = c.env.DB
-    
+
     // Build search query
     let query = 'SELECT * FROM media'
-    const params: any[] = []
-    const conditions: string[] = []
+    const params: any[] = [tenantId]
+    const conditions: string[] = ['tenant_id = ?']
     
     if (search.trim()) {
       conditions.push('(filename LIKE ? OR original_name LIKE ? OR alt LIKE ?)')
@@ -368,11 +372,12 @@ adminMediaRoutes.get('/search', async (c) => {
 // Get file details modal (HTMX endpoint)
 adminMediaRoutes.get('/:id/details', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const id = c.req.param('id')
     const db = c.env.DB
-    
-    const stmt = db.prepare('SELECT * FROM media WHERE id = ?')
-    const result = await stmt.bind(id).first() as any
+
+    const stmt = db.prepare('SELECT * FROM media WHERE id = ? AND tenant_id = ?')
+    const result = await stmt.bind(id, tenantId).first() as any
     
     if (!result) {
       return c.html('<div class="text-red-500">File not found</div>')
@@ -412,6 +417,7 @@ adminMediaRoutes.get('/:id/details', async (c) => {
 // Upload files endpoint (HTMX compatible)
 adminMediaRoutes.post('/upload', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')
     const formData = await c.req.formData()
     const fileEntries = formData.getAll('files') as unknown[]
@@ -471,7 +477,7 @@ adminMediaRoutes.post('/upload', async (c) => {
         const fileExtension = file.name.split('.').pop() || ''
         const filename = `${fileId}.${fileExtension}`
         const folder = formData.get('folder') as string || 'uploads'
-        const r2Key = `${folder}/${filename}`
+        const r2Key = `${tenantId}/${folder}/${filename}`
 
         // Upload to R2
         const arrayBuffer = await file.arrayBuffer()
@@ -516,11 +522,11 @@ adminMediaRoutes.post('/upload', async (c) => {
         // Save to database
         const stmt = c.env.DB.prepare(`
           INSERT INTO media (
-            id, filename, original_name, mime_type, size, width, height, 
-            folder, r2_key, public_url, thumbnail_url, uploaded_by, uploaded_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, filename, original_name, mime_type, size, width, height,
+            folder, r2_key, public_url, thumbnail_url, uploaded_by, uploaded_at, tenant_id
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `)
-        
+
         await stmt.bind(
           fileId,
           filename,
@@ -534,7 +540,8 @@ adminMediaRoutes.post('/upload', async (c) => {
           publicUrl,
           thumbnailUrl,
           user!.userId,
-          Math.floor(Date.now() / 1000)
+          Math.floor(Date.now() / 1000),
+          tenantId
         ).run()
 
         uploadResults.push({
@@ -561,9 +568,9 @@ adminMediaRoutes.post('/upload', async (c) => {
       try {
         const folderEntry = formData.get('folder')
         const folder = typeof folderEntry === 'string' ? folderEntry : 'uploads'
-        const query = 'SELECT * FROM media WHERE deleted_at IS NULL ORDER BY uploaded_at DESC LIMIT 24'
+        const query = 'SELECT * FROM media WHERE tenant_id = ? AND deleted_at IS NULL ORDER BY uploaded_at DESC LIMIT 24'
         const stmt = c.env.DB.prepare(query)
-        const { results } = await stmt.all()
+        const { results } = await stmt.bind(tenantId).all()
 
         const mediaFiles = results.map((row: any) => ({
           id: row.id,
@@ -661,13 +668,14 @@ adminMediaRoutes.get('/file/*', async (c) => {
 // Update media file metadata (HTMX compatible)
 adminMediaRoutes.put('/:id', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')
     const fileId = c.req.param('id')
     const formData = await c.req.formData()
-    
+
     // Get file record
-    const stmt = c.env.DB.prepare('SELECT * FROM media WHERE id = ? AND deleted_at IS NULL')
-    const fileRecord = await stmt.bind(fileId).first() as any
+    const stmt = c.env.DB.prepare('SELECT * FROM media WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL')
+    const fileRecord = await stmt.bind(fileId, tenantId).first() as any
     
     if (!fileRecord) {
       return c.html(html`
@@ -694,16 +702,17 @@ adminMediaRoutes.put('/:id', async (c) => {
 
     // Update database
     const updateStmt = c.env.DB.prepare(`
-      UPDATE media 
+      UPDATE media
       SET alt = ?, caption = ?, tags = ?, updated_at = ?
-      WHERE id = ?
+      WHERE id = ? AND tenant_id = ?
     `)
     await updateStmt.bind(
       alt,
       caption,
       JSON.stringify(tags),
       Math.floor(Date.now() / 1000),
-      fileId
+      fileId,
+      tenantId
     ).run()
 
     // TODO: Cache invalidation removed during migration
@@ -732,16 +741,17 @@ adminMediaRoutes.put('/:id', async (c) => {
 // Cleanup unused media files (HTMX compatible)
 adminMediaRoutes.delete('/cleanup', requireRole('admin'), async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const db = c.env.DB
 
     // Find all media files
-    const allMediaStmt = db.prepare('SELECT id, r2_key, filename FROM media WHERE deleted_at IS NULL')
-    const { results: allMedia } = await allMediaStmt.all<{ id: string; r2_key: string; filename: string }>()
+    const allMediaStmt = db.prepare('SELECT id, r2_key, filename FROM media WHERE tenant_id = ? AND deleted_at IS NULL')
+    const { results: allMedia } = await allMediaStmt.bind(tenantId).all<{ id: string; r2_key: string; filename: string }>()
 
     // Find media files referenced in content
     // Content can reference media in various JSON fields like data, hero_image, etc.
-    const contentStmt = db.prepare('SELECT data FROM content')
-    const { results: contentRecords } = await contentStmt.all<{ data: unknown }>()
+    const contentStmt = db.prepare('SELECT data FROM content WHERE tenant_id = ?')
+    const { results: contentRecords } = await contentStmt.bind(tenantId).all<{ data: unknown }>()
 
     // Extract all media URLs from content
     const referencedUrls = new Set<string>()
@@ -783,8 +793,8 @@ adminMediaRoutes.delete('/cleanup', requireRole('admin'), async (c) => {
         await c.env.MEDIA_BUCKET.delete(file.r2_key)
 
         // Soft delete in database
-        const deleteStmt = db.prepare('UPDATE media SET deleted_at = ? WHERE id = ?')
-        await deleteStmt.bind(Math.floor(Date.now() / 1000), file.id).run()
+        const deleteStmt = db.prepare('UPDATE media SET deleted_at = ? WHERE id = ? AND tenant_id = ?')
+        await deleteStmt.bind(Math.floor(Date.now() / 1000), file.id, tenantId).run()
 
         deletedCount++
       } catch (error) {
@@ -836,12 +846,13 @@ adminMediaRoutes.delete('/cleanup', requireRole('admin'), async (c) => {
 // Delete media file (HTMX compatible)
 adminMediaRoutes.delete('/:id', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')
     const fileId = c.req.param('id')
 
     // Get file record
-    const stmt = c.env.DB.prepare('SELECT * FROM media WHERE id = ? AND deleted_at IS NULL')
-    const fileRecord = await stmt.bind(fileId).first() as any
+    const stmt = c.env.DB.prepare('SELECT * FROM media WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL')
+    const fileRecord = await stmt.bind(fileId, tenantId).first() as any
 
     if (!fileRecord) {
       return c.html(html`
@@ -869,8 +880,8 @@ adminMediaRoutes.delete('/:id', async (c) => {
     }
 
     // Soft delete in database
-    const deleteStmt = c.env.DB.prepare('UPDATE media SET deleted_at = ? WHERE id = ?')
-    await deleteStmt.bind(Math.floor(Date.now() / 1000), fileId).run()
+    const deleteStmt = c.env.DB.prepare('UPDATE media SET deleted_at = ? WHERE id = ? AND tenant_id = ?')
+    await deleteStmt.bind(Math.floor(Date.now() / 1000), fileId, tenantId).run()
 
     // TODO: Cache invalidation removed during migration
 

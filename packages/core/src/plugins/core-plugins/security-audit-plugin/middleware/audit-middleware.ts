@@ -5,6 +5,7 @@ import { BruteForceDetector } from '../services/brute-force-detector'
 import { PluginService } from '../../../../services'
 import type { SecurityAuditSettings, SecurityEventType } from '../types'
 import { DEFAULT_SETTINGS } from '../types'
+import { getTenantIdOrNull } from '../../../../utils/tenant'
 
 function extractRequestInfo(c: Context<{ Bindings: Bindings; Variables: Variables }>) {
   const ip = c.req.header('cf-connecting-ip')
@@ -65,6 +66,7 @@ export function securityAuditMiddleware() {
     }
 
     const db = c.env.DB
+    const tenantId = getTenantIdOrNull(c)
 
     // Check if plugin is active
     if (!await isPluginActive(db)) {
@@ -100,7 +102,7 @@ export function securityAuditMiddleware() {
         const lockStatus = await detector.isLocked(ip, preExtractedEmail)
 
         if (lockStatus.locked) {
-          const service = new SecurityAuditService(db, settings)
+          const service = new SecurityAuditService(db, settings, tenantId)
           // Log the blocked attempt asynchronously
           const logPromise = service.logEvent({
             eventType: 'login_failure',
@@ -131,7 +133,7 @@ export function securityAuditMiddleware() {
     await next()
 
     // After response, log the event asynchronously
-    const logPromise = logAuthEvent(c, db, settings, ip, userAgent, countryCode, fingerprint, path, method, preExtractedEmail)
+    const logPromise = logAuthEvent(c, db, settings, ip, userAgent, countryCode, fingerprint, path, method, preExtractedEmail, tenantId)
 
     if (c.executionCtx?.waitUntil) {
       c.executionCtx.waitUntil(logPromise)
@@ -149,10 +151,11 @@ async function logAuthEvent(
   fingerprint: string,
   path: string,
   method: string,
-  preExtractedEmail: string = ''
+  preExtractedEmail: string = '',
+  tenantId: string | null = null
 ): Promise<void> {
   try {
-    const service = new SecurityAuditService(db, settings)
+    const service = new SecurityAuditService(db, settings, tenantId)
     const status = c.res.status
     const isLoginPost = (path === '/auth/login' || path === '/auth/login/form') && method === 'POST'
     const isFormLogin = path === '/auth/login/form'

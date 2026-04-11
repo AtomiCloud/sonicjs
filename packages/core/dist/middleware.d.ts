@@ -1,6 +1,6 @@
 import * as hono from 'hono';
 import { Context, Next, MiddlewareHandler } from 'hono';
-import { S as SonicJSConfig } from './app-COElO4Rm.js';
+import { S as SonicJSConfig } from './app-D90PZ6rY.js';
 import '@cloudflare/workers-types';
 
 type Bindings = {
@@ -28,11 +28,12 @@ type JWTPayload = {
     userId: string;
     email: string;
     role: string;
+    tenantId?: string | null;
     exp: number;
     iat: number;
 };
 declare class AuthManager {
-    static generateToken(userId: string, email: string, role: string, secret?: string): Promise<string>;
+    static generateToken(userId: string, email: string, role: string, secret?: string, tenantId?: string | null): Promise<string>;
     static verifyToken(token: string, secret?: string): Promise<JWTPayload | null>;
     static hashPassword(password: string): Promise<string>;
     static hashPasswordLegacy(password: string): Promise<string>;

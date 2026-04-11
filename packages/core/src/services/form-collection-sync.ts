@@ -195,7 +195,7 @@ export async function syncFormCollection(db: D1Database, form: {
   description?: string | null
   formio_schema: any
   is_active: number | boolean
-}): Promise<{ collectionId: string; status: 'created' | 'updated' | 'unchanged' }> {
+}, tenantId: string | null = null): Promise<{ collectionId: string; status: 'created' | 'updated' | 'unchanged' }> {
   const collectionName = `form_${form.name}`
   const displayName = `${form.display_name} (Form)`
 
@@ -210,28 +210,50 @@ export async function syncFormCollection(db: D1Database, form: {
   const isActive = form.is_active ? 1 : 0
 
   // Check if shadow collection already exists
-  const existing = await db.prepare(
-    'SELECT id, schema, display_name, description, is_active FROM collections WHERE source_type = ? AND source_id = ?'
-  ).bind('form', form.id).first() as any
+  const existingQuery = tenantId
+    ? 'SELECT id, schema, display_name, description, is_active FROM collections WHERE source_type = ? AND source_id = ? AND tenant_id = ?'
+    : 'SELECT id, schema, display_name, description, is_active FROM collections WHERE source_type = ? AND source_id = ?'
+  const existingStmt = tenantId
+    ? db.prepare(existingQuery).bind('form', form.id, tenantId)
+    : db.prepare(existingQuery).bind('form', form.id)
+  const existing = await existingStmt.first() as any
 
   if (!existing) {
     // Create new shadow collection
     const collectionId = `col-form-${form.name}-${crypto.randomUUID().slice(0, 8)}`
 
-    await db.prepare(`
-      INSERT INTO collections (id, name, display_name, description, schema, is_active, managed, source_type, source_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, 1, 'form', ?, ?, ?)
-    `).bind(
-      collectionId,
-      collectionName,
-      displayName,
-      form.description || null,
-      schemaJson,
-      isActive,
-      form.id,
-      now,
-      now
-    ).run()
+    if (tenantId) {
+      await db.prepare(`
+        INSERT INTO collections (id, name, display_name, description, schema, is_active, managed, source_type, source_id, tenant_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, 1, 'form', ?, ?, ?, ?)
+      `).bind(
+        collectionId,
+        collectionName,
+        displayName,
+        form.description || null,
+        schemaJson,
+        isActive,
+        form.id,
+        tenantId,
+        now,
+        now
+      ).run()
+    } else {
+      await db.prepare(`
+        INSERT INTO collections (id, name, display_name, description, schema, is_active, managed, source_type, source_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, 1, 'form', ?, ?, ?)
+      `).bind(
+        collectionId,
+        collectionName,
+        displayName,
+        form.description || null,
+        schemaJson,
+        isActive,
+        form.id,
+        now,
+        now
+      ).run()
+    }
 
     console.log(`[FormSync] Created shadow collection: ${collectionName}`)
     return { collectionId, status: 'created' }
@@ -268,7 +290,7 @@ export async function syncFormCollection(db: D1Database, form: {
 /**
  * Sync all active forms to shadow collections
  */
-export async function syncAllFormCollections(db: D1Database): Promise<void> {
+export async function syncAllFormCollections(db: D1Database, tenantId: string | null = null): Promise<void> {
   try {
     // Check if forms table exists
     const tableCheck = await db.prepare(
@@ -279,9 +301,13 @@ export async function syncAllFormCollections(db: D1Database): Promise<void> {
       return
     }
 
-    const { results: forms } = await db.prepare(
-      'SELECT id, name, display_name, description, formio_schema, is_active FROM forms'
-    ).all()
+    const formsQuery = tenantId
+      ? 'SELECT id, name, display_name, description, formio_schema, is_active FROM forms WHERE tenant_id = ?'
+      : 'SELECT id, name, display_name, description, formio_schema, is_active FROM forms'
+    const formsStmt = tenantId
+      ? db.prepare(formsQuery).bind(tenantId)
+      : db.prepare(formsQuery)
+    const { results: forms } = await formsStmt.all()
 
     if (!forms || forms.length === 0) {
       console.log('[FormSync] No forms found, skipping')
@@ -293,12 +319,12 @@ export async function syncAllFormCollections(db: D1Database): Promise<void> {
 
     for (const form of forms) {
       try {
-        const result = await syncFormCollection(db, form as any)
+        const result = await syncFormCollection(db, form as any, tenantId)
         if (result.status === 'created') created++
         if (result.status === 'updated') updated++
 
         // Backfill existing submissions that don't have content_id
-        await backfillFormSubmissions(db, form.id as string, result.collectionId)
+        await backfillFormSubmissions(db, form.id as string, result.collectionId, tenantId)
       } catch (error) {
         console.error(`[FormSync] Error syncing form ${form.name}:`, error)
       }
@@ -323,21 +349,28 @@ export async function createContentFromSubmission(
     userAgent?: string | null
     userEmail?: string | null
     userId?: string | null
-  } = {}
+  } = {},
+  tenantId: string | null = null
 ): Promise<string | null> {
   try {
     // Find the shadow collection
-    let collection = await db.prepare(
-      'SELECT id FROM collections WHERE source_type = ? AND source_id = ?'
-    ).bind('form', form.id).first() as any
+    const collectionQuery = tenantId
+      ? 'SELECT id FROM collections WHERE source_type = ? AND source_id = ? AND tenant_id = ?'
+      : 'SELECT id FROM collections WHERE source_type = ? AND source_id = ?'
+    let collection = tenantId
+      ? await db.prepare(collectionQuery).bind('form', form.id, tenantId).first() as any
+      : await db.prepare(collectionQuery).bind('form', form.id).first() as any
 
     if (!collection) {
       // Shadow collection missing — try to create it on the fly
       console.warn(`[FormSync] No shadow collection found for form ${form.name}, attempting to create...`)
       try {
-        const fullForm = await db.prepare(
-          'SELECT id, name, display_name, description, formio_schema, is_active FROM forms WHERE id = ?'
-        ).bind(form.id).first() as any
+        const formQuery = tenantId
+          ? 'SELECT id, name, display_name, description, formio_schema, is_active FROM forms WHERE id = ? AND tenant_id = ?'
+          : 'SELECT id, name, display_name, description, formio_schema, is_active FROM forms WHERE id = ?'
+        const fullForm = tenantId
+          ? await db.prepare(formQuery).bind(form.id, tenantId).first() as any
+          : await db.prepare(formQuery).bind(form.id).first() as any
 
         if (fullForm) {
           const schema = typeof fullForm.formio_schema === 'string'
@@ -350,11 +383,11 @@ export async function createContentFromSubmission(
             description: fullForm.description,
             formio_schema: schema,
             is_active: fullForm.is_active ?? 1
-          })
+          }, tenantId)
           // Re-query the collection
-          collection = await db.prepare(
-            'SELECT id FROM collections WHERE source_type = ? AND source_id = ?'
-          ).bind('form', form.id).first() as any
+          collection = tenantId
+            ? await db.prepare(collectionQuery).bind('form', form.id, tenantId).first() as any
+            : await db.prepare(collectionQuery).bind('form', form.id).first() as any
           console.log(`[FormSync] On-the-fly sync result: ${result.status}, collectionId: ${result.collectionId}`)
         }
       } catch (syncErr) {
@@ -392,37 +425,71 @@ export async function createContentFromSubmission(
 
     // Ensure the system user exists (D1 enforces foreign keys)
     if (authorId === SYSTEM_FORM_USER_ID) {
-      const systemUser = await db.prepare('SELECT id FROM users WHERE id = ?').bind(SYSTEM_FORM_USER_ID).first()
+      const userQuery = tenantId
+        ? 'SELECT id FROM users WHERE id = ? AND tenant_id = ?'
+        : 'SELECT id FROM users WHERE id = ?'
+      const systemUser = tenantId
+        ? await db.prepare(userQuery).bind(SYSTEM_FORM_USER_ID, tenantId).first()
+        : await db.prepare(userQuery).bind(SYSTEM_FORM_USER_ID).first()
       if (!systemUser) {
         console.log('[FormSync] System form user missing, creating...')
         const sysNow = Date.now()
-        await db.prepare(`
-          INSERT OR IGNORE INTO users (id, email, username, first_name, last_name, password_hash, role, is_active, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, NULL, 'viewer', 0, ?, ?)
-        `).bind(SYSTEM_FORM_USER_ID, 'system-forms@sonicjs.internal', 'system-forms', 'Form', 'Submission', sysNow, sysNow).run()
+        if (tenantId) {
+          await db.prepare(`
+            INSERT OR IGNORE INTO users (id, email, username, first_name, last_name, password_hash, role, is_active, tenant_id, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, NULL, 'viewer', 0, ?, ?, ?)
+          `).bind(SYSTEM_FORM_USER_ID, 'system-forms@sonicjs.internal', 'system-forms', 'Form', 'Submission', tenantId, sysNow, sysNow).run()
+        } else {
+          await db.prepare(`
+            INSERT OR IGNORE INTO users (id, email, username, first_name, last_name, password_hash, role, is_active, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, NULL, 'viewer', 0, ?, ?)
+          `).bind(SYSTEM_FORM_USER_ID, 'system-forms@sonicjs.internal', 'system-forms', 'Form', 'Submission', sysNow, sysNow).run()
+        }
       }
     }
 
     console.log(`[FormSync] Inserting content: id=${contentId}, collection=${collection.id}, slug=${slug}, title=${title}, author=${authorId}`)
 
-    await db.prepare(`
-      INSERT INTO content (id, collection_id, slug, title, data, status, author_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, 'published', ?, ?, ?)
-    `).bind(
-      contentId,
-      collection.id,
-      slug,
-      title,
-      JSON.stringify(contentData),
-      authorId,
-      now,
-      now
-    ).run()
+    if (tenantId) {
+      await db.prepare(`
+        INSERT INTO content (id, collection_id, slug, title, data, status, author_id, tenant_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, 'published', ?, ?, ?, ?)
+      `).bind(
+        contentId,
+        collection.id,
+        slug,
+        title,
+        JSON.stringify(contentData),
+        authorId,
+        tenantId,
+        now,
+        now
+      ).run()
+    } else {
+      await db.prepare(`
+        INSERT INTO content (id, collection_id, slug, title, data, status, author_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, 'published', ?, ?, ?)
+      `).bind(
+        contentId,
+        collection.id,
+        slug,
+        title,
+        JSON.stringify(contentData),
+        authorId,
+        now,
+        now
+      ).run()
+    }
 
     // Link submission to content
-    await db.prepare(
-      'UPDATE form_submissions SET content_id = ? WHERE id = ?'
-    ).bind(contentId, submissionId).run()
+    const updateSubQuery = tenantId
+      ? 'UPDATE form_submissions SET content_id = ? WHERE id = ? AND tenant_id = ?'
+      : 'UPDATE form_submissions SET content_id = ? WHERE id = ?'
+    if (tenantId) {
+      await db.prepare(updateSubQuery).bind(contentId, submissionId, tenantId).run()
+    } else {
+      await db.prepare(updateSubQuery).bind(contentId, submissionId).run()
+    }
 
     console.log(`[FormSync] Content created successfully: ${contentId}`)
     return contentId
@@ -438,21 +505,29 @@ export async function createContentFromSubmission(
 export async function backfillFormSubmissions(
   db: D1Database,
   formId: string,
-  collectionId: string
+  collectionId: string,
+  tenantId: string | null = null
 ): Promise<number> {
   try {
-    const { results: submissions } = await db.prepare(
-      'SELECT id, submission_data, user_email, ip_address, user_agent, user_id, submitted_at FROM form_submissions WHERE form_id = ? AND content_id IS NULL'
-    ).bind(formId).all()
+    const subsQuery = tenantId
+      ? 'SELECT id, submission_data, user_email, ip_address, user_agent, user_id, submitted_at FROM form_submissions WHERE form_id = ? AND content_id IS NULL AND tenant_id = ?'
+      : 'SELECT id, submission_data, user_email, ip_address, user_agent, user_id, submitted_at FROM form_submissions WHERE form_id = ? AND content_id IS NULL'
+    const subsStmt = tenantId
+      ? db.prepare(subsQuery).bind(formId, tenantId)
+      : db.prepare(subsQuery).bind(formId)
+    const { results: submissions } = await subsStmt.all()
 
     if (!submissions || submissions.length === 0) {
       return 0
     }
 
     // Get form info
-    const form = await db.prepare(
-      'SELECT id, name, display_name FROM forms WHERE id = ?'
-    ).bind(formId).first() as any
+    const formQuery = tenantId
+      ? 'SELECT id, name, display_name FROM forms WHERE id = ? AND tenant_id = ?'
+      : 'SELECT id, name, display_name FROM forms WHERE id = ?'
+    const form = tenantId
+      ? await db.prepare(formQuery).bind(formId, tenantId).first() as any
+      : await db.prepare(formQuery).bind(formId).first() as any
 
     if (!form) return 0
 
@@ -473,7 +548,8 @@ export async function backfillFormSubmissions(
             userAgent: sub.user_agent as string | null,
             userEmail: sub.user_email as string | null,
             userId: sub.user_id as string | null
-          }
+          },
+          tenantId
         )
         if (contentId) count++
       } catch (error) {

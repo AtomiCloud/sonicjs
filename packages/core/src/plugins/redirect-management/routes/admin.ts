@@ -4,6 +4,7 @@ import { renderRedirectListPage } from '../templates/redirect-list.template'
 import { renderRedirectFormPage } from '../templates/redirect-form.template'
 import { generateCSV, buildExportFilename, parseCSV, validateCSVBatch, generateErrorCSV } from '../services/csv.service'
 import type { RedirectFilter, MatchType, StatusCode, CreateRedirectInput, UpdateRedirectInput, DuplicateHandling, ParsedRedirectRow } from '../types'
+import { getTenantIdOrNull } from '../../../utils/tenant'
 
 /**
  * Render an alert message HTML fragment for HTMX
@@ -271,7 +272,13 @@ export function createRedirectAdminRoutes(): Hono {
       const userId = c.get('user')?.id
       let actualUserId = userId
       if (!actualUserId) {
-        const adminUser = await db.prepare('SELECT id FROM users WHERE role = ? LIMIT 1').bind('admin').first()
+        const importTenantId = getTenantIdOrNull(c)
+        const adminUserQuery = importTenantId
+          ? 'SELECT id FROM users WHERE role = ? AND tenant_id = ? LIMIT 1'
+          : 'SELECT id FROM users WHERE role = ? LIMIT 1'
+        const adminUser = importTenantId
+          ? await db.prepare(adminUserQuery).bind('admin', importTenantId).first()
+          : await db.prepare(adminUserQuery).bind('admin').first()
         actualUserId = adminUser?.id as string || 'system'
       }
 
@@ -394,7 +401,13 @@ export function createRedirectAdminRoutes(): Hono {
       let userId = c.get('user')?.id
       if (!userId) {
         // Fallback: get first admin user from database
-        const adminUser = await db.prepare('SELECT id FROM users WHERE role = ? LIMIT 1').bind('admin').first()
+        const createTenantId = getTenantIdOrNull(c)
+        const createAdminQuery = createTenantId
+          ? 'SELECT id FROM users WHERE role = ? AND tenant_id = ? LIMIT 1'
+          : 'SELECT id FROM users WHERE role = ? LIMIT 1'
+        const adminUser = createTenantId
+          ? await db.prepare(createAdminQuery).bind('admin', createTenantId).first()
+          : await db.prepare(createAdminQuery).bind('admin').first()
         userId = adminUser?.id as string || 'system'
       }
 

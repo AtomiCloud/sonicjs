@@ -4,7 +4,7 @@ compatibility_date = "2025-05-05"
 compatibility_flags = ["nodejs_compat"]
 
 # Cloudflare account
-account_id = "f9d6328dc3115e621758a741dda3d5c4"
+account_id = "177aa484a66427793543c5e958f8d020"
 
 # Cloudflare Workers settings
 workers_dev = true
@@ -13,19 +13,19 @@ workers_dev = true
 # Note: database_name and database_id are automatically updated by GitHub Actions
 [[d1_databases]]
 binding = "DB"
-database_name = "sonicjs-worktree-main"
-database_id = "b14707c3-a1c5-4565-8ffc-4f22f930d289"
+database_name = "sonicjs-prod"
+database_id = "3753cac0-55dd-4edf-bfa4-6519937db5f4"
 migrations_dir = "./migrations"
 
-# R2 Bucket for media storage (using CI bucket)
+# R2 Bucket for media storage
 [[r2_buckets]]
 binding = "MEDIA_BUCKET"
-bucket_name = "sonicjs-ci-media"
+bucket_name = "sonicjs-media-prod"
 
-# KV Cache (using CI namespace)
+# KV Cache
 [[kv_namespaces]]
 binding = "CACHE_KV"
-id = "a16f8246fc294d809c90b0fb2df6d363"
+id = "8546a637323a4584809c1da1d34373f0"
 
 # Environment variables
 [vars]

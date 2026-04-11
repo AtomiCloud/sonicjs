@@ -1,6 +1,6 @@
-export { B as Bindings, a as SonicJSApp, S as SonicJSConfig, V as Variables, c as createSonicJSApp, s as setupCoreMiddleware, b as setupCoreRoutes } from './app-COElO4Rm.js';
-import { B as schema } from './plugin-bootstrap-Drns7X9w.js';
-export { D as Collection, E as Content, C as CorePlugin, F as DbPlugin, G as DbPluginHook, L as LogCategory, H as LogConfig, a as LogEntry, b as LogFilter, c as LogLevel, d as Logger, I as Media, M as Migration, e as MigrationService, f as MigrationStatus, N as NewCollection, J as NewContent, K as NewLogConfig, O as NewMedia, Q as NewPlugin, R as NewPluginActivityLog, S as NewPluginAsset, T as NewPluginHook, U as NewPluginRoute, V as NewSystemLog, W as NewUser, X as NewWorkflowHistory, Y as PluginActivityLog, Z as PluginAsset, P as PluginBootstrapService, _ as PluginRoute, g as PluginServiceClass, $ as SystemLog, a0 as User, a1 as WorkflowHistory, a2 as apiTokens, h as backfillFormSubmissions, i as cleanupRemovedCollections, a3 as collections, a4 as content, a5 as contentVersions, j as createContentFromSubmission, k as deriveCollectionSchemaFromFormio, l as deriveSubmissionTitle, m as fullCollectionSync, n as getAvailableCollectionNames, o as getLogger, p as getManagedCollections, q as initLogger, a6 as insertCollectionSchema, a7 as insertContentSchema, a8 as insertLogConfigSchema, a9 as insertMediaSchema, aa as insertPluginActivityLogSchema, ab as insertPluginAssetSchema, ac as insertPluginHookSchema, ad as insertPluginRouteSchema, ae as insertPluginSchema, af as insertSystemLogSchema, ag as insertUserSchema, ah as insertWorkflowHistorySchema, r as isCollectionManaged, s as loadCollectionConfig, t as loadCollectionConfigs, ai as logConfig, u as mapFormStatusToContentStatus, aj as media, ak as pluginActivityLog, al as pluginAssets, am as pluginHooks, an as pluginRoutes, ao as plugins, v as registerCollections, ap as selectCollectionSchema, aq as selectContentSchema, ar as selectLogConfigSchema, as as selectMediaSchema, at as selectPluginActivityLogSchema, au as selectPluginAssetSchema, av as selectPluginHookSchema, aw as selectPluginRouteSchema, ax as selectPluginSchema, ay as selectSystemLogSchema, az as selectUserSchema, aA as selectWorkflowHistorySchema, w as syncAllFormCollections, x as syncCollection, y as syncCollections, z as syncFormCollection, aB as systemLogs, aC as users, A as validateCollectionConfig, aD as workflowHistory } from './plugin-bootstrap-Drns7X9w.js';
+export { B as Bindings, a as SonicJSApp, S as SonicJSConfig, V as Variables, c as createSonicJSApp, s as setupCoreMiddleware, b as setupCoreRoutes } from './app-D90PZ6rY.js';
+import { B as schema } from './plugin-bootstrap-mll0JpVj.js';
+export { D as Collection, E as Content, C as CorePlugin, F as DbPlugin, G as DbPluginHook, L as LogCategory, H as LogConfig, a as LogEntry, b as LogFilter, c as LogLevel, d as Logger, I as Media, M as Migration, e as MigrationService, f as MigrationStatus, N as NewCollection, J as NewContent, K as NewLogConfig, O as NewMedia, Q as NewPlugin, R as NewPluginActivityLog, S as NewPluginAsset, T as NewPluginHook, U as NewPluginRoute, V as NewSystemLog, W as NewUser, X as NewWorkflowHistory, Y as PluginActivityLog, Z as PluginAsset, P as PluginBootstrapService, _ as PluginRoute, g as PluginServiceClass, $ as SystemLog, a0 as User, a1 as WorkflowHistory, a2 as apiTokens, h as backfillFormSubmissions, i as cleanupRemovedCollections, a3 as collections, a4 as content, a5 as contentVersions, j as createContentFromSubmission, k as deriveCollectionSchemaFromFormio, l as deriveSubmissionTitle, m as fullCollectionSync, n as getAvailableCollectionNames, o as getLogger, p as getManagedCollections, q as initLogger, a6 as insertCollectionSchema, a7 as insertContentSchema, a8 as insertLogConfigSchema, a9 as insertMediaSchema, aa as insertPluginActivityLogSchema, ab as insertPluginAssetSchema, ac as insertPluginHookSchema, ad as insertPluginRouteSchema, ae as insertPluginSchema, af as insertSystemLogSchema, ag as insertUserSchema, ah as insertWorkflowHistorySchema, r as isCollectionManaged, s as loadCollectionConfig, t as loadCollectionConfigs, ai as logConfig, u as mapFormStatusToContentStatus, aj as media, ak as pluginActivityLog, al as pluginAssets, am as pluginHooks, an as pluginRoutes, ao as plugins, v as registerCollections, ap as selectCollectionSchema, aq as selectContentSchema, ar as selectLogConfigSchema, as as selectMediaSchema, at as selectPluginActivityLogSchema, au as selectPluginAssetSchema, av as selectPluginHookSchema, aw as selectPluginRouteSchema, ax as selectPluginSchema, ay as selectSystemLogSchema, az as selectUserSchema, aA as selectWorkflowHistorySchema, w as syncAllFormCollections, x as syncCollection, y as syncCollections, z as syncFormCollection, aB as systemLogs, aC as users, A as validateCollectionConfig, aD as workflowHistory } from './plugin-bootstrap-mll0JpVj.js';
 export { AuthManager, Permission, PermissionManager, UserPermissions, bootstrapMiddleware, cacheHeaders, compressionMiddleware, detailedLoggingMiddleware, getActivePlugins, isPluginActive, logActivity, loggingMiddleware, optionalAuth, performanceLoggingMiddleware, requireActivePlugin, requireActivePlugins, requireAnyPermission, requireAuth, requirePermission, requireRole, securityHeaders, securityLoggingMiddleware } from './middleware.js';
 export { H as HookSystemImpl, a as HookUtils, P as PluginManagerClass, b as PluginRegistryImpl, c as PluginValidatorClass, S as ScopedHookSystemClass } from './plugin-manager-Efx9RyDX.js';
 export { ROUTES_INFO, adminApiRoutes, adminCheckboxRoutes, adminCodeExamplesRoutes, adminCollectionsRoutes, adminContentRoutes, adminDashboardRoutes, adminDesignRoutes, adminLogsRoutes, adminMediaRoutes, adminPluginRoutes, adminSettingsRoutes, adminTestimonialsRoutes, adminUsersRoutes, apiContentCrudRoutes, apiMediaRoutes, apiRoutes, apiSystemRoutes, authRoutes } from './routes.js';
@@ -17,6 +17,27 @@ import { D1Database as D1Database$1, KVNamespace, R2Bucket } from '@cloudflare/w
 import 'drizzle-zod';
 import 'drizzle-orm/sqlite-core';
 import 'hono/types';
+
+/**
+ * Get the current tenant ID from context. Throws 400 if not set.
+ * Use in routes that require tenant context.
+ */
+declare function getTenantId(c: {
+    get(key: string): unknown;
+}): string;
+/**
+ * Get the current tenant ID from context, or null if not set.
+ * Use in routes that optionally support tenant context (e.g. super-admin).
+ */
+declare function getTenantIdOrNull(c: {
+    get(key: string): unknown;
+}): string | null;
+/**
+ * Check if the current user is a super-admin (cross-tenant).
+ */
+declare function isSuperAdmin(c: {
+    get(key: string): unknown;
+}): boolean;
 
 /**
  * SonicJS Plugin System Types
@@ -615,11 +636,11 @@ declare class OAuthService {
     /**
      * Unlink an OAuth account from a user (only if they have another auth method).
      */
-    unlinkOAuthAccount(userId: string, provider: string): Promise<boolean>;
+    unlinkOAuthAccount(userId: string, provider: string, tenantId?: string | null): Promise<boolean>;
     /**
      * Find a user by email.
      */
-    findUserByEmail(email: string): Promise<{
+    findUserByEmail(email: string, tenantId?: string | null): Promise<{
         id: string;
         email: string;
         role: string;
@@ -630,7 +651,7 @@ declare class OAuthService {
     /**
      * Create a new user from an OAuth profile.
      */
-    createUserFromOAuth(profile: OAuthUserProfile): Promise<string>;
+    createUserFromOAuth(profile: OAuthUserProfile, tenantId?: string | null): Promise<string>;
     /**
      * Generate a cryptographically random state parameter for CSRF protection.
      */
@@ -704,4 +725,4 @@ declare const userProfilesPlugin: Plugin;
 
 declare const VERSION: string;
 
-export { BUILT_IN_PROVIDERS, FieldType, OAuthService, PluginBuilder, PluginHelpers, type ProfileFieldDefinition, type UserProfileConfig, VERSION, createDb, createOAuthProvidersPlugin, createUserProfilesPlugin, defineUserProfile, getUserProfileConfig, oauthProvidersPlugin, userProfilesPlugin };
+export { BUILT_IN_PROVIDERS, FieldType, OAuthService, PluginBuilder, PluginHelpers, type ProfileFieldDefinition, type UserProfileConfig, VERSION, createDb, createOAuthProvidersPlugin, createUserProfilesPlugin, defineUserProfile, getTenantId, getTenantIdOrNull, getUserProfileConfig, isSuperAdmin, oauthProvidersPlugin, userProfilesPlugin };

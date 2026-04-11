@@ -6,6 +6,7 @@ type JWTPayload = {
   userId: string
   email: string
   role: string
+  tenantId?: string | null
   exp: number
   iat: number
 }
@@ -14,11 +15,12 @@ type JWTPayload = {
 const JWT_SECRET_FALLBACK = 'your-super-secret-jwt-key-change-in-production'
 
 export class AuthManager {
-  static async generateToken(userId: string, email: string, role: string, secret?: string): Promise<string> {
+  static async generateToken(userId: string, email: string, role: string, secret?: string, tenantId?: string | null): Promise<string> {
     const payload: JWTPayload = {
       userId,
       email,
       role,
+      tenantId: tenantId ?? null,
       exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24), // 24 hours
       iat: Math.floor(Date.now() / 1000)
     }
@@ -205,6 +207,35 @@ export const requireAuth = () => {
         if (payload && kv) {
           const cacheKey = `auth:${token.substring(0, 20)}`
           await kv.put(cacheKey, JSON.stringify(payload), { expirationTtl: 300 })
+        }
+      }
+
+      // If JWT verification failed, try API token authentication
+      if (!payload && token.startsWith('ffx_')) {
+        const db = (c.env as any)?.DB
+        if (db) {
+          const now = new Date().toISOString()
+          const row = await db.prepare(
+            `SELECT at.id, at.tenant_id, at.permissions, at.expires_at, u.id as user_id, u.email, u.role
+             FROM api_tokens at
+             JOIN users u ON at.user_id = u.id
+             WHERE at.token = ? AND (at.expires_at IS NULL OR at.expires_at > ?)`
+          ).bind(token, now).first()
+
+          if (row) {
+            // Update last_used_at
+            await db.prepare('UPDATE api_tokens SET last_used_at = ? WHERE id = ?')
+              .bind(now, row.id).run()
+
+            payload = {
+              userId: row.user_id as string,
+              email: row.email as string,
+              role: row.role as string,
+              tenantId: row.tenant_id as string | null,
+              exp: 0,
+              iat: 0,
+            }
+          }
         }
       }
 

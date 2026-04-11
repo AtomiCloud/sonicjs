@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware'
 import { renderSettingsPage, SettingsPageData } from '../templates/pages/admin-settings.template'
 import { MigrationService } from '../services/migrations'
 import { SettingsService } from '../services/settings'
+import { getTenantId } from '../utils/tenant'
 
 type Bindings = {
   DB: D1Database

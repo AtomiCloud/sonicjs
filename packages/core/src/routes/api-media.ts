@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { requireAuth } from '../middleware'
+import { getTenantId } from '../utils/tenant'
 import type { Bindings, Variables } from '../app'
 
 // Helper function to generate short IDs (replacement for nanoid)
@@ -45,6 +46,7 @@ apiMediaRoutes.use('*', requireAuth())
 // Upload single file
 apiMediaRoutes.post('/upload', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')!
     const formData = await c.req.formData()
     const fileData = formData.get('file')
@@ -74,7 +76,7 @@ apiMediaRoutes.post('/upload', async (c) => {
     const fileExtension = file.name.split('.').pop() || ''
     const filename = `${fileId}.${fileExtension}`
     const folder = formData.get('folder') as string || 'uploads'
-    const r2Key = `${folder}/${filename}`
+    const r2Key = `${tenantId}/${folder}/${filename}`
 
     // Upload to R2
     const arrayBuffer = await file.arrayBuffer()
@@ -97,11 +99,11 @@ apiMediaRoutes.post('/upload', async (c) => {
     // Generate public URL using environment variable for bucket name
     const bucketName = c.env.BUCKET_NAME || 'sonicjs-media-dev'
     const publicUrl = `https://pub-${bucketName}.r2.dev/${r2Key}`
-    
+
     // Extract image dimensions if it's an image
     let width: number | null = null
     let height: number | null = null
-    
+
     if (file.type.startsWith('image/') && !file.type.includes('svg')) {
       try {
         const dimensions = await getImageDimensions(arrayBuffer)
@@ -138,11 +140,11 @@ apiMediaRoutes.post('/upload', async (c) => {
 
     const stmt = c.env.DB.prepare(`
       INSERT INTO media (
-        id, filename, original_name, mime_type, size, width, height, 
-        folder, r2_key, public_url, thumbnail_url, uploaded_by, uploaded_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, filename, original_name, mime_type, size, width, height,
+        folder, r2_key, public_url, thumbnail_url, uploaded_by, uploaded_at, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
-    
+
     await stmt.bind(
       mediaRecord.id,
       mediaRecord.filename,
@@ -156,7 +158,8 @@ apiMediaRoutes.post('/upload', async (c) => {
       mediaRecord.public_url,
       mediaRecord.thumbnail_url,
       mediaRecord.uploaded_by,
-      mediaRecord.uploaded_at
+      mediaRecord.uploaded_at,
+      tenantId
     ).run()
 
     // Emit media upload event
@@ -187,6 +190,7 @@ apiMediaRoutes.post('/upload', async (c) => {
 // Upload multiple files
 apiMediaRoutes.post('/upload-multiple', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')!
     const formData = await c.req.formData()
     const filesData = formData.getAll('files')
@@ -229,7 +233,7 @@ apiMediaRoutes.post('/upload-multiple', async (c) => {
         const fileExtension = file.name.split('.').pop() || ''
         const filename = `${fileId}.${fileExtension}`
         const folder = formData.get('folder') as string || 'uploads'
-        const r2Key = `${folder}/${filename}`
+        const r2Key = `${tenantId}/${folder}/${filename}`
 
         // Upload to R2
         const arrayBuffer = await file.arrayBuffer()
@@ -296,11 +300,11 @@ apiMediaRoutes.post('/upload-multiple', async (c) => {
 
         const stmt = c.env.DB.prepare(`
           INSERT INTO media (
-            id, filename, original_name, mime_type, size, width, height, 
-            folder, r2_key, public_url, thumbnail_url, uploaded_by, uploaded_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, filename, original_name, mime_type, size, width, height,
+            folder, r2_key, public_url, thumbnail_url, uploaded_by, uploaded_at, tenant_id
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `)
-        
+
         await stmt.bind(
           mediaRecord.id,
           mediaRecord.filename,
@@ -314,7 +318,8 @@ apiMediaRoutes.post('/upload-multiple', async (c) => {
           mediaRecord.public_url,
           mediaRecord.thumbnail_url,
           mediaRecord.uploaded_by,
-          mediaRecord.uploaded_at
+          mediaRecord.uploaded_at,
+          tenantId
         ).run()
 
         uploadResults.push({
@@ -363,6 +368,7 @@ apiMediaRoutes.post('/upload-multiple', async (c) => {
 // Bulk delete files
 apiMediaRoutes.post('/bulk-delete', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')!
     const body = await c.req.json()
     const fileIds = body.fileIds as string[]
@@ -382,8 +388,8 @@ apiMediaRoutes.post('/bulk-delete', async (c) => {
     for (const fileId of fileIds) {
       try {
         // Get file record (including already deleted files to check if they exist at all)
-        const stmt = c.env.DB.prepare('SELECT * FROM media WHERE id = ?')
-        const fileRecord = await stmt.bind(fileId).first() as any
+        const stmt = c.env.DB.prepare('SELECT * FROM media WHERE id = ? AND tenant_id = ?')
+        const fileRecord = await stmt.bind(fileId, tenantId).first() as any
 
         if (!fileRecord) {
           errors.push({ fileId, error: 'File not found' })
@@ -417,8 +423,8 @@ apiMediaRoutes.post('/bulk-delete', async (c) => {
         }
 
         // Soft delete in database
-        const deleteStmt = c.env.DB.prepare('UPDATE media SET deleted_at = ? WHERE id = ?')
-        await deleteStmt.bind(Math.floor(Date.now() / 1000), fileId).run()
+        const deleteStmt = c.env.DB.prepare('UPDATE media SET deleted_at = ? WHERE id = ? AND tenant_id = ?')
+        await deleteStmt.bind(Math.floor(Date.now() / 1000), fileId, tenantId).run()
 
         results.push({
           fileId,
@@ -458,6 +464,7 @@ apiMediaRoutes.post('/bulk-delete', async (c) => {
 // Create folder
 apiMediaRoutes.post('/create-folder', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const body = await c.req.json()
     const folderName = body.folderName as string
 
@@ -475,8 +482,8 @@ apiMediaRoutes.post('/create-folder', async (c) => {
     }
 
     // Check if folder already exists in the database
-    const checkStmt = c.env.DB.prepare('SELECT COUNT(*) as count FROM media WHERE folder = ? AND deleted_at IS NULL')
-    const existingFolder = await checkStmt.bind(folderName).first() as any
+    const checkStmt = c.env.DB.prepare('SELECT COUNT(*) as count FROM media WHERE folder = ? AND deleted_at IS NULL AND tenant_id = ?')
+    const existingFolder = await checkStmt.bind(folderName, tenantId).first() as any
 
     if (existingFolder && existingFolder.count > 0) {
       return c.json({
@@ -502,6 +509,7 @@ apiMediaRoutes.post('/create-folder', async (c) => {
 // Bulk move files to folder
 apiMediaRoutes.post('/bulk-move', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')!
     const body = await c.req.json()
     const fileIds = body.fileIds as string[]
@@ -526,8 +534,8 @@ apiMediaRoutes.post('/bulk-move', async (c) => {
     for (const fileId of fileIds) {
       try {
         // Get file record
-        const stmt = c.env.DB.prepare('SELECT * FROM media WHERE id = ? AND deleted_at IS NULL')
-        const fileRecord = await stmt.bind(fileId).first() as any
+        const stmt = c.env.DB.prepare('SELECT * FROM media WHERE id = ? AND deleted_at IS NULL AND tenant_id = ?')
+        const fileRecord = await stmt.bind(fileId, tenantId).first() as any
 
         if (!fileRecord) {
           errors.push({ fileId, error: 'File not found' })
@@ -588,14 +596,15 @@ apiMediaRoutes.post('/bulk-move', async (c) => {
         const updateStmt = c.env.DB.prepare(`
           UPDATE media
           SET folder = ?, r2_key = ?, public_url = ?, updated_at = ?
-          WHERE id = ?
+          WHERE id = ? AND tenant_id = ?
         `)
         await updateStmt.bind(
           targetFolder,
           newR2Key,
           newPublicUrl,
           Math.floor(Date.now() / 1000),
-          fileId
+          fileId,
+          tenantId
         ).run()
 
         results.push({
@@ -637,12 +646,13 @@ apiMediaRoutes.post('/bulk-move', async (c) => {
 // Delete file
 apiMediaRoutes.delete('/:id', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')!
     const fileId = c.req.param('id')
-    
+
     // Get file record
-    const stmt = c.env.DB.prepare('SELECT * FROM media WHERE id = ? AND deleted_at IS NULL')
-    const fileRecord = await stmt.bind(fileId).first() as any
+    const stmt = c.env.DB.prepare('SELECT * FROM media WHERE id = ? AND deleted_at IS NULL AND tenant_id = ?')
+    const fileRecord = await stmt.bind(fileId, tenantId).first() as any
     
     if (!fileRecord) {
       return c.json({ error: 'File not found' }, 404)
@@ -662,8 +672,8 @@ apiMediaRoutes.delete('/:id', async (c) => {
     }
 
     // Soft delete in database
-    const deleteStmt = c.env.DB.prepare('UPDATE media SET deleted_at = ? WHERE id = ?')
-    await deleteStmt.bind(Math.floor(Date.now() / 1000), fileId).run()
+    const deleteStmt = c.env.DB.prepare('UPDATE media SET deleted_at = ? WHERE id = ? AND tenant_id = ?')
+    await deleteStmt.bind(Math.floor(Date.now() / 1000), fileId, tenantId).run()
 
     // Emit media delete event
     await emitEvent('media.delete', { id: fileId })
@@ -678,13 +688,14 @@ apiMediaRoutes.delete('/:id', async (c) => {
 // Update file metadata
 apiMediaRoutes.patch('/:id', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')!
     const fileId = c.req.param('id')
     const body = await c.req.json()
-    
+
     // Get file record
-    const stmt = c.env.DB.prepare('SELECT * FROM media WHERE id = ? AND deleted_at IS NULL')
-    const fileRecord = await stmt.bind(fileId).first() as any
+    const stmt = c.env.DB.prepare('SELECT * FROM media WHERE id = ? AND deleted_at IS NULL AND tenant_id = ?')
+    const fileRecord = await stmt.bind(fileId, tenantId).first() as any
     
     if (!fileRecord) {
       return c.json({ error: 'File not found' }, 404)
@@ -715,8 +726,9 @@ apiMediaRoutes.patch('/:id', async (c) => {
     values.push(Math.floor(Date.now() / 1000))
     values.push(fileId)
 
+    values.push(tenantId)
     const updateStmt = c.env.DB.prepare(`
-      UPDATE media SET ${updates.join(', ')} WHERE id = ?
+      UPDATE media SET ${updates.join(', ')} WHERE id = ? AND tenant_id = ?
     `)
     await updateStmt.bind(...values).run()
 

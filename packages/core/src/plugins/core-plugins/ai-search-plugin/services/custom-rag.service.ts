@@ -13,12 +13,15 @@ import type { SearchQuery, SearchResponse, SearchResult, AISearchSettings } from
 export class CustomRAGService {
   private embeddingService: EmbeddingService
   private chunkingService: ChunkingService
+  private tenantId: string | null
 
   constructor(
     private db: D1Database,
     private ai: any,
-    private vectorize: any
+    private vectorize: any,
+    tenantId: string | null = null
   ) {
+    this.tenantId = tenantId
     this.embeddingService = new EmbeddingService(ai)
     this.chunkingService = new ChunkingService()
   }
@@ -36,16 +39,22 @@ export class CustomRAGService {
     
     try {
       // Get all published content from collection
-      const { results: contentItems } = await this.db
-        .prepare(`
-          SELECT c.id, c.title, c.data, c.collection_id, c.status,
+      const indexQuery = this.tenantId
+        ? `SELECT c.id, c.title, c.data, c.collection_id, c.status,
                  c.created_at, c.updated_at, c.author_id,
                  col.name as collection_name, col.display_name as collection_display_name
           FROM content c
           JOIN collections col ON c.collection_id = col.id
-          WHERE c.collection_id = ? AND c.status = 'published'
-        `)
-        .bind(collectionId)
+          WHERE c.collection_id = ? AND c.status = 'published' AND c.tenant_id = ?`
+        : `SELECT c.id, c.title, c.data, c.collection_id, c.status,
+                 c.created_at, c.updated_at, c.author_id,
+                 col.name as collection_name, col.display_name as collection_display_name
+          FROM content c
+          JOIN collections col ON c.collection_id = col.id
+          WHERE c.collection_id = ? AND c.status = 'published'`
+      const { results: contentItems } = await (this.tenantId
+        ? this.db.prepare(indexQuery).bind(collectionId, this.tenantId)
+        : this.db.prepare(indexQuery).bind(collectionId))
         .all<{
           id: string
           title: string
@@ -212,16 +221,22 @@ export class CustomRAGService {
 
       // Fetch full content from D1
       const placeholders = contentIds.map(() => '?').join(',')
-      const { results: contentItems } = await this.db
-        .prepare(`
-          SELECT c.id, c.title, c.slug, c.collection_id, c.status,
+      const searchContentQuery = this.tenantId
+        ? `SELECT c.id, c.title, c.slug, c.collection_id, c.status,
                  c.created_at, c.updated_at, c.author_id,
                  col.display_name as collection_name
           FROM content c
           JOIN collections col ON c.collection_id = col.id
-          WHERE c.id IN (${placeholders})
-        `)
-        .bind(...contentIds)
+          WHERE c.id IN (${placeholders}) AND c.tenant_id = ?`
+        : `SELECT c.id, c.title, c.slug, c.collection_id, c.status,
+                 c.created_at, c.updated_at, c.author_id,
+                 col.display_name as collection_name
+          FROM content c
+          JOIN collections col ON c.collection_id = col.id
+          WHERE c.id IN (${placeholders})`
+      const { results: contentItems } = await (this.tenantId
+        ? this.db.prepare(searchContentQuery).bind(...contentIds, this.tenantId)
+        : this.db.prepare(searchContentQuery).bind(...contentIds))
         .all<{
           id: string
           title: string
@@ -283,16 +298,22 @@ export class CustomRAGService {
   async updateContentIndex(contentId: string): Promise<void> {
     try {
       // Get content item
-      const content = await this.db
-        .prepare(`
-          SELECT c.id, c.title, c.data, c.collection_id, c.status,
+      const updateQuery = this.tenantId
+        ? `SELECT c.id, c.title, c.data, c.collection_id, c.status,
                  c.created_at, c.updated_at, c.author_id,
                  col.name as collection_name, col.display_name as collection_display_name
           FROM content c
           JOIN collections col ON c.collection_id = col.id
-          WHERE c.id = ?
-        `)
-        .bind(contentId)
+          WHERE c.id = ? AND c.tenant_id = ?`
+        : `SELECT c.id, c.title, c.data, c.collection_id, c.status,
+                 c.created_at, c.updated_at, c.author_id,
+                 col.name as collection_name, col.display_name as collection_display_name
+          FROM content c
+          JOIN collections col ON c.collection_id = col.id
+          WHERE c.id = ?`
+      const content = await (this.tenantId
+        ? this.db.prepare(updateQuery).bind(contentId, this.tenantId)
+        : this.db.prepare(updateQuery).bind(contentId))
         .first<{
           id: string
           title: string

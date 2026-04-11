@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { WorkflowEngine } from './services/workflow-service'
 import { SchedulerService } from './services/scheduler'
 import { NotificationService } from './services/notifications'
+import { getTenantId } from '../../../utils/tenant'
 
 type Bindings = {
   DB: D1Database
@@ -34,7 +35,8 @@ export function createWorkflowRoutes() {
       return c.json({ error: 'Unauthorized' }, 403)
     }
 
-    const workflowEngine = new WorkflowEngine(c.env.DB)
+    const tenantId = getTenantId(c)
+    const workflowEngine = new WorkflowEngine(c.env.DB, tenantId)
     const debug: any = {
       timestamp: new Date().toISOString(),
       tests: {}
@@ -144,8 +146,9 @@ export function createWorkflowRoutes() {
     }
 
     const stateId = c.req.param('stateId')
-    const workflowEngine = new WorkflowEngine(c.env.DB)
-    
+    const tenantId = getTenantId(c)
+    const workflowEngine = new WorkflowEngine(c.env.DB, tenantId)
+
     const content = await workflowEngine.getContentByState(stateId, 100)
     const state = await c.env.DB.prepare(`
       SELECT * FROM workflow_states WHERE id = ?
@@ -166,7 +169,8 @@ export function createWorkflowRoutes() {
     const toStateId = formData.get('to_state_id') as string
     const comment = formData.get('comment') as string
 
-    const workflowEngine = new WorkflowEngine(c.env.DB)
+    const tenantId = getTenantId(c)
+    const workflowEngine = new WorkflowEngine(c.env.DB, tenantId)
     const success = await workflowEngine.transitionContent(
       contentId,
       toStateId,
@@ -178,7 +182,7 @@ export function createWorkflowRoutes() {
       // Send notification if content was assigned
       const workflowStatus = await workflowEngine.getContentWorkflowStatus(contentId)
       if (workflowStatus?.assigned_to && workflowStatus.assigned_to !== user.userId) {
-        const notificationService = new NotificationService(c.env.DB)
+        const notificationService = new NotificationService(c.env.DB, tenantId)
         await notificationService.createNotification(
           workflowStatus.assigned_to,
           'workflow',
@@ -210,7 +214,8 @@ export function createWorkflowRoutes() {
     const assignedTo = formData.get('assigned_to') as string
     const dueDate = formData.get('due_date') as string
 
-    const workflowEngine = new WorkflowEngine(c.env.DB)
+    const tenantId = getTenantId(c)
+    const workflowEngine = new WorkflowEngine(c.env.DB, tenantId)
     const success = await workflowEngine.assignContentToUser(
       contentId,
       assignedTo,
@@ -219,7 +224,7 @@ export function createWorkflowRoutes() {
 
     if (success) {
       // Send notification to assigned user
-      const notificationService = new NotificationService(c.env.DB)
+      const notificationService = new NotificationService(c.env.DB, tenantId)
       await notificationService.createNotification(
         assignedTo,
         'workflow',
@@ -251,7 +256,8 @@ export function createWorkflowRoutes() {
     const scheduledAt = formData.get('scheduled_at') as string
     const timezone = formData.get('timezone') as string || 'UTC'
 
-    const scheduler = new SchedulerService(c.env.DB)
+    const tenantId = getTenantId(c)
+    const scheduler = new SchedulerService(c.env.DB, tenantId)
     const scheduleId = await scheduler.scheduleContent(
       contentId,
       action,
@@ -281,7 +287,8 @@ export function createWorkflowRoutes() {
       return c.json({ error: 'Scheduled content not found' }, 404)
     }
 
-    const scheduler = new SchedulerService(c.env.DB)
+    const tenantId = getTenantId(c)
+    const scheduler = new SchedulerService(c.env.DB, tenantId)
     const success = await scheduler.cancelScheduledContent(scheduleId)
 
     if (success) {
@@ -302,44 +309,80 @@ export function createWorkflowRoutes() {
       return c.json({ error: 'Forbidden' }, 403)
     }
 
+    const tenantId = getTenantId(c)
+
     // Get workflow transition stats
-    const transitionStats = await c.env.DB.prepare(`
-      SELECT 
-        fs.name as from_state,
-        ts.name as to_state,
-        COUNT(*) as count,
-        AVG(julianday(wh.created_at) - julianday(c.created_at)) * 24 as avg_hours
-      FROM workflow_history wh
-      JOIN workflow_states fs ON wh.from_state_id = fs.id
-      JOIN workflow_states ts ON wh.to_state_id = ts.id
-      JOIN content c ON wh.content_id = c.id
-      WHERE wh.created_at >= datetime('now', '-30 days')
-      GROUP BY fs.id, ts.id
-      ORDER BY count DESC
-    `).all()
+    const transitionSql = tenantId
+      ? `SELECT
+          fs.name as from_state,
+          ts.name as to_state,
+          COUNT(*) as count,
+          AVG(julianday(wh.created_at) - julianday(c.created_at)) * 24 as avg_hours
+        FROM workflow_history wh
+        JOIN workflow_states fs ON wh.from_state_id = fs.id
+        JOIN workflow_states ts ON wh.to_state_id = ts.id
+        JOIN content c ON wh.content_id = c.id
+        WHERE wh.created_at >= datetime('now', '-30 days') AND wh.tenant_id = ?
+        GROUP BY fs.id, ts.id
+        ORDER BY count DESC`
+      : `SELECT
+          fs.name as from_state,
+          ts.name as to_state,
+          COUNT(*) as count,
+          AVG(julianday(wh.created_at) - julianday(c.created_at)) * 24 as avg_hours
+        FROM workflow_history wh
+        JOIN workflow_states fs ON wh.from_state_id = fs.id
+        JOIN workflow_states ts ON wh.to_state_id = ts.id
+        JOIN content c ON wh.content_id = c.id
+        WHERE wh.created_at >= datetime('now', '-30 days')
+        GROUP BY fs.id, ts.id
+        ORDER BY count DESC`
+    const transitionParams = tenantId ? [tenantId] : []
+    const transitionStats = await c.env.DB.prepare(transitionSql).bind(...transitionParams).all()
 
     // Get average time in each state
-    const stateStats = await c.env.DB.prepare(`
-      SELECT 
-        ws.name as state_name,
-        COUNT(*) as total_content,
-        AVG(
-          CASE 
-            WHEN cws.current_state_id = ws.id 
-            THEN julianday('now') - julianday(c.updated_at)
-            ELSE julianday(wh_next.created_at) - julianday(wh_current.created_at)
-          END
-        ) * 24 as avg_hours_in_state
-      FROM workflow_states ws
-      LEFT JOIN content_workflow_status cws ON ws.id = cws.current_state_id
-      LEFT JOIN content c ON cws.content_id = c.id
-      LEFT JOIN workflow_history wh_current ON wh_current.to_state_id = ws.id
-      LEFT JOIN workflow_history wh_next ON wh_next.from_state_id = ws.id 
-        AND wh_next.content_id = wh_current.content_id
-        AND wh_next.created_at > wh_current.created_at
-      GROUP BY ws.id, ws.name
-      ORDER BY total_content DESC
-    `).all()
+    const stateSql = tenantId
+      ? `SELECT
+          ws.name as state_name,
+          COUNT(*) as total_content,
+          AVG(
+            CASE
+              WHEN cws.current_state_id = ws.id
+              THEN julianday('now') - julianday(c.updated_at)
+              ELSE julianday(wh_next.created_at) - julianday(wh_current.created_at)
+            END
+          ) * 24 as avg_hours_in_state
+        FROM workflow_states ws
+        LEFT JOIN content_workflow_status cws ON ws.id = cws.current_state_id
+        LEFT JOIN content c ON cws.content_id = c.id
+        LEFT JOIN workflow_history wh_current ON wh_current.to_state_id = ws.id
+        LEFT JOIN workflow_history wh_next ON wh_next.from_state_id = ws.id
+          AND wh_next.content_id = wh_current.content_id
+          AND wh_next.created_at > wh_current.created_at
+        WHERE c.tenant_id = ? OR c.id IS NULL
+        GROUP BY ws.id, ws.name
+        ORDER BY total_content DESC`
+      : `SELECT
+          ws.name as state_name,
+          COUNT(*) as total_content,
+          AVG(
+            CASE
+              WHEN cws.current_state_id = ws.id
+              THEN julianday('now') - julianday(c.updated_at)
+              ELSE julianday(wh_next.created_at) - julianday(wh_current.created_at)
+            END
+          ) * 24 as avg_hours_in_state
+        FROM workflow_states ws
+        LEFT JOIN content_workflow_status cws ON ws.id = cws.current_state_id
+        LEFT JOIN content c ON cws.content_id = c.id
+        LEFT JOIN workflow_history wh_current ON wh_current.to_state_id = ws.id
+        LEFT JOIN workflow_history wh_next ON wh_next.from_state_id = ws.id
+          AND wh_next.content_id = wh_current.content_id
+          AND wh_next.created_at > wh_current.created_at
+        GROUP BY ws.id, ws.name
+        ORDER BY total_content DESC`
+    const stateParams = tenantId ? [tenantId] : []
+    const stateStats = await c.env.DB.prepare(stateSql).bind(...stateParams).all()
 
     return c.json({
       transitionStats: transitionStats.results,

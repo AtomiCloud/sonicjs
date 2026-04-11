@@ -24,7 +24,7 @@ export interface TableData {
 }
 
 export class DatabaseToolsService {
-  constructor(private db: D1Database) {}
+  constructor(private db: D1Database, private tenantId: string | null = null) {}
 
   /**
    * Get database statistics
@@ -79,9 +79,13 @@ export class DatabaseToolsService {
 
     try {
       // First, preserve the admin user data
-      const adminUser = await this.db.prepare(
-        'SELECT * FROM users WHERE email = ? AND role = ?'
-      ).bind(adminEmail, 'admin').first()
+      const adminUserQuery = this.tenantId
+        ? 'SELECT * FROM users WHERE email = ? AND role = ? AND tenant_id = ?'
+        : 'SELECT * FROM users WHERE email = ? AND role = ?'
+      const adminUser = await (this.tenantId
+        ? this.db.prepare(adminUserQuery).bind(adminEmail, 'admin', this.tenantId)
+        : this.db.prepare(adminUserQuery).bind(adminEmail, 'admin')
+      ).first()
 
       if (!adminUser) {
         return {
@@ -132,9 +136,14 @@ export class DatabaseToolsService {
 
       // Clear users table but preserve admin
       try {
-        await this.db.prepare('DELETE FROM users WHERE email != ? OR role != ?')
-          .bind(adminEmail, 'admin').run()
-        
+        if (this.tenantId) {
+          await this.db.prepare('DELETE FROM users WHERE (email != ? OR role != ?) AND tenant_id = ?')
+            .bind(adminEmail, 'admin', this.tenantId).run()
+        } else {
+          await this.db.prepare('DELETE FROM users WHERE email != ? OR role != ?')
+            .bind(adminEmail, 'admin').run()
+        }
+
         // Verify admin user still exists
         const verifyAdmin = await this.db.prepare(
           'SELECT id FROM users WHERE email = ? AND role = ?'
@@ -271,9 +280,13 @@ export class DatabaseToolsService {
       }
 
       // Check admin user exists
-      const adminCount = await this.db.prepare(
-        'SELECT COUNT(*) as count FROM users WHERE role = ?'
-      ).bind('admin').first()
+      const adminCountQuery = this.tenantId
+        ? 'SELECT COUNT(*) as count FROM users WHERE role = ? AND tenant_id = ?'
+        : 'SELECT COUNT(*) as count FROM users WHERE role = ?'
+      const adminCount = await (this.tenantId
+        ? this.db.prepare(adminCountQuery).bind('admin', this.tenantId)
+        : this.db.prepare(adminCountQuery).bind('admin')
+      ).first()
 
       if ((adminCount?.count as number) === 0) {
         issues.push('No admin users found')

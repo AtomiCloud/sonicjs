@@ -4,6 +4,7 @@ import { SchedulerService } from './services/scheduler'
 import { renderWorkflowDashboard } from './templates/workflow-dashboard'
 import { renderWorkflowContentDetail } from './templates/workflow-content'
 import { renderScheduledContent } from './templates/scheduled-content'
+import { getTenantId } from '../../../utils/tenant'
 
 type Bindings = {
   DB: D1Database
@@ -42,7 +43,8 @@ export function createWorkflowAdminRoutes() {
     }
 
     try {
-      const workflowEngine = new WorkflowEngine(c.env.DB)
+      const tenantId = getTenantId(c)
+      const workflowEngine = new WorkflowEngine(c.env.DB, tenantId)
       
       // Get workflow states and counts with error handling
       console.log('Fetching workflow states...')
@@ -120,16 +122,23 @@ export function createWorkflowAdminRoutes() {
     }
 
     const contentId = c.req.param('contentId')
-    const workflowEngine = new WorkflowEngine(c.env.DB)
-    
+    const tenantId = getTenantId(c)
+    const workflowEngine = new WorkflowEngine(c.env.DB, tenantId)
+
     // Get content details
-    const content = await c.env.DB.prepare(`
-      SELECT c.*, col.name as collection_name, u.username as author_name
+    const contentSql = tenantId
+      ? `SELECT c.*, col.name as collection_name, u.username as author_name
       FROM content c
       JOIN collections col ON c.collection_id = col.id
       JOIN users u ON c.author_id = u.id
-      WHERE c.id = ?
-    `).bind(contentId).first()
+      WHERE c.id = ? AND c.tenant_id = ?`
+      : `SELECT c.*, col.name as collection_name, u.username as author_name
+      FROM content c
+      JOIN collections col ON c.collection_id = col.id
+      JOIN users u ON c.author_id = u.id
+      WHERE c.id = ?`
+    const contentParams = tenantId ? [contentId, tenantId] : [contentId]
+    const content = await c.env.DB.prepare(contentSql).bind(...contentParams).first()
 
     if (!content) {
       return c.text('Content not found', 404)
@@ -154,7 +163,7 @@ export function createWorkflowAdminRoutes() {
     const history = await workflowEngine.getWorkflowHistory(contentId)
 
     // Get scheduled actions
-    const scheduler = new SchedulerService(c.env.DB)
+    const scheduler = new SchedulerService(c.env.DB, tenantId)
     const scheduledActions = await scheduler.getScheduledContentForContent(contentId)
 
     const data = {
@@ -177,7 +186,8 @@ export function createWorkflowAdminRoutes() {
       return c.redirect('/auth/login')
     }
 
-    const scheduler = new SchedulerService(c.env.DB)
+    const tenantId = getTenantId(c)
+    const scheduler = new SchedulerService(c.env.DB, tenantId)
     const scheduledContent = await scheduler.getScheduledContentForUser(user.userId)
     const stats = await scheduler.getScheduledContentStats()
 

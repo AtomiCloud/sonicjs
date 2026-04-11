@@ -8,6 +8,7 @@
 import { Hono } from 'hono'
 import type { Context } from 'hono'
 import type { D1Database } from '@cloudflare/workers-types'
+import { getTenantIdOrNull } from '../utils/tenant'
 
 const app = new Hono()
 
@@ -25,142 +26,160 @@ app.post('/test-cleanup', async (c: Context) => {
 
   try {
     let deletedCount = 0
+    const tenantId = getTenantIdOrNull(c)
+    const tenantFilter = tenantId ? ' AND tenant_id = ?' : ''
 
     // Use pattern-based deletes to avoid SQL variable limits
     // This approach uses subqueries instead of building large IN lists
+    // When tenantId is set, scope deletions to that tenant only
 
     // Step 1: Delete child data for test content (by pattern)
-    await db.prepare(`
+    const cv1Query = db.prepare(`
       DELETE FROM content_versions
       WHERE content_id IN (
         SELECT id FROM content
-        WHERE title LIKE 'Test %' OR title LIKE '%E2E%' OR title LIKE '%Playwright%' OR title LIKE '%Sample%'
-      )
-    `).run()
+        WHERE (title LIKE 'Test %' OR title LIKE '%E2E%' OR title LIKE '%Playwright%' OR title LIKE '%Sample%')${tenantFilter}
+      )${tenantFilter}
+    `)
+    await (tenantId ? cv1Query.bind(...[tenantId, tenantId]) : cv1Query).run()
 
-    await db.prepare(`
+    const wh1Query = db.prepare(`
       DELETE FROM workflow_history
       WHERE content_id IN (
         SELECT id FROM content
-        WHERE title LIKE 'Test %' OR title LIKE '%E2E%' OR title LIKE '%Playwright%' OR title LIKE '%Sample%'
-      )
-    `).run()
+        WHERE (title LIKE 'Test %' OR title LIKE '%E2E%' OR title LIKE '%Playwright%' OR title LIKE '%Sample%')${tenantFilter}
+      )${tenantFilter}
+    `)
+    await (tenantId ? wh1Query.bind(...[tenantId, tenantId]) : wh1Query).run()
 
     // Note: content_data table may not exist in all schemas
     try {
-      await db.prepare(`
+      const cd1Query = db.prepare(`
         DELETE FROM content_data
         WHERE content_id IN (
           SELECT id FROM content
-          WHERE title LIKE 'Test %' OR title LIKE '%E2E%' OR title LIKE '%Playwright%' OR title LIKE '%Sample%'
-        )
-      `).run()
+          WHERE (title LIKE 'Test %' OR title LIKE '%E2E%' OR title LIKE '%Playwright%' OR title LIKE '%Sample%')${tenantFilter}
+        )${tenantFilter}
+      `)
+      await (tenantId ? cd1Query.bind(...[tenantId, tenantId]) : cd1Query).run()
     } catch (e) {
       // Table doesn't exist, skip
     }
 
     // Step 2: Delete test content by pattern
-    const contentResult = await db.prepare(`
+    const contentQuery = db.prepare(`
       DELETE FROM content
-      WHERE title LIKE 'Test %' OR title LIKE '%E2E%' OR title LIKE '%Playwright%' OR title LIKE '%Sample%'
-    `).run()
+      WHERE (title LIKE 'Test %' OR title LIKE '%E2E%' OR title LIKE '%Playwright%' OR title LIKE '%Sample%')${tenantFilter}
+    `)
+    const contentResult = await (tenantId ? contentQuery.bind(tenantId) : contentQuery).run()
     deletedCount += contentResult.meta?.changes || 0
 
     // Step 3: Delete child data for test users
-    await db.prepare(`
+    const atQuery = db.prepare(`
       DELETE FROM api_tokens
       WHERE user_id IN (
         SELECT id FROM users
-        WHERE email != 'admin@sonicjs.com' AND (email LIKE '%test%' OR email LIKE '%example.com%')
-      )
-    `).run()
+        WHERE email != 'admin@sonicjs.com' AND (email LIKE '%test%' OR email LIKE '%example.com%')${tenantFilter}
+      )${tenantFilter}
+    `)
+    await (tenantId ? atQuery.bind(...[tenantId, tenantId]) : atQuery).run()
 
-    await db.prepare(`
+    const mediaQuery = db.prepare(`
       DELETE FROM media
       WHERE uploaded_by IN (
         SELECT id FROM users
-        WHERE email != 'admin@sonicjs.com' AND (email LIKE '%test%' OR email LIKE '%example.com%')
-      )
-    `).run()
+        WHERE email != 'admin@sonicjs.com' AND (email LIKE '%test%' OR email LIKE '%example.com%')${tenantFilter}
+      )${tenantFilter}
+    `)
+    await (tenantId ? mediaQuery.bind(...[tenantId, tenantId]) : mediaQuery).run()
 
     // Step 4: Delete test users
-    const usersResult = await db.prepare(`
+    const usersQuery = db.prepare(`
       DELETE FROM users
-      WHERE email != 'admin@sonicjs.com' AND (email LIKE '%test%' OR email LIKE '%example.com%')
-    `).run()
+      WHERE email != 'admin@sonicjs.com' AND (email LIKE '%test%' OR email LIKE '%example.com%')${tenantFilter}
+    `)
+    const usersResult = await (tenantId ? usersQuery.bind(tenantId) : usersQuery).run()
     deletedCount += usersResult.meta?.changes || 0
 
     // Step 5: Delete child data for test collections
     try {
-      await db.prepare(`
+      const cfQuery = db.prepare(`
         DELETE FROM collection_fields
         WHERE collection_id IN (
           SELECT id FROM collections
-          WHERE name LIKE 'test_%' OR name IN ('blog_posts', 'test_collection', 'products', 'articles')
-        )
-      `).run()
+          WHERE (name LIKE 'test_%' OR name IN ('blog_posts', 'test_collection', 'products', 'articles'))${tenantFilter}
+        )${tenantFilter}
+      `)
+      await (tenantId ? cfQuery.bind(...[tenantId, tenantId]) : cfQuery).run()
     } catch (e) {
       // Table doesn't exist
     }
 
     // Delete remaining content from test collections
-    await db.prepare(`
+    const contentByCollQuery = db.prepare(`
       DELETE FROM content
       WHERE collection_id IN (
         SELECT id FROM collections
-        WHERE name LIKE 'test_%' OR name IN ('blog_posts', 'test_collection', 'products', 'articles')
-      )
-    `).run()
+        WHERE (name LIKE 'test_%' OR name IN ('blog_posts', 'test_collection', 'products', 'articles'))${tenantFilter}
+      )${tenantFilter}
+    `)
+    await (tenantId ? contentByCollQuery.bind(...[tenantId, tenantId]) : contentByCollQuery).run()
 
     // Step 6: Delete test collections
-    const collectionsResult = await db.prepare(`
+    const collectionsQuery = db.prepare(`
       DELETE FROM collections
-      WHERE name LIKE 'test_%' OR name IN ('blog_posts', 'test_collection', 'products', 'articles')
-    `).run()
+      WHERE (name LIKE 'test_%' OR name IN ('blog_posts', 'test_collection', 'products', 'articles'))${tenantFilter}
+    `)
+    const collectionsResult = await (tenantId ? collectionsQuery.bind(tenantId) : collectionsQuery).run()
     deletedCount += collectionsResult.meta?.changes || 0
 
     // Step 7: Clean up orphaned data (skip if tables don't exist)
     try {
-      await db.prepare(`
-        DELETE FROM content_data WHERE content_id NOT IN (SELECT id FROM content)
-      `).run()
+      const orphanCdQuery = db.prepare(`
+        DELETE FROM content_data WHERE content_id NOT IN (SELECT id FROM content)${tenantFilter}
+      `)
+      await (tenantId ? orphanCdQuery.bind(tenantId) : orphanCdQuery).run()
     } catch (e) {
       // Table doesn't exist
     }
 
     try {
-      await db.prepare(`
-        DELETE FROM collection_fields WHERE collection_id NOT IN (SELECT id FROM collections)
-      `).run()
+      const orphanCfQuery = db.prepare(`
+        DELETE FROM collection_fields WHERE collection_id NOT IN (SELECT id FROM collections)${tenantFilter}
+      `)
+      await (tenantId ? orphanCfQuery.bind(tenantId) : orphanCfQuery).run()
     } catch (e) {
       // Table doesn't exist
     }
 
     try {
-      await db.prepare(`
-        DELETE FROM content_versions WHERE content_id NOT IN (SELECT id FROM content)
-      `).run()
+      const orphanCvQuery = db.prepare(`
+        DELETE FROM content_versions WHERE content_id NOT IN (SELECT id FROM content)${tenantFilter}
+      `)
+      await (tenantId ? orphanCvQuery.bind(tenantId) : orphanCvQuery).run()
     } catch (e) {
       // Table doesn't exist
     }
 
     try {
-      await db.prepare(`
-        DELETE FROM workflow_history WHERE content_id NOT IN (SELECT id FROM content)
-      `).run()
+      const orphanWhQuery = db.prepare(`
+        DELETE FROM workflow_history WHERE content_id NOT IN (SELECT id FROM content)${tenantFilter}
+      `)
+      await (tenantId ? orphanWhQuery.bind(tenantId) : orphanWhQuery).run()
     } catch (e) {
       // Table doesn't exist
     }
 
     // Step 8: Delete old activity logs (keep only last 100)
-    await db.prepare(`
+    const alQuery = db.prepare(`
       DELETE FROM activity_logs
       WHERE id NOT IN (
         SELECT id FROM activity_logs
         ORDER BY created_at DESC
         LIMIT 100
-      )
-    `).run()
+      )${tenantFilter}
+    `)
+    await (tenantId ? alQuery.bind(tenantId) : alQuery).run()
 
     return c.json({
       success: true,
@@ -189,16 +208,20 @@ app.post('/test-cleanup/users', async (c: Context) => {
   }
 
   try {
+    const tenantId = getTenantIdOrNull(c)
+    const tenantFilter = tenantId ? ' AND tenant_id = ?' : ''
+
     // Delete test users (preserve admin)
-    const result = await db.prepare(`
+    const query = db.prepare(`
       DELETE FROM users
       WHERE email != 'admin@sonicjs.com'
       AND (
         email LIKE '%test%'
         OR email LIKE '%example.com%'
         OR first_name = 'Test'
-      )
-    `).run()
+      )${tenantFilter}
+    `)
+    const result = await (tenantId ? query.bind(tenantId) : query).run()
 
     return c.json({
       success: true,
@@ -228,32 +251,38 @@ app.post('/test-cleanup/collections', async (c: Context) => {
 
   try {
     let deletedCount = 0
+    const tenantId = getTenantIdOrNull(c)
+    const tenantFilter = tenantId ? ' AND tenant_id = ?' : ''
 
     // Get test collection IDs first
-    const collections = await db.prepare(`
+    const collectionsQuery = db.prepare(`
       SELECT id FROM collections
-      WHERE name LIKE 'test_%'
-      OR name IN ('blog_posts', 'test_collection', 'products', 'articles')
-    `).all()
+      WHERE (name LIKE 'test_%'
+      OR name IN ('blog_posts', 'test_collection', 'products', 'articles'))${tenantFilter}
+    `)
+    const collections = await (tenantId ? collectionsQuery.bind(tenantId) : collectionsQuery).all()
 
     if (collections.results && collections.results.length > 0) {
       const collectionIds = collections.results.map((c: any) => c.id)
 
       // Delete associated fields
       for (const id of collectionIds) {
-        await db.prepare('DELETE FROM collection_fields WHERE collection_id = ?').bind(id).run()
+        const cfQuery = db.prepare(`DELETE FROM collection_fields WHERE collection_id = ?${tenantFilter}`)
+        await (tenantId ? cfQuery.bind(id, tenantId) : cfQuery.bind(id)).run()
       }
 
       // Delete associated content
       for (const id of collectionIds) {
-        await db.prepare('DELETE FROM content WHERE collection_id = ?').bind(id).run()
+        const contentQuery = db.prepare(`DELETE FROM content WHERE collection_id = ?${tenantFilter}`)
+        await (tenantId ? contentQuery.bind(id, tenantId) : contentQuery.bind(id)).run()
       }
 
       // Delete the collections
+      const binds = tenantId ? [...collectionIds, tenantId] : collectionIds
       const result = await db.prepare(`
         DELETE FROM collections
-        WHERE id IN (${collectionIds.map(() => '?').join(',')})
-      `).bind(...collectionIds).run()
+        WHERE id IN (${collectionIds.map(() => '?').join(',')})${tenantFilter}
+      `).bind(...binds).run()
 
       deletedCount = result.meta?.changes || 0
     }
@@ -285,20 +314,25 @@ app.post('/test-cleanup/content', async (c: Context) => {
   }
 
   try {
+    const tenantId = getTenantIdOrNull(c)
+    const tenantFilter = tenantId ? ' AND tenant_id = ?' : ''
+
     // Delete test content
-    const result = await db.prepare(`
+    const contentQuery = db.prepare(`
       DELETE FROM content
-      WHERE title LIKE 'Test %'
+      WHERE (title LIKE 'Test %'
       OR title LIKE '%E2E%'
       OR title LIKE '%Playwright%'
-      OR title LIKE '%Sample%'
-    `).run()
+      OR title LIKE '%Sample%')${tenantFilter}
+    `)
+    const result = await (tenantId ? contentQuery.bind(tenantId) : contentQuery).run()
 
     // Clean up orphaned content_data
-    await db.prepare(`
+    const orphanQuery = db.prepare(`
       DELETE FROM content_data
-      WHERE content_id NOT IN (SELECT id FROM content)
-    `).run()
+      WHERE content_id NOT IN (SELECT id FROM content)${tenantFilter}
+    `)
+    await (tenantId ? orphanQuery.bind(tenantId) : orphanQuery).run()
 
     return c.json({
       success: true,

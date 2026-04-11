@@ -94,6 +94,9 @@ export {
 
 export type { Permission, UserPermissions } from './middleware'
 
+// Tenant utilities
+export { getTenantId, getTenantIdOrNull, isSuperAdmin } from './utils/tenant'
+
 // Plugins - Week 2 (COMPLETED)
 export {
   // Hook System - Class implementations

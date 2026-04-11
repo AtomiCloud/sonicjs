@@ -33,6 +33,7 @@ import { csrfProtection } from './middleware/csrf'
 import { securityHeadersMiddleware } from './middleware/security-headers'
 import { createDatabaseToolsAdminRoutes } from './plugins/core-plugins/database-tools-plugin/admin-routes'
 import { createSeedDataAdminRoutes } from './plugins/core-plugins/seed-data-plugin/admin-routes'
+import adminTenantsRoutes from './routes/admin-tenants'
 import { emailPlugin } from './plugins/core-plugins/email-plugin'
 import { otpLoginPlugin } from './plugins/core-plugins/otp-login-plugin'
 import { oauthProvidersPlugin } from './plugins/core-plugins/oauth-providers'
@@ -43,6 +44,7 @@ import { securityAuditPlugin } from './plugins/core-plugins/security-audit-plugi
 import { securityAuditMiddleware } from './plugins/core-plugins/security-audit-plugin'
 import { stripePlugin } from './plugins/core-plugins/stripe-plugin'
 import { pluginMenuMiddleware } from './middleware/plugin-menu'
+import { tenantMiddleware } from './middleware/tenant'
 import cachePlugin from './plugins/cache'
 import { faviconSvg } from './assets/favicon'
 import { setAppInstance } from './services/route-metadata'
@@ -73,9 +75,11 @@ export interface Variables {
     userId: string
     email: string
     role: string
+    tenantId?: string
     exp: number
     iat: number
   }
+  tenantId?: string
   requestId?: string
   startTime?: number
   appVersion?: string
@@ -182,6 +186,9 @@ export function createSonicJSApp(config: SonicJSConfig = {}): SonicJSApp {
   // CSRF protection middleware
   app.use('*', csrfProtection())
 
+  // Tenant resolution middleware - sets tenantId on context
+  app.use('*', tenantMiddleware())
+
   // Custom middleware - after auth
   if (config.middleware?.afterAuth) {
     for (const middleware of config.middleware.afterAuth) {
@@ -261,6 +268,7 @@ export function createSonicJSApp(config: SonicJSConfig = {}): SonicJSApp {
     }
   }
 
+  app.route('/admin/tenants', adminTenantsRoutes)
   app.route('/admin/plugins', adminPluginRoutes)
   app.route('/admin/logs', adminLogsRoutes)
   app.route('/admin', adminUsersRoutes)

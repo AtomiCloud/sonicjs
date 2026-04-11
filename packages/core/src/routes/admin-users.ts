@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { getTenantId } from '../utils/tenant'
 import { requireAuth, requireRole, logActivity, AuthManager } from '../middleware'
 import { sanitizeInput } from '../utils/sanitize'
 import { renderProfilePage, renderAvatarImage, type UserProfile, type ProfilePageData } from '../templates/pages/admin-profile.template'
@@ -71,6 +72,7 @@ const ROLES = [
 userRoutes.get('/profile', async (c) => {
   const user = c.get('user')
   const db = c.env.DB
+  const tenantId = getTenantId(c)
 
   try {
     // Get user profile data
@@ -78,11 +80,11 @@ userRoutes.get('/profile', async (c) => {
       SELECT id, email, username, first_name, last_name, phone, bio, avatar_url,
              timezone, language, theme, email_notifications, two_factor_enabled,
              role, created_at, last_login_at
-      FROM users 
-      WHERE id = ? AND is_active = 1
+      FROM users
+      WHERE id = ? AND is_active = 1 AND tenant_id = ?
     `)
-    
-    const userProfile = await userStmt.bind(user!.userId).first() as any
+
+    const userProfile = await userStmt.bind(user!.userId, tenantId).first() as any
 
     if (!userProfile) {
       return c.json({ error: 'User not found' }, 404)
@@ -151,6 +153,7 @@ userRoutes.get('/profile', async (c) => {
 userRoutes.put('/profile', async (c) => {
   const user = c.get('user')
   const db = c.env.DB
+  const tenantId = getTenantId(c)
 
   try {
     const formData = await c.req.formData()
@@ -187,10 +190,10 @@ userRoutes.put('/profile', async (c) => {
 
     // Check if username/email are taken by another user
     const checkStmt = db.prepare(`
-      SELECT id FROM users 
-      WHERE (username = ? OR email = ?) AND id != ? AND is_active = 1
+      SELECT id FROM users
+      WHERE (username = ? OR email = ?) AND id != ? AND is_active = 1 AND tenant_id = ?
     `)
-    const existingUser = await checkStmt.bind(username, email, user!.userId).first()
+    const existingUser = await checkStmt.bind(username, email, user!.userId, tenantId).first()
 
     if (existingUser) {
       return c.html(renderAlert({ 
@@ -202,18 +205,18 @@ userRoutes.put('/profile', async (c) => {
 
     // Update user profile
     const updateStmt = db.prepare(`
-      UPDATE users SET 
+      UPDATE users SET
         first_name = ?, last_name = ?, username = ?, email = ?,
         phone = ?, bio = ?, timezone = ?, language = ?,
         email_notifications = ?, updated_at = ?
-      WHERE id = ?
+      WHERE id = ? AND tenant_id = ?
     `)
 
     await updateStmt.bind(
       firstName, lastName, username, email,
       phone, bio, timezone, language,
       emailNotifications ? 1 : 0, Date.now(),
-      user!.userId
+      user!.userId, tenantId
     ).run()
 
     // Save custom profile fields
@@ -259,6 +262,7 @@ userRoutes.put('/profile', async (c) => {
 userRoutes.post('/profile/avatar', async (c) => {
   const user = c.get('user')
   const db = c.env.DB
+  const tenantId = getTenantId(c)
 
   try {
     const formData = await c.req.formData()
@@ -299,16 +303,16 @@ userRoutes.post('/profile/avatar', async (c) => {
     // Update user avatar URL in database
     const updateStmt = db.prepare(`
       UPDATE users SET avatar_url = ?, updated_at = ?
-      WHERE id = ?
+      WHERE id = ? AND tenant_id = ?
     `)
 
-    await updateStmt.bind(avatarUrl, Date.now(), user!.userId).run()
+    await updateStmt.bind(avatarUrl, Date.now(), user!.userId, tenantId).run()
 
     // Get updated user data to render the avatar
     const userStmt = db.prepare(`
-      SELECT first_name, last_name FROM users WHERE id = ?
+      SELECT first_name, last_name FROM users WHERE id = ? AND tenant_id = ?
     `)
-    const userData = await userStmt.bind(user!.userId).first() as any
+    const userData = await userStmt.bind(user!.userId, tenantId).first() as any
 
     // Log the activity
     await logActivity(
@@ -353,6 +357,7 @@ userRoutes.post('/profile/avatar', async (c) => {
 userRoutes.post('/profile/password', async (c) => {
   const user = c.get('user')
   const db = c.env.DB
+  const tenantId = getTenantId(c)
 
   try {
     const formData = await c.req.formData()
@@ -388,9 +393,9 @@ userRoutes.post('/profile/password', async (c) => {
 
     // Get current user data
     const userStmt = db.prepare(`
-      SELECT password_hash FROM users WHERE id = ? AND is_active = 1
+      SELECT password_hash FROM users WHERE id = ? AND is_active = 1 AND tenant_id = ?
     `)
-    const userData = await userStmt.bind(user!.userId).first() as any
+    const userData = await userStmt.bind(user!.userId, tenantId).first() as any
 
     if (!userData) {
       return c.html(renderAlert({ 
@@ -428,9 +433,9 @@ userRoutes.post('/profile/password', async (c) => {
     // Update user password
     const updateStmt = db.prepare(`
       UPDATE users SET password_hash = ?, updated_at = ?
-      WHERE id = ?
+      WHERE id = ? AND tenant_id = ?
     `)
-    await updateStmt.bind(newPasswordHash, Date.now(), user!.userId).run()
+    await updateStmt.bind(newPasswordHash, Date.now(), user!.userId, tenantId).run()
 
     // Log the activity
     await logActivity(
@@ -464,6 +469,7 @@ userRoutes.post('/profile/password', async (c) => {
 userRoutes.get('/users', async (c) => {
   const db = c.env.DB
   const user = c.get('user')
+  const tenantId = getTenantId(c)
 
   try {
     // Get pagination parameters
@@ -480,13 +486,14 @@ userRoutes.get('/users', async (c) => {
 
     // Handle status filter
     if (statusFilter === 'active') {
-      whereClause = 'WHERE u.is_active = 1'
+      whereClause = 'WHERE u.is_active = 1 AND u.tenant_id = ?'
     } else if (statusFilter === 'inactive') {
-      whereClause = 'WHERE u.is_active = 0'
+      whereClause = 'WHERE u.is_active = 0 AND u.tenant_id = ?'
     } else {
       // 'all' - no filter
-      whereClause = 'WHERE 1=1'
+      whereClause = 'WHERE u.tenant_id = ?'
     }
+    params.push(tenantId)
 
     if (search) {
       whereClause += ' AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ? OR u.username LIKE ?)'
@@ -642,6 +649,7 @@ userRoutes.get('/users/new', async (c) => {
 userRoutes.post('/users/new', async (c) => {
   const db = c.env.DB
   const user = c.get('user')
+  const tenantId = getTenantId(c)
 
   try {
     const formData = await c.req.formData()
@@ -700,9 +708,9 @@ userRoutes.post('/users/new', async (c) => {
     // Check if username/email are already taken
     const checkStmt = db.prepare(`
       SELECT id FROM users
-      WHERE username = ? OR email = ?
+      WHERE (username = ? OR email = ?) AND tenant_id = ?
     `)
-    const existingUser = await checkStmt.bind(username, email).first()
+    const existingUser = await checkStmt.bind(username, email, tenantId).first()
 
     if (existingUser) {
       return c.html(renderAlert({
@@ -720,14 +728,14 @@ userRoutes.post('/users/new', async (c) => {
     const createStmt = db.prepare(`
       INSERT INTO users (
         id, email, username, first_name, last_name, phone, bio,
-        password_hash, role, is_active, email_verified, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        password_hash, role, is_active, email_verified, created_at, updated_at, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
 
     await createStmt.bind(
       userId, email, username, firstName, lastName, phone, bio,
       passwordHash, role, isActive ? 1 : 0, emailVerified ? 1 : 0,
-      Date.now(), Date.now()
+      Date.now(), Date.now(), tenantId
     ).run()
 
     // Log the activity
@@ -764,6 +772,7 @@ userRoutes.get('/users/:id', async (c) => {
 
   const db = c.env.DB
   const user = c.get('user')
+  const tenantId = getTenantId(c)
   const userId = c.req.param('id')
 
   try {
@@ -772,10 +781,10 @@ userRoutes.get('/users/:id', async (c) => {
       SELECT id, email, username, first_name, last_name, phone, bio, avatar_url,
              role, is_active, email_verified, two_factor_enabled, created_at, last_login_at
       FROM users
-      WHERE id = ?
+      WHERE id = ? AND tenant_id = ?
     `)
 
-    const userRecord = await userStmt.bind(userId).first() as any
+    const userRecord = await userStmt.bind(userId, tenantId).first() as any
 
     if (!userRecord) {
       return c.json({ error: 'User not found' }, 404)
@@ -820,6 +829,7 @@ userRoutes.get('/users/:id', async (c) => {
 userRoutes.get('/users/:id/edit', async (c) => {
   const db = c.env.DB
   const user = c.get('user')
+  const tenantId = getTenantId(c)
   const userId = c.req.param('id')
 
   try {
@@ -828,10 +838,10 @@ userRoutes.get('/users/:id/edit', async (c) => {
       SELECT id, email, username, first_name, last_name, phone, avatar_url,
              role, is_active, email_verified, two_factor_enabled, created_at, last_login_at
       FROM users
-      WHERE id = ?
+      WHERE id = ? AND tenant_id = ?
     `)
 
-    const userToEdit = await userStmt.bind(userId).first() as any
+    const userToEdit = await userStmt.bind(userId, tenantId).first() as any
 
     if (!userToEdit) {
       return c.html(renderAlert({
@@ -915,6 +925,7 @@ userRoutes.get('/users/:id/edit', async (c) => {
 userRoutes.put('/users/:id', async (c) => {
   const db = c.env.DB
   const user = c.get('user')
+  const tenantId = getTenantId(c)
   const userId = c.req.param('id')
 
   try {
@@ -1016,9 +1027,9 @@ userRoutes.put('/users/:id', async (c) => {
     // Check if username/email are taken by another user
     const checkStmt = db.prepare(`
       SELECT id FROM users
-      WHERE (username = ? OR email = ?) AND id != ?
+      WHERE (username = ? OR email = ?) AND id != ? AND tenant_id = ?
     `)
-    const existingUser = await checkStmt.bind(username, email, userId).first()
+    const existingUser = await checkStmt.bind(username, email, userId, tenantId).first()
 
     if (existingUser) {
       return c.html(renderAlert({
@@ -1034,22 +1045,22 @@ userRoutes.put('/users/:id', async (c) => {
         first_name = ?, last_name = ?, username = ?, email = ?,
         phone = ?, role = ?, is_active = ?, email_verified = ?,
         updated_at = ?
-      WHERE id = ?
+      WHERE id = ? AND tenant_id = ?
     `)
 
     await updateStmt.bind(
       firstName, lastName, username, email,
       phone, role, isActive ? 1 : 0, emailVerified ? 1 : 0,
-      Date.now(), userId
+      Date.now(), userId, tenantId
     ).run()
 
     // Update password if provided
     if (newPassword) {
       const passwordHash = await AuthManager.hashPassword(newPassword)
       const updatePasswordStmt = db.prepare(`
-        UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?
+        UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ? AND tenant_id = ?
       `)
-      await updatePasswordStmt.bind(passwordHash, Date.now(), userId).run()
+      await updatePasswordStmt.bind(passwordHash, Date.now(), userId, tenantId).run()
     }
 
     // Check if any profile field has data
@@ -1123,6 +1134,7 @@ userRoutes.put('/users/:id', async (c) => {
 userRoutes.post('/users/:id/toggle', async (c) => {
   const db = c.env.DB
   const user = c.get('user')
+  const tenantId = getTenantId(c)
   const userId = c.req.param('id')
 
   try {
@@ -1136,9 +1148,9 @@ userRoutes.post('/users/:id/toggle', async (c) => {
 
     // Check if user exists
     const userStmt = db.prepare(`
-      SELECT id, email FROM users WHERE id = ?
+      SELECT id, email FROM users WHERE id = ? AND tenant_id = ?
     `)
-    const userToToggle = await userStmt.bind(userId).first() as any
+    const userToToggle = await userStmt.bind(userId, tenantId).first() as any
 
     if (!userToToggle) {
       return c.json({ error: 'User not found' }, 404)
@@ -1146,9 +1158,9 @@ userRoutes.post('/users/:id/toggle', async (c) => {
 
     // Toggle user status
     const toggleStmt = db.prepare(`
-      UPDATE users SET is_active = ?, updated_at = ? WHERE id = ?
+      UPDATE users SET is_active = ?, updated_at = ? WHERE id = ? AND tenant_id = ?
     `)
-    await toggleStmt.bind(active ? 1 : 0, Date.now(), userId).run()
+    await toggleStmt.bind(active ? 1 : 0, Date.now(), userId, tenantId).run()
 
     // Log the activity
     await logActivity(
@@ -1175,6 +1187,7 @@ userRoutes.post('/users/:id/toggle', async (c) => {
 userRoutes.delete('/users/:id', async (c) => {
   const db = c.env.DB
   const user = c.get('user')
+  const tenantId = getTenantId(c)
   const userId = c.req.param('id')
 
   try {
@@ -1189,9 +1202,9 @@ userRoutes.delete('/users/:id', async (c) => {
 
     // Check if user exists
     const userStmt = db.prepare(`
-      SELECT id, email FROM users WHERE id = ?
+      SELECT id, email FROM users WHERE id = ? AND tenant_id = ?
     `)
-    const userToDelete = await userStmt.bind(userId).first() as any
+    const userToDelete = await userStmt.bind(userId, tenantId).first() as any
 
     if (!userToDelete) {
       return c.json({ error: 'User not found' }, 404)
@@ -1200,9 +1213,9 @@ userRoutes.delete('/users/:id', async (c) => {
     if (hardDelete) {
       // Hard delete - permanently remove from database
       const deleteStmt = db.prepare(`
-        DELETE FROM users WHERE id = ?
+        DELETE FROM users WHERE id = ? AND tenant_id = ?
       `)
-      await deleteStmt.bind(userId).run()
+      await deleteStmt.bind(userId, tenantId).run()
 
       // Log the activity
       await logActivity(
@@ -1219,9 +1232,9 @@ userRoutes.delete('/users/:id', async (c) => {
     } else {
       // Soft delete - deactivate by setting is_active = 0
       const deleteStmt = db.prepare(`
-        UPDATE users SET is_active = 0, updated_at = ? WHERE id = ?
+        UPDATE users SET is_active = 0, updated_at = ? WHERE id = ? AND tenant_id = ?
       `)
-      await deleteStmt.bind(Date.now(), userId).run()
+      await deleteStmt.bind(Date.now(), userId, tenantId).run()
 
       // Log the activity
       await logActivity(
@@ -1249,6 +1262,7 @@ userRoutes.delete('/users/:id', async (c) => {
 userRoutes.post('/invite-user', async (c) => {
   const db = c.env.DB
   const user = c.get('user')
+  const tenantId = getTenantId(c)
 
   try {
     const formData = await c.req.formData()
@@ -1272,9 +1286,9 @@ userRoutes.post('/invite-user', async (c) => {
 
     // Check if user already exists
     const existingUserStmt = db.prepare(`
-      SELECT id FROM users WHERE email = ?
+      SELECT id FROM users WHERE email = ? AND tenant_id = ?
     `)
-    const existingUser = await existingUserStmt.bind(email).first()
+    const existingUser = await existingUserStmt.bind(email, tenantId).first()
 
     if (existingUser) {
       return c.json({ error: 'A user with this email already exists' }, 400)
@@ -1288,16 +1302,16 @@ userRoutes.post('/invite-user', async (c) => {
     const userId = crypto.randomUUID()
     const createUserStmt = db.prepare(`
       INSERT INTO users (
-        id, email, first_name, last_name, role, 
+        id, email, first_name, last_name, role,
         invitation_token, invited_by, invited_at,
-        is_active, email_verified, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        is_active, email_verified, created_at, updated_at, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
 
     await createUserStmt.bind(
       userId, email, firstName, lastName, role,
       invitationToken, user!.userId, Date.now(),
-      0, 0, Date.now(), Date.now()
+      0, 0, Date.now(), Date.now(), tenantId
     ).run()
 
     // Log the activity
@@ -1337,16 +1351,17 @@ userRoutes.post('/invite-user', async (c) => {
 userRoutes.post('/resend-invitation/:id', async (c) => {
   const db = c.env.DB
   const user = c.get('user')
+  const tenantId = getTenantId(c)
   const userId = c.req.param('id')
 
   try {
     // Check if user exists and is invited but not active
     const userStmt = db.prepare(`
       SELECT id, email, first_name, last_name, role, invitation_token
-      FROM users 
-      WHERE id = ? AND is_active = 0 AND invitation_token IS NOT NULL
+      FROM users
+      WHERE id = ? AND is_active = 0 AND invitation_token IS NOT NULL AND tenant_id = ?
     `)
-    const invitedUser = await userStmt.bind(userId).first() as any
+    const invitedUser = await userStmt.bind(userId, tenantId).first() as any
 
     if (!invitedUser) {
       return c.json({ error: 'User not found or invitation not valid' }, 404)
@@ -1357,18 +1372,19 @@ userRoutes.post('/resend-invitation/:id', async (c) => {
 
     // Update invitation token and date
     const updateStmt = db.prepare(`
-      UPDATE users SET 
-        invitation_token = ?, 
-        invited_at = ?, 
+      UPDATE users SET
+        invitation_token = ?,
+        invited_at = ?,
         updated_at = ?
-      WHERE id = ?
+      WHERE id = ? AND tenant_id = ?
     `)
 
     await updateStmt.bind(
       newInvitationToken,
       Date.now(),
       Date.now(),
-      userId
+      userId,
+      tenantId
     ).run()
 
     // Log the activity
@@ -1400,23 +1416,24 @@ userRoutes.post('/resend-invitation/:id', async (c) => {
 userRoutes.delete('/cancel-invitation/:id', async (c) => {
   const db = c.env.DB
   const user = c.get('user')
+  const tenantId = getTenantId(c)
   const userId = c.req.param('id')
 
   try {
     // Check if user exists and is invited but not active
     const userStmt = db.prepare(`
-      SELECT id, email FROM users 
-      WHERE id = ? AND is_active = 0 AND invitation_token IS NOT NULL
+      SELECT id, email FROM users
+      WHERE id = ? AND is_active = 0 AND invitation_token IS NOT NULL AND tenant_id = ?
     `)
-    const invitedUser = await userStmt.bind(userId).first() as any
+    const invitedUser = await userStmt.bind(userId, tenantId).first() as any
 
     if (!invitedUser) {
       return c.json({ error: 'User not found or invitation not valid' }, 404)
     }
 
     // Delete the user record (since they haven't activated yet)
-    const deleteStmt = db.prepare(`DELETE FROM users WHERE id = ?`)
-    await deleteStmt.bind(userId).run()
+    const deleteStmt = db.prepare(`DELETE FROM users WHERE id = ? AND tenant_id = ?`)
+    await deleteStmt.bind(userId, tenantId).run()
 
     // Log the activity
     await logActivity(

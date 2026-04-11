@@ -48,9 +48,15 @@ export async function isRegistrationEnabled(db: D1Database): Promise<boolean> {
  * @param db - D1 database instance
  * @returns true if no users exist in the database
  */
-export async function isFirstUserRegistration(db: D1Database): Promise<boolean> {
+export async function isFirstUserRegistration(db: D1Database, tenantId: string | null = null): Promise<boolean> {
   try {
-    const result = await db.prepare('SELECT COUNT(*) as count FROM users').first() as { count: number } | null
+    const query = tenantId
+      ? 'SELECT COUNT(*) as count FROM users WHERE tenant_id = ?'
+      : 'SELECT COUNT(*) as count FROM users'
+    const stmt = tenantId
+      ? db.prepare(query).bind(tenantId)
+      : db.prepare(query)
+    const result = await stmt.first() as { count: number } | null
     return result?.count === 0
   } catch {
     return false // Default to not first user on error
@@ -63,16 +69,20 @@ export async function isFirstUserRegistration(db: D1Database): Promise<boolean> 
  * @param db - D1 database instance
  * @returns true if an admin user exists
  */
-export async function checkAdminUserExists(db: D1Database): Promise<boolean> {
+export async function checkAdminUserExists(db: D1Database, tenantId: string | null = null): Promise<boolean> {
   // Return cached value if already checked
   if (adminExistsCache !== null) {
     return adminExistsCache
   }
 
   try {
-    const result = await db.prepare('SELECT id FROM users WHERE role = ?')
-      .bind('admin')
-      .first()
+    const query = tenantId
+      ? 'SELECT id FROM users WHERE role = ? AND tenant_id = ?'
+      : 'SELECT id FROM users WHERE role = ?'
+    const stmt = tenantId
+      ? db.prepare(query).bind('admin', tenantId)
+      : db.prepare(query).bind('admin')
+    const result = await stmt.first()
     adminExistsCache = !!result
     return adminExistsCache
   } catch {

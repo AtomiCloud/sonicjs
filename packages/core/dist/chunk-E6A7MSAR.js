@@ -1,5 +1,5 @@
-import { syncCollections, syncAllFormCollections, PluginBootstrapService } from './chunk-TPEGKW45.js';
-import { MigrationService } from './chunk-4UO3WD3V.js';
+import { syncCollections, syncAllFormCollections, PluginBootstrapService } from './chunk-3GZLOTZK.js';
+import { MigrationService } from './chunk-TGYRVZQK.js';
 import { metricsTracker } from './chunk-FICTAGD4.js';
 import { sign, verify } from 'hono/jwt';
 import { setCookie, getCookie } from 'hono/cookie';
@@ -90,11 +90,12 @@ function bootstrapMiddleware(config = {}) {
 }
 var JWT_SECRET_FALLBACK = "your-super-secret-jwt-key-change-in-production";
 var AuthManager = class {
-  static async generateToken(userId, email, role, secret) {
+  static async generateToken(userId, email, role, secret, tenantId) {
     const payload = {
       userId,
       email,
       role,
+      tenantId: tenantId ?? null,
       exp: Math.floor(Date.now() / 1e3) + 60 * 60 * 24,
       // 24 hours
       iat: Math.floor(Date.now() / 1e3)
@@ -239,6 +240,29 @@ var requireAuth = () => {
         if (payload && kv) {
           const cacheKey = `auth:${token.substring(0, 20)}`;
           await kv.put(cacheKey, JSON.stringify(payload), { expirationTtl: 300 });
+        }
+      }
+      if (!payload && token.startsWith("ffx_")) {
+        const db = c.env?.DB;
+        if (db) {
+          const now = (/* @__PURE__ */ new Date()).toISOString();
+          const row = await db.prepare(
+            `SELECT at.id, at.tenant_id, at.permissions, at.expires_at, u.id as user_id, u.email, u.role
+             FROM api_tokens at
+             JOIN users u ON at.user_id = u.id
+             WHERE at.token = ? AND (at.expires_at IS NULL OR at.expires_at > ?)`
+          ).bind(token, now).first();
+          if (row) {
+            await db.prepare("UPDATE api_tokens SET last_used_at = ? WHERE id = ?").bind(now, row.id).run();
+            payload = {
+              userId: row.user_id,
+              email: row.email,
+              role: row.role,
+              tenantId: row.tenant_id,
+              exp: 0,
+              iat: 0
+            };
+          }
         }
       }
       if (!payload) {
@@ -543,5 +567,5 @@ var getActivePlugins = () => [];
 var isPluginActive = () => false;
 
 export { AuthManager, PermissionManager, bootstrapMiddleware, cacheHeaders, compressionMiddleware, csrfProtection, detailedLoggingMiddleware, generateCsrfToken, getActivePlugins, isPluginActive, logActivity, loggingMiddleware, metricsMiddleware, optionalAuth, performanceLoggingMiddleware, rateLimit, requireActivePlugin, requireActivePlugins, requireAnyPermission, requireAuth, requirePermission, requireRole, securityHeadersMiddleware, securityLoggingMiddleware, validateCsrfToken, verifySecurityConfig };
-//# sourceMappingURL=chunk-UTU3EFUE.js.map
-//# sourceMappingURL=chunk-UTU3EFUE.js.map
+//# sourceMappingURL=chunk-E6A7MSAR.js.map
+//# sourceMappingURL=chunk-E6A7MSAR.js.map

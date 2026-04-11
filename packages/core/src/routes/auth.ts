@@ -10,6 +10,7 @@ import { getCacheService, CACHE_CONFIGS } from '../services'
 import { authValidationService, isRegistrationEnabled, isFirstUserRegistration } from '../services/auth-validation'
 import type { RegistrationData } from '../services/auth-validation'
 import type { Bindings, Variables } from '../app'
+import { getTenantId, getTenantIdOrNull } from '../utils/tenant'
 import { getUserProfileConfig, getRegistrationFields, getProfileFieldDefaults, sanitizeCustomData, saveCustomData } from '../plugins/core-plugins/user-profiles'
 
 const JWT_SECRET_FALLBACK = 'your-super-secret-jwt-key-change-in-production'
@@ -145,26 +146,51 @@ authRoutes.post('/register',
 
       // Normalize email to lowercase
       const normalizedEmail = email.toLowerCase()
-      
-      // Check if user already exists
-      const existingUser = await db.prepare('SELECT id FROM users WHERE email = ? OR username = ?')
-        .bind(normalizedEmail, username)
-        .first()
-      
+
+      // Resolve tenant context for registration
+      let resolvedTenantId: string | null = null
+      const tenantSlug = (requestData as any).tenant as string | undefined
+      if (!isFirstUser) {
+        if (tenantSlug) {
+          const tenantRow = await db.prepare('SELECT id FROM tenants WHERE slug = ? AND is_active = 1')
+            .bind(tenantSlug)
+            .first() as any
+          if (!tenantRow) {
+            return c.json({ error: 'Invalid or inactive tenant' }, 400)
+          }
+          resolvedTenantId = tenantRow.id
+        }
+      }
+      // First user ever becomes super_admin with tenant_id = NULL
+
+      // Check if user already exists (scoped to tenant if applicable)
+      let existingUser
+      if (resolvedTenantId) {
+        existingUser = await db.prepare('SELECT id FROM users WHERE (email = ? OR username = ?) AND tenant_id = ?')
+          .bind(normalizedEmail, username, resolvedTenantId)
+          .first()
+      } else {
+        existingUser = await db.prepare('SELECT id FROM users WHERE email = ? OR username = ?')
+          .bind(normalizedEmail, username)
+          .first()
+      }
+
       if (existingUser) {
         return c.json({ error: 'User with this email or username already exists' }, 400)
       }
-      
+
       // Hash password
       const passwordHash = await AuthManager.hashPassword(password)
-      
-      // Create user
+
+      // Create user - first user is super_admin with NULL tenant_id
       const userId = crypto.randomUUID()
       const now = new Date()
-      
+      const assignedRole = isFirstUser ? 'super_admin' : 'viewer'
+      const assignedTenantId = isFirstUser ? null : resolvedTenantId
+
       await db.prepare(`
-        INSERT INTO users (id, email, username, first_name, last_name, password_hash, role, is_active, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO users (id, email, username, first_name, last_name, password_hash, role, tenant_id, is_active, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         userId,
         normalizedEmail,
@@ -172,7 +198,8 @@ authRoutes.post('/register',
         firstName,
         lastName,
         passwordHash,
-        'viewer', // Default role
+        assignedRole,
+        assignedTenantId,
         1, // is_active
         now.getTime(),
         now.getTime()
@@ -194,8 +221,8 @@ authRoutes.post('/register',
         }
       }
 
-      // Generate JWT token
-      const token = await AuthManager.generateToken(userId, normalizedEmail, 'viewer', c.env.JWT_SECRET)
+      // Generate JWT token (include tenantId in payload)
+      const token = await AuthManager.generateToken(userId, normalizedEmail, assignedRole, c.env.JWT_SECRET, assignedTenantId)
 
       // Set HTTP-only cookie
       setCookie(c, 'auth_token', token, {
@@ -215,7 +242,8 @@ authRoutes.post('/register',
           username,
           firstName,
           lastName,
-          role: 'viewer'
+          role: assignedRole,
+          tenantId: assignedTenantId
         },
         token
       }, 201)
@@ -245,22 +273,43 @@ authRoutes.post('/login',
       }
       const { email, password } = validation.data
       const db = c.env.DB
-      
+
       // Normalize email to lowercase
       const normalizedEmail = email.toLowerCase()
-      
+
+      // Resolve optional tenant slug from login body
+      const tenantSlug = body.tenant as string | undefined
+      let resolvedTenantId: string | null = null
+      if (tenantSlug) {
+        const tenantRow = await db.prepare('SELECT id FROM tenants WHERE slug = ? AND is_active = 1')
+          .bind(tenantSlug)
+          .first() as any
+        if (!tenantRow) {
+          return c.json({ error: 'Invalid or inactive tenant' }, 400)
+        }
+        resolvedTenantId = tenantRow.id
+      }
+
       // Find user with caching
+      const cacheKeySuffix = resolvedTenantId ? `email:${normalizedEmail}:tenant:${resolvedTenantId}` : `email:${normalizedEmail}`
       const cache = getCacheService(CACHE_CONFIGS.user!)
-      let user = await cache.get<any>(cache.generateKey('user', `email:${normalizedEmail}`))
+      let user = await cache.get<any>(cache.generateKey('user', cacheKeySuffix))
 
       if (!user) {
-        user = await db.prepare('SELECT * FROM users WHERE email = ? AND is_active = 1')
-          .bind(normalizedEmail)
-          .first() as any
+        if (resolvedTenantId) {
+          user = await db.prepare('SELECT * FROM users WHERE email = ? AND is_active = 1 AND tenant_id = ?')
+            .bind(normalizedEmail, resolvedTenantId)
+            .first() as any
+        } else {
+          // No tenant specified - backward compat for single-tenant or super_admin login
+          user = await db.prepare('SELECT * FROM users WHERE email = ? AND is_active = 1')
+            .bind(normalizedEmail)
+            .first() as any
+        }
 
         if (user) {
           // Cache the user for faster subsequent lookups
-          await cache.set(cache.generateKey('user', `email:${normalizedEmail}`), user)
+          await cache.set(cache.generateKey('user', cacheKeySuffix), user)
           await cache.set(cache.generateKey('user', user.id), user)
         }
       }
@@ -287,8 +336,8 @@ authRoutes.post('/login',
         }
       }
 
-      // Generate JWT token
-      const token = await AuthManager.generateToken(user.id, user.email, user.role, c.env.JWT_SECRET)
+      // Generate JWT token (include tenantId in payload)
+      const token = await AuthManager.generateToken(user.id, user.email, user.role, c.env.JWT_SECRET, user.tenant_id || null)
 
       // Set HTTP-only cookie
       setCookie(c, 'auth_token', token, {
@@ -308,7 +357,7 @@ authRoutes.post('/login',
 
       // Invalidate user cache on login
       await cache.delete(cache.generateKey('user', user.id))
-      await cache.delete(cache.generateKey('user', `email:${normalizedEmail}`))
+      await cache.delete(cache.generateKey('user', cacheKeySuffix))
 
       return c.json({
         user: {
@@ -317,7 +366,8 @@ authRoutes.post('/login',
           username: user.username,
           firstName: user.first_name,
           lastName: user.last_name,
-          role: user.role
+          role: user.role,
+          tenantId: user.tenant_id || null
         },
         token
       })
@@ -365,9 +415,17 @@ authRoutes.get('/me', requireAuth(), async (c) => {
     }
     
     const db = c.env.DB
-    const userData = await db.prepare('SELECT id, email, username, first_name, last_name, role, created_at FROM users WHERE id = ?')
-      .bind(user.userId)
-      .first()
+    const tenantId = getTenantIdOrNull(c)
+    let userData
+    if (tenantId) {
+      userData = await db.prepare('SELECT id, email, username, first_name, last_name, role, tenant_id, created_at FROM users WHERE id = ? AND tenant_id = ?')
+        .bind(user.userId, tenantId)
+        .first()
+    } else {
+      userData = await db.prepare('SELECT id, email, username, first_name, last_name, role, tenant_id, created_at FROM users WHERE id = ?')
+        .bind(user.userId)
+        .first()
+    }
     
     if (!userData) {
       return c.json({ error: 'User not found' }, 404)
@@ -389,8 +447,9 @@ authRoutes.post('/refresh', requireAuth(), async (c) => {
       return c.json({ error: 'Not authenticated' }, 401)
     }
     
-    // Generate new token
-    const token = await AuthManager.generateToken(user.userId, user.email, user.role, c.env.JWT_SECRET)
+    // Generate new token (preserve tenantId from existing session)
+    const tenantId = getTenantIdOrNull(c)
+    const token = await AuthManager.generateToken(user.userId, user.email, user.role, c.env.JWT_SECRET, tenantId)
     
     // Set new cookie
     setCookie(c, 'auth_token', token, {
@@ -468,11 +527,35 @@ authRoutes.post('/register/form',
     const firstName = validatedData.firstName || authValidationService.generateDefaultValue('firstName', validatedData)
     const lastName = validatedData.lastName || authValidationService.generateDefaultValue('lastName', validatedData)
     
-    // Check if user already exists
-    const existingUser = await db.prepare('SELECT id FROM users WHERE email = ? OR username = ?')
-      .bind(normalizedEmail, username)
-      .first()
-    
+    // Resolve tenant context for form registration
+    let formTenantId: string | null = null
+    const formTenantSlug = formData.get('tenant')?.toString()
+    if (!isFirstUser && formTenantSlug) {
+      const tenantRow = await db.prepare('SELECT id FROM tenants WHERE slug = ? AND is_active = 1')
+        .bind(formTenantSlug)
+        .first() as any
+      if (!tenantRow) {
+        return c.html(html`
+          <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            Invalid or inactive tenant
+          </div>
+        `)
+      }
+      formTenantId = tenantRow.id
+    }
+
+    // Check if user already exists (scoped to tenant if applicable)
+    let existingUser
+    if (formTenantId) {
+      existingUser = await db.prepare('SELECT id FROM users WHERE (email = ? OR username = ?) AND tenant_id = ?')
+        .bind(normalizedEmail, username, formTenantId)
+        .first()
+    } else {
+      existingUser = await db.prepare('SELECT id FROM users WHERE email = ? OR username = ?')
+        .bind(normalizedEmail, username)
+        .first()
+    }
+
     if (existingUser) {
       return c.html(html`
         <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -480,20 +563,21 @@ authRoutes.post('/register/form',
         </div>
       `)
     }
-    
+
     // Hash password
     const passwordHash = await AuthManager.hashPassword(password)
 
-    // Determine role: first user gets admin, others get viewer
-    const role = isFirstUser ? 'admin' : 'viewer'
+    // Determine role: first user gets super_admin with NULL tenant, others get viewer
+    const role = isFirstUser ? 'super_admin' : 'viewer'
+    const assignedFormTenantId = isFirstUser ? null : formTenantId
 
     // Create user
     const userId = crypto.randomUUID()
     const now = new Date()
 
     await db.prepare(`
-      INSERT INTO users (id, email, username, first_name, last_name, password_hash, role, is_active, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO users (id, email, username, first_name, last_name, password_hash, role, tenant_id, is_active, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       userId,
       normalizedEmail,
@@ -502,6 +586,7 @@ authRoutes.post('/register/form',
       lastName,
       passwordHash,
       role,
+      assignedFormTenantId,
       1, // is_active
       now.getTime(),
       now.getTime()
@@ -524,8 +609,8 @@ authRoutes.post('/register/form',
       }
     }
 
-    // Generate JWT token
-    const token = await AuthManager.generateToken(userId, normalizedEmail, role, c.env.JWT_SECRET)
+    // Generate JWT token (include tenantId in payload)
+    const token = await AuthManager.generateToken(userId, normalizedEmail, role, c.env.JWT_SECRET, assignedFormTenantId)
 
     // Set HTTP-only cookie
     setCookie(c, 'auth_token', token, {
@@ -539,7 +624,7 @@ authRoutes.post('/register/form',
     await setCsrfCookie(c)
 
     // Redirect based on role
-    const redirectUrl = role === 'admin' ? '/admin/dashboard' : '/admin/dashboard'
+    const redirectUrl = role === 'super_admin' ? '/admin/dashboard' : '/admin/dashboard'
 
     return c.html(html`
       <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
@@ -585,11 +670,35 @@ authRoutes.post('/login/form',
     }
 
     const db = c.env.DB
-    
-    // Find user
-    const user = await db.prepare('SELECT * FROM users WHERE email = ? AND is_active = 1')
-      .bind(normalizedEmail)
-      .first() as any
+
+    // Resolve optional tenant slug from form data
+    const formLoginTenantSlug = formData.get('tenant')?.toString()
+    let formLoginTenantId: string | null = null
+    if (formLoginTenantSlug) {
+      const tenantRow = await db.prepare('SELECT id FROM tenants WHERE slug = ? AND is_active = 1')
+        .bind(formLoginTenantSlug)
+        .first() as any
+      if (!tenantRow) {
+        return c.html(html`
+          <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            Invalid or inactive tenant
+          </div>
+        `)
+      }
+      formLoginTenantId = tenantRow.id
+    }
+
+    // Find user (scoped to tenant if provided)
+    let user
+    if (formLoginTenantId) {
+      user = await db.prepare('SELECT * FROM users WHERE email = ? AND is_active = 1 AND tenant_id = ?')
+        .bind(normalizedEmail, formLoginTenantId)
+        .first() as any
+    } else {
+      user = await db.prepare('SELECT * FROM users WHERE email = ? AND is_active = 1')
+        .bind(normalizedEmail)
+        .first() as any
+    }
     
     if (!user) {
       return c.html(html`
@@ -621,8 +730,8 @@ authRoutes.post('/login/form',
       }
     }
 
-    // Generate JWT token
-    const token = await AuthManager.generateToken(user.id, user.email, user.role, c.env.JWT_SECRET)
+    // Generate JWT token (include tenantId in payload)
+    const token = await AuthManager.generateToken(user.id, user.email, user.role, c.env.JWT_SECRET, user.tenant_id || null)
 
     // Set HTTP-only cookie
     setCookie(c, 'auth_token', token, {
@@ -726,8 +835,8 @@ authRoutes.post('/seed-admin',
     const adminEmail = 'admin@sonicjs.com'.toLowerCase()
     
     await db.prepare(`
-      INSERT INTO users (id, email, username, first_name, last_name, password_hash, role, is_active, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO users (id, email, username, first_name, last_name, password_hash, role, tenant_id, is_active, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       userId,
       adminEmail,
@@ -736,6 +845,7 @@ authRoutes.post('/seed-admin',
       'User',
       passwordHash,
       'admin',
+      null, // super admin has no tenant scope
       1, // is_active
       now,
       now
@@ -942,8 +1052,8 @@ authRoutes.post('/accept-invitation', async (c) => {
 
     // Check if invitation token is valid
     const userStmt = db.prepare(`
-      SELECT id, email, first_name, last_name, role, invited_at
-      FROM users 
+      SELECT id, email, first_name, last_name, role, tenant_id, invited_at
+      FROM users
       WHERE invitation_token = ? AND is_active = 0
     `)
     const invitedUser = await userStmt.bind(token).first() as any
@@ -955,16 +1065,25 @@ authRoutes.post('/accept-invitation', async (c) => {
     // Check if invitation is expired (7 days)
     const invitationAge = Date.now() - invitedUser.invited_at
     const maxAge = 7 * 24 * 60 * 60 * 1000 // 7 days
-    
+
     if (invitationAge > maxAge) {
       return c.json({ error: 'Invitation has expired' }, 400)
     }
 
-    // Check if username is available
-    const existingUsernameStmt = db.prepare(`
-      SELECT id FROM users WHERE username = ? AND id != ?
-    `)
-    const existingUsername = await existingUsernameStmt.bind(username, invitedUser.id).first()
+    // Check if username is available (scoped to tenant if applicable)
+    let existingUsernameStmt
+    let existingUsername
+    if (invitedUser.tenant_id) {
+      existingUsernameStmt = db.prepare(`
+        SELECT id FROM users WHERE username = ? AND id != ? AND tenant_id = ?
+      `)
+      existingUsername = await existingUsernameStmt.bind(username, invitedUser.id, invitedUser.tenant_id).first()
+    } else {
+      existingUsernameStmt = db.prepare(`
+        SELECT id FROM users WHERE username = ? AND id != ?
+      `)
+      existingUsername = await existingUsernameStmt.bind(username, invitedUser.id).first()
+    }
 
     if (existingUsername) {
       return c.json({ error: 'Username is already taken' }, 400)
@@ -994,8 +1113,8 @@ authRoutes.post('/accept-invitation', async (c) => {
       invitedUser.id
     ).run()
 
-    // Generate JWT token for auto-login
-    const authToken = await AuthManager.generateToken(invitedUser.id, invitedUser.email, invitedUser.role, c.env.JWT_SECRET)
+    // Generate JWT token for auto-login (include tenantId)
+    const authToken = await AuthManager.generateToken(invitedUser.id, invitedUser.email, invitedUser.role, c.env.JWT_SECRET, invitedUser.tenant_id || null)
     
     // Set HTTP-only cookie
     setCookie(c, 'auth_token', authToken, {
@@ -1040,12 +1159,33 @@ authRoutes.post('/request-password-reset',
 
     const db = c.env.DB
 
-    // Check if user exists and is active
-    const userStmt = db.prepare(`
-      SELECT id, email, first_name, last_name FROM users 
-      WHERE email = ? AND is_active = 1
-    `)
-    const user = await userStmt.bind(email).first() as any
+    // Resolve optional tenant slug from form data
+    const resetTenantSlug = formData.get('tenant')?.toString()
+    let resetTenantId: string | null = null
+    if (resetTenantSlug) {
+      const tenantRow = await db.prepare('SELECT id FROM tenants WHERE slug = ? AND is_active = 1')
+        .bind(resetTenantSlug)
+        .first() as any
+      if (tenantRow) {
+        resetTenantId = tenantRow.id
+      }
+    }
+
+    // Check if user exists and is active (scoped to tenant if provided)
+    let user
+    if (resetTenantId) {
+      const userStmt = db.prepare(`
+        SELECT id, email, first_name, last_name FROM users
+        WHERE email = ? AND is_active = 1 AND tenant_id = ?
+      `)
+      user = await userStmt.bind(email, resetTenantId).first() as any
+    } else {
+      const userStmt = db.prepare(`
+        SELECT id, email, first_name, last_name FROM users
+        WHERE email = ? AND is_active = 1
+      `)
+      user = await userStmt.bind(email).first() as any
+    }
 
     // Always return success to prevent email enumeration
     if (!user) {

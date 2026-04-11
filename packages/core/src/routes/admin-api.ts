@@ -9,6 +9,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 // import { zValidator } from '@hono/zod-validator'
 import { requireAuth, requireRole } from '../middleware'
+import { getTenantId } from '../utils/tenant'
 import type { Bindings, Variables } from '../app'
 
 export const adminApiRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>()
@@ -24,12 +25,13 @@ adminApiRoutes.use('*', requireRole(['admin', 'editor']))
 adminApiRoutes.get('/stats', async (c) => {
   try {
     const db = c.env.DB
+    const tenantId = getTenantId(c)
 
     // Get collections count
     let collectionsCount = 0
     try {
-      const collectionsStmt = db.prepare("SELECT COUNT(*) as count FROM collections WHERE is_active = 1 AND (source_type IS NULL OR source_type = 'user')")
-      const collectionsResult = await collectionsStmt.first()
+      const collectionsStmt = db.prepare("SELECT COUNT(*) as count FROM collections WHERE is_active = 1 AND (source_type IS NULL OR source_type = 'user') AND tenant_id = ?")
+      const collectionsResult = await collectionsStmt.bind(tenantId).first()
       collectionsCount = (collectionsResult as any)?.count || 0
     } catch (error) {
       console.error('Error fetching collections count:', error)
@@ -38,8 +40,8 @@ adminApiRoutes.get('/stats', async (c) => {
     // Get content count
     let contentCount = 0
     try {
-      const contentStmt = db.prepare("SELECT COUNT(*) as count FROM content c JOIN collections col ON c.collection_id = col.id WHERE c.deleted_at IS NULL AND (col.source_type IS NULL OR col.source_type = 'user')")
-      const contentResult = await contentStmt.first()
+      const contentStmt = db.prepare("SELECT COUNT(*) as count FROM content c JOIN collections col ON c.collection_id = col.id WHERE c.deleted_at IS NULL AND (col.source_type IS NULL OR col.source_type = 'user') AND c.tenant_id = ? AND col.tenant_id = ?")
+      const contentResult = await contentStmt.bind(tenantId, tenantId).first()
       contentCount = (contentResult as any)?.count || 0
     } catch (error) {
       console.error('Error fetching content count:', error)
@@ -49,8 +51,8 @@ adminApiRoutes.get('/stats', async (c) => {
     let mediaCount = 0
     let mediaSize = 0
     try {
-      const mediaStmt = db.prepare('SELECT COUNT(*) as count, COALESCE(SUM(size), 0) as total_size FROM media WHERE deleted_at IS NULL')
-      const mediaResult = await mediaStmt.first()
+      const mediaStmt = db.prepare('SELECT COUNT(*) as count, COALESCE(SUM(size), 0) as total_size FROM media WHERE deleted_at IS NULL AND tenant_id = ?')
+      const mediaResult = await mediaStmt.bind(tenantId).first()
       mediaCount = (mediaResult as any)?.count || 0
       mediaSize = (mediaResult as any)?.total_size || 0
     } catch (error) {
@@ -60,8 +62,8 @@ adminApiRoutes.get('/stats', async (c) => {
     // Get users count
     let usersCount = 0
     try {
-      const usersStmt = db.prepare('SELECT COUNT(*) as count FROM users WHERE is_active = 1')
-      const usersResult = await usersStmt.first()
+      const usersStmt = db.prepare('SELECT COUNT(*) as count FROM users WHERE is_active = 1 AND tenant_id = ?')
+      const usersResult = await usersStmt.bind(tenantId).first()
       usersCount = (usersResult as any)?.count || 0
     } catch (error) {
       console.error('Error fetching users count:', error)
@@ -88,6 +90,7 @@ adminApiRoutes.get('/stats', async (c) => {
 adminApiRoutes.get('/storage', async (c) => {
   try {
     const db = c.env.DB
+    const tenantId = getTenantId(c)
 
     // Get database size from D1 metadata
     let databaseSize = 0
@@ -101,8 +104,8 @@ adminApiRoutes.get('/storage', async (c) => {
     // Get media total size
     let mediaSize = 0
     try {
-      const mediaStmt = db.prepare('SELECT COALESCE(SUM(size), 0) as total_size FROM media WHERE deleted_at IS NULL')
-      const mediaResult = await mediaStmt.first()
+      const mediaStmt = db.prepare('SELECT COALESCE(SUM(size), 0) as total_size FROM media WHERE deleted_at IS NULL AND tenant_id = ?')
+      const mediaResult = await mediaStmt.bind(tenantId).first()
       mediaSize = (mediaResult as any)?.total_size || 0
     } catch (error) {
       console.error('Error fetching media size:', error)
@@ -210,6 +213,7 @@ const updateCollectionSchema = z.object({
 adminApiRoutes.get('/collections', async (c) => {
   try {
     const db = c.env.DB
+    const tenantId = getTenantId(c)
     const search = c.req.query('search') || ''
     const includeInactive = c.req.query('includeInactive') === 'true'
 
@@ -223,10 +227,11 @@ adminApiRoutes.get('/collections', async (c) => {
         WHERE ${includeInactive ? '1=1' : 'is_active = 1'}
         AND (source_type IS NULL OR source_type = 'user')
         AND (name LIKE ? OR display_name LIKE ? OR description LIKE ?)
+        AND tenant_id = ?
         ORDER BY created_at DESC
       `)
       const searchParam = `%${search}%`
-      const queryResults = await stmt.bind(searchParam, searchParam, searchParam).all()
+      const queryResults = await stmt.bind(searchParam, searchParam, searchParam, tenantId).all()
       results = queryResults.results
     } else {
       stmt = db.prepare(`
@@ -234,9 +239,10 @@ adminApiRoutes.get('/collections', async (c) => {
         FROM collections
         WHERE (source_type IS NULL OR source_type = 'user')
         ${includeInactive ? '' : 'AND is_active = 1'}
+        AND tenant_id = ?
         ORDER BY created_at DESC
       `)
-      const queryResults = await stmt.all()
+      const queryResults = await stmt.bind(tenantId).all()
       results = queryResults.results
     }
 
@@ -276,9 +282,10 @@ adminApiRoutes.get('/collections/:id', async (c) => {
   try {
     const id = c.req.param('id')
     const db = c.env.DB
+    const tenantId = getTenantId(c)
 
-    const stmt = db.prepare('SELECT * FROM collections WHERE id = ?')
-    const collection = await stmt.bind(id).first() as any
+    const stmt = db.prepare('SELECT * FROM collections WHERE id = ? AND tenant_id = ?')
+    const collection = await stmt.bind(id, tenantId).first() as any
 
     if (!collection) {
       return c.json({ error: 'Collection not found' }, 404)
@@ -330,6 +337,7 @@ adminApiRoutes.get('/collections/:id', async (c) => {
 adminApiRoutes.get('/references', async (c) => {
   try {
     const db = c.env.DB
+    const tenantId = getTenantId(c)
     const url = new URL(c.req.url)
     const collectionParams = url.searchParams
       .getAll('collection')
@@ -348,10 +356,11 @@ adminApiRoutes.get('/references', async (c) => {
     const collectionStmt = db.prepare(`
       SELECT id, name, display_name
       FROM collections
-      WHERE id IN (${placeholders}) OR name IN (${placeholders})
+      WHERE (id IN (${placeholders}) OR name IN (${placeholders}))
+      AND tenant_id = ?
     `)
     const collectionResults = await collectionStmt
-      .bind(...collectionParams, ...collectionParams)
+      .bind(...collectionParams, ...collectionParams, tenantId)
       .all()
     const collections = (collectionResults.results || []) as any[]
 
@@ -377,9 +386,10 @@ adminApiRoutes.get('/references', async (c) => {
         SELECT id, title, slug, collection_id
         FROM content
         WHERE id = ? AND collection_id IN (${idPlaceholders})
+        AND tenant_id = ?
         LIMIT 1
       `)
-      const item = await itemStmt.bind(id, ...collectionIds).first() as any
+      const item = await itemStmt.bind(id, ...collectionIds, tenantId).first() as any
 
       if (!item) {
         return c.json({ error: 'Reference not found' }, 404)
@@ -410,11 +420,12 @@ adminApiRoutes.get('/references', async (c) => {
         WHERE collection_id IN (${listPlaceholders})
         AND (title LIKE ? OR slug LIKE ?)
         ${statusClause}
+        AND tenant_id = ?
         ORDER BY updated_at DESC
         LIMIT ?
       `)
       const queryResults = await stmt
-        .bind(...collectionIds, searchParam, searchParam, ...statusFilterValues, limit)
+        .bind(...collectionIds, searchParam, searchParam, ...statusFilterValues, tenantId, limit)
         .all()
       results = queryResults.results
     } else {
@@ -423,11 +434,12 @@ adminApiRoutes.get('/references', async (c) => {
         FROM content
         WHERE collection_id IN (${listPlaceholders})
         ${statusClause}
+        AND tenant_id = ?
         ORDER BY updated_at DESC
         LIMIT ?
       `)
       const queryResults = await stmt
-        .bind(...collectionIds, ...statusFilterValues, limit)
+        .bind(...collectionIds, ...statusFilterValues, tenantId, limit)
         .all()
       results = queryResults.results
     }
@@ -476,14 +488,15 @@ adminApiRoutes.post('/collections', async (c) => {
       }
       const validatedData = validation.data
       const db = c.env.DB
+      const tenantId = getTenantId(c)
       const _user = c.get('user')
 
       // Handle both camelCase and snake_case for display_name
       const displayName = validatedData.displayName || validatedData.display_name || ''
 
       // Check if collection already exists
-      const existingStmt = db.prepare('SELECT id FROM collections WHERE name = ?')
-      const existing = await existingStmt.bind(validatedData.name).first()
+      const existingStmt = db.prepare('SELECT id FROM collections WHERE name = ? AND tenant_id = ?')
+      const existing = await existingStmt.bind(validatedData.name, tenantId).first()
 
       if (existing) {
         return c.json({ error: 'A collection with this name already exists' }, 400)
@@ -517,8 +530,8 @@ adminApiRoutes.post('/collections', async (c) => {
       const now = Date.now()
 
       const insertStmt = db.prepare(`
-        INSERT INTO collections (id, name, display_name, description, schema, is_active, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO collections (id, name, display_name, description, schema, is_active, created_at, updated_at, tenant_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
 
       await insertStmt.bind(
@@ -529,7 +542,8 @@ adminApiRoutes.post('/collections', async (c) => {
         JSON.stringify(basicSchema),
         1, // is_active
         now,
-        now
+        now,
+        tenantId
       ).run()
 
       // Clear cache
@@ -567,10 +581,11 @@ adminApiRoutes.patch('/collections/:id', async (c) => {
       }
       const validatedData = validation.data
       const db = c.env.DB
+      const tenantId = getTenantId(c)
 
       // Check if collection exists
-      const checkStmt = db.prepare('SELECT * FROM collections WHERE id = ?')
-      const existing = await checkStmt.bind(id).first() as any
+      const checkStmt = db.prepare('SELECT * FROM collections WHERE id = ? AND tenant_id = ?')
+      const existing = await checkStmt.bind(id, tenantId).first() as any
 
       if (!existing) {
         return c.json({ error: 'Collection not found' }, 404)
@@ -602,11 +617,12 @@ adminApiRoutes.patch('/collections/:id', async (c) => {
       updateFields.push('updated_at = ?')
       updateParams.push(Date.now())
       updateParams.push(id)
+      updateParams.push(tenantId)
 
       const updateStmt = db.prepare(`
         UPDATE collections
         SET ${updateFields.join(', ')}
-        WHERE id = ?
+        WHERE id = ? AND tenant_id = ?
       `)
 
       await updateStmt.bind(...updateParams).run()
@@ -634,18 +650,19 @@ adminApiRoutes.delete('/collections/:id', async (c) => {
   try {
     const id = c.req.param('id')
     const db = c.env.DB
+    const tenantId = getTenantId(c)
 
     // Check if collection exists
-    const collectionStmt = db.prepare('SELECT name FROM collections WHERE id = ?')
-    const collection = await collectionStmt.bind(id).first() as any
+    const collectionStmt = db.prepare('SELECT name FROM collections WHERE id = ? AND tenant_id = ?')
+    const collection = await collectionStmt.bind(id, tenantId).first() as any
 
     if (!collection) {
       return c.json({ error: 'Collection not found' }, 404)
     }
 
     // Check if collection has content
-    const contentStmt = db.prepare('SELECT COUNT(*) as count FROM content WHERE collection_id = ?')
-    const contentResult = await contentStmt.bind(id).first() as any
+    const contentStmt = db.prepare('SELECT COUNT(*) as count FROM content WHERE collection_id = ? AND tenant_id = ?')
+    const contentResult = await contentStmt.bind(id, tenantId).first() as any
 
     if (contentResult && contentResult.count > 0) {
       return c.json({
@@ -658,8 +675,8 @@ adminApiRoutes.delete('/collections/:id', async (c) => {
     await deleteFieldsStmt.bind(id).run()
 
     // Delete collection
-    const deleteStmt = db.prepare('DELETE FROM collections WHERE id = ?')
-    await deleteStmt.bind(id).run()
+    const deleteStmt = db.prepare('DELETE FROM collections WHERE id = ? AND tenant_id = ?')
+    await deleteStmt.bind(id, tenantId).run()
 
     // Clear cache
     try {

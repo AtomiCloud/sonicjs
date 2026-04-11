@@ -13,32 +13,56 @@ import { DEFAULT_SETTINGS } from '../types'
 export class SecurityAuditService {
   constructor(
     private db: D1Database,
-    private settings: SecurityAuditSettings = DEFAULT_SETTINGS
+    private settings: SecurityAuditSettings = DEFAULT_SETTINGS,
+    private tenantId: string | null = null
   ) {}
 
   async logEvent(event: SecurityEventInsert): Promise<string> {
     const id = crypto.randomUUID()
     const now = Date.now()
 
-    await this.db.prepare(`
-      INSERT INTO security_events (id, event_type, severity, user_id, email, ip_address, user_agent, country_code, request_path, request_method, details, fingerprint, blocked, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      id,
-      event.eventType,
-      event.severity || 'info',
-      event.userId || null,
-      event.email || null,
-      event.ipAddress || null,
-      event.userAgent || null,
-      event.countryCode || null,
-      event.requestPath || null,
-      event.requestMethod || null,
-      event.details ? JSON.stringify(event.details) : null,
-      event.fingerprint || null,
-      event.blocked ? 1 : 0,
-      now
-    ).run()
+    if (this.tenantId) {
+      await this.db.prepare(`
+        INSERT INTO security_events (id, tenant_id, event_type, severity, user_id, email, ip_address, user_agent, country_code, request_path, request_method, details, fingerprint, blocked, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        id,
+        this.tenantId,
+        event.eventType,
+        event.severity || 'info',
+        event.userId || null,
+        event.email || null,
+        event.ipAddress || null,
+        event.userAgent || null,
+        event.countryCode || null,
+        event.requestPath || null,
+        event.requestMethod || null,
+        event.details ? JSON.stringify(event.details) : null,
+        event.fingerprint || null,
+        event.blocked ? 1 : 0,
+        now
+      ).run()
+    } else {
+      await this.db.prepare(`
+        INSERT INTO security_events (id, event_type, severity, user_id, email, ip_address, user_agent, country_code, request_path, request_method, details, fingerprint, blocked, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        id,
+        event.eventType,
+        event.severity || 'info',
+        event.userId || null,
+        event.email || null,
+        event.ipAddress || null,
+        event.userAgent || null,
+        event.countryCode || null,
+        event.requestPath || null,
+        event.requestMethod || null,
+        event.details ? JSON.stringify(event.details) : null,
+        event.fingerprint || null,
+        event.blocked ? 1 : 0,
+        now
+      ).run()
+    }
 
     return id
   }
@@ -46,6 +70,11 @@ export class SecurityAuditService {
   async getEvents(filters: SecurityEventFilters = {}): Promise<{ events: SecurityEvent[], total: number }> {
     const conditions: string[] = []
     const params: any[] = []
+
+    if (this.tenantId) {
+      conditions.push('tenant_id = ?')
+      params.push(this.tenantId)
+    }
 
     if (filters.eventType) {
       if (Array.isArray(filters.eventType)) {
@@ -136,9 +165,13 @@ export class SecurityAuditService {
   }
 
   async getEvent(id: string): Promise<SecurityEvent | null> {
-    const row = await this.db.prepare(
-      'SELECT * FROM security_events WHERE id = ?'
-    ).bind(id).first<any>()
+    const query = this.tenantId
+      ? 'SELECT * FROM security_events WHERE id = ? AND tenant_id = ?'
+      : 'SELECT * FROM security_events WHERE id = ?'
+    const stmt = this.tenantId
+      ? this.db.prepare(query).bind(id, this.tenantId)
+      : this.db.prepare(query).bind(id)
+    const row = await stmt.first<any>()
 
     if (!row) return null
 
@@ -165,20 +198,24 @@ export class SecurityAuditService {
     const h24 = now - 24 * 60 * 60 * 1000
     const h48 = now - 48 * 60 * 60 * 1000
 
+    const tenantFilter = this.tenantId ? ' AND tenant_id = ?' : ''
+    const tenantFilterWhere = this.tenantId ? ' WHERE tenant_id = ?' : ''
+    const tParams = this.tenantId ? [this.tenantId] : []
+
     // Total events
     const totalResult = await this.db.prepare(
-      'SELECT COUNT(*) as count FROM security_events'
-    ).first<{ count: number }>()
+      `SELECT COUNT(*) as count FROM security_events${tenantFilterWhere}`
+    ).bind(...tParams).first<{ count: number }>()
 
     // Failed logins last 24h
     const failed24hResult = await this.db.prepare(
-      "SELECT COUNT(*) as count FROM security_events WHERE event_type = 'login_failure' AND created_at >= ?"
-    ).bind(h24).first<{ count: number }>()
+      `SELECT COUNT(*) as count FROM security_events WHERE event_type = 'login_failure' AND created_at >= ?${tenantFilter}`
+    ).bind(h24, ...tParams).first<{ count: number }>()
 
     // Failed logins prior 24h (for trend)
     const failedPrior24hResult = await this.db.prepare(
-      "SELECT COUNT(*) as count FROM security_events WHERE event_type = 'login_failure' AND created_at >= ? AND created_at < ?"
-    ).bind(h48, h24).first<{ count: number }>()
+      `SELECT COUNT(*) as count FROM security_events WHERE event_type = 'login_failure' AND created_at >= ? AND created_at < ?${tenantFilter}`
+    ).bind(h48, h24, ...tParams).first<{ count: number }>()
 
     const failed24h = failed24hResult?.count || 0
     const failedPrior24h = failedPrior24hResult?.count || 0
@@ -189,23 +226,23 @@ export class SecurityAuditService {
     // Active lockouts (events in last lockout window)
     const lockoutWindow = now - (this.settings.bruteForce.lockoutDurationMinutes * 60 * 1000)
     const lockoutsResult = await this.db.prepare(
-      "SELECT COUNT(DISTINCT ip_address) as count FROM security_events WHERE event_type = 'account_lockout' AND created_at >= ?"
-    ).bind(lockoutWindow).first<{ count: number }>()
+      `SELECT COUNT(DISTINCT ip_address) as count FROM security_events WHERE event_type = 'account_lockout' AND created_at >= ?${tenantFilter}`
+    ).bind(lockoutWindow, ...tParams).first<{ count: number }>()
 
     // Flagged IPs (IPs with more than threshold failed attempts in window)
     const windowStart = now - (this.settings.bruteForce.windowMinutes * 60 * 1000)
     const flaggedResult = await this.db.prepare(
       `SELECT COUNT(*) as count FROM (
         SELECT ip_address FROM security_events
-        WHERE event_type = 'login_failure' AND created_at >= ?
+        WHERE event_type = 'login_failure' AND created_at >= ?${tenantFilter}
         GROUP BY ip_address HAVING COUNT(*) >= ?
       )`
-    ).bind(windowStart, this.settings.bruteForce.maxFailedAttemptsPerIP).first<{ count: number }>()
+    ).bind(windowStart, ...tParams, this.settings.bruteForce.maxFailedAttemptsPerIP).first<{ count: number }>()
 
     // Events by type
     const typeResults = await this.db.prepare(
-      'SELECT event_type, COUNT(*) as count FROM security_events WHERE created_at >= ? GROUP BY event_type'
-    ).bind(h24).all()
+      `SELECT event_type, COUNT(*) as count FROM security_events WHERE created_at >= ?${tenantFilter} GROUP BY event_type`
+    ).bind(h24, ...tParams).all()
 
     const eventsByType: Record<string, number> = {}
     for (const row of (typeResults.results || []) as any[]) {
@@ -214,8 +251,8 @@ export class SecurityAuditService {
 
     // Events by severity
     const severityResults = await this.db.prepare(
-      'SELECT severity, COUNT(*) as count FROM security_events WHERE created_at >= ? GROUP BY severity'
-    ).bind(h24).all()
+      `SELECT severity, COUNT(*) as count FROM security_events WHERE created_at >= ?${tenantFilter} GROUP BY severity`
+    ).bind(h24, ...tParams).all()
 
     const eventsBySeverity: Record<string, number> = {}
     for (const row of (severityResults.results || []) as any[]) {
@@ -237,6 +274,9 @@ export class SecurityAuditService {
     const now = Date.now()
     const h24 = now - 24 * 60 * 60 * 1000
 
+    const tenantFilter = this.tenantId ? ' AND tenant_id = ?' : ''
+    const tParams = this.tenantId ? [this.tenantId] : []
+
     const results = await this.db.prepare(`
       SELECT
         ip_address,
@@ -244,17 +284,17 @@ export class SecurityAuditService {
         COUNT(*) as failed_attempts,
         MAX(created_at) as last_seen
       FROM security_events
-      WHERE event_type = 'login_failure' AND created_at >= ?
+      WHERE event_type = 'login_failure' AND created_at >= ?${tenantFilter}
       GROUP BY ip_address
       ORDER BY failed_attempts DESC
       LIMIT ?
-    `).bind(h24, limit).all()
+    `).bind(h24, ...tParams, limit).all()
 
     // Check which IPs are locked
     const lockoutWindow = now - (this.settings.bruteForce.lockoutDurationMinutes * 60 * 1000)
     const lockoutResults = await this.db.prepare(
-      "SELECT DISTINCT ip_address FROM security_events WHERE event_type = 'account_lockout' AND created_at >= ?"
-    ).bind(lockoutWindow).all()
+      `SELECT DISTINCT ip_address FROM security_events WHERE event_type = 'account_lockout' AND created_at >= ?${tenantFilter}`
+    ).bind(lockoutWindow, ...tParams).all()
 
     const lockedIPs = new Set((lockoutResults.results || []).map((r: any) => r.ip_address))
 
@@ -282,15 +322,18 @@ export class SecurityAuditService {
       })
     }
 
+    const tenantFilter = this.tenantId ? ' AND tenant_id = ?' : ''
+    const tParams = this.tenantId ? [this.tenantId] : []
+
     const results = await this.db.prepare(`
       SELECT
         CAST((created_at - ?) / 3600000 AS INTEGER) as bucket,
         COUNT(*) as count
       FROM security_events
-      WHERE event_type = 'login_failure' AND created_at >= ?
+      WHERE event_type = 'login_failure' AND created_at >= ?${tenantFilter}
       GROUP BY bucket
       ORDER BY bucket
-    `).bind(start, start).all()
+    `).bind(start, start, ...tParams).all()
 
     for (const row of (results.results || []) as any[]) {
       const idx = row.bucket
@@ -306,17 +349,25 @@ export class SecurityAuditService {
     const days = daysToKeep || this.settings.retention.daysToKeep
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
 
-    const result = await this.db.prepare(
-      'DELETE FROM security_events WHERE created_at < ?'
-    ).bind(cutoff).run()
+    const query = this.tenantId
+      ? 'DELETE FROM security_events WHERE created_at < ? AND tenant_id = ?'
+      : 'DELETE FROM security_events WHERE created_at < ?'
+    const stmt = this.tenantId
+      ? this.db.prepare(query).bind(cutoff, this.tenantId)
+      : this.db.prepare(query).bind(cutoff)
+    const result = await stmt.run()
 
     return (result.meta as any)?.changes || 0
   }
 
   async getRecentCriticalEvents(limit: number = 20): Promise<SecurityEvent[]> {
-    const results = await this.db.prepare(
-      "SELECT * FROM security_events WHERE severity = 'critical' ORDER BY created_at DESC LIMIT ?"
-    ).bind(limit).all()
+    const query = this.tenantId
+      ? "SELECT * FROM security_events WHERE severity = 'critical' AND tenant_id = ? ORDER BY created_at DESC LIMIT ?"
+      : "SELECT * FROM security_events WHERE severity = 'critical' ORDER BY created_at DESC LIMIT ?"
+    const stmt = this.tenantId
+      ? this.db.prepare(query).bind(this.tenantId, limit)
+      : this.db.prepare(query).bind(limit)
+    const results = await stmt.all()
 
     return (results.results || []).map((row: any) => ({
       id: row.id,

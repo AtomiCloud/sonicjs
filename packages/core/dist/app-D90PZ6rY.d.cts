@@ -28,9 +28,11 @@ interface Variables {
         userId: string;
         email: string;
         role: string;
+        tenantId?: string;
         exp: number;
         iat: number;
     };
+    tenantId?: string;
     requestId?: string;
     startTime?: number;
     appVersion?: string;

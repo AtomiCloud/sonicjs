@@ -23,6 +23,7 @@ import {
   type OAuthProviderConfig
 } from './oauth-service'
 import { AuthManager } from '../../../middleware'
+import { getTenantIdOrNull } from '../../../utils/tenant'
 
 const STATE_COOKIE_NAME = 'oauth_state'
 const STATE_COOKIE_MAX_AGE = 600 // 10 minutes
@@ -173,6 +174,7 @@ export function createOAuthProvidersPlugin(): Plugin {
         return c.redirect('/auth/login?error=OAuth provider not configured')
       }
 
+      const tenantId = getTenantIdOrNull(c)
       const oauthService = new OAuthService(db)
       const redirectUri = getCallbackUrl(c, providerId)
 
@@ -208,10 +210,14 @@ export function createOAuthProvidersPlugin(): Plugin {
           tokenExpiresAt ?? undefined
         )
 
-        // Fetch user to generate JWT
-        const user = await db.prepare(
-          'SELECT id, email, role, is_active FROM users WHERE id = ?'
-        ).bind(existingOAuth.user_id).first() as any
+        // Fetch user to generate JWT (tenant-scoped)
+        const userQuery = tenantId
+          ? 'SELECT id, email, role, is_active FROM users WHERE id = ? AND tenant_id = ?'
+          : 'SELECT id, email, role, is_active FROM users WHERE id = ?'
+        const userStmt = tenantId
+          ? db.prepare(userQuery).bind(existingOAuth.user_id, tenantId)
+          : db.prepare(userQuery).bind(existingOAuth.user_id)
+        const user = await userStmt.first() as any
 
         if (!user || !user.is_active) {
           return c.redirect('/auth/login?error=Account is deactivated')
@@ -227,7 +233,7 @@ export function createOAuthProvidersPlugin(): Plugin {
       }
 
       // No existing OAuth link — check if user exists by email
-      const existingUser = await oauthService.findUserByEmail(profile.email)
+      const existingUser = await oauthService.findUserByEmail(profile.email, tenantId)
 
       if (existingUser) {
         if (!existingUser.is_active) {
@@ -255,7 +261,7 @@ export function createOAuthProvidersPlugin(): Plugin {
       }
 
       // Brand new user — create account from OAuth profile
-      const newUserId = await oauthService.createUserFromOAuth(profile)
+      const newUserId = await oauthService.createUserFromOAuth(profile, tenantId)
 
       await oauthService.createOAuthAccount({
         userId: newUserId,
@@ -349,8 +355,9 @@ export function createOAuthProvidersPlugin(): Plugin {
       }
 
       const db = c.env.DB
+      const tenantId = getTenantIdOrNull(c)
       const oauthService = new OAuthService(db)
-      const success = await oauthService.unlinkOAuthAccount(user.userId, provider)
+      const success = await oauthService.unlinkOAuthAccount(user.userId, provider, tenantId)
 
       if (!success) {
         return c.json({

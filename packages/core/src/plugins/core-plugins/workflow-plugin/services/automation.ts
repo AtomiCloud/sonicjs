@@ -26,7 +26,7 @@ export interface AutoSaveDraft {
 }
 
 export class AutomationEngine {
-  constructor(private db: D1Database) {}
+  constructor(private db: D1Database, private tenantId: string | null = null) {}
 
   async createAutomationRule(
     name: string,
@@ -202,10 +202,12 @@ export class AutomationEngine {
     try {
       // Simple condition evaluation - in production this would be more sophisticated
       if (conditions.collection_id && context.contentId) {
-        const content = await this.db.prepare(`
-          SELECT collection_id FROM content WHERE id = ?
-        `).bind(context.contentId).first()
-        
+        const contentSql = this.tenantId
+          ? `SELECT collection_id FROM content WHERE id = ? AND tenant_id = ?`
+          : `SELECT collection_id FROM content WHERE id = ?`
+        const contentParams = this.tenantId ? [context.contentId, this.tenantId] : [context.contentId]
+        const content = await this.db.prepare(contentSql).bind(...contentParams).first()
+
         if (content && content.collection_id !== conditions.collection_id) {
           return false
         }
@@ -220,10 +222,12 @@ export class AutomationEngine {
       }
 
       if (conditions.user_role && context.userId) {
-        const user = await this.db.prepare(`
-          SELECT role FROM users WHERE id = ?
-        `).bind(context.userId).first()
-        
+        const userSql = this.tenantId
+          ? `SELECT role FROM users WHERE id = ? AND tenant_id = ?`
+          : `SELECT role FROM users WHERE id = ?`
+        const userParams = this.tenantId ? [context.userId, this.tenantId] : [context.userId]
+        const user = await this.db.prepare(userSql).bind(...userParams).first()
+
         if (user && user.role !== conditions.user_role) {
           return false
         }
@@ -237,9 +241,9 @@ export class AutomationEngine {
   }
 
   private async executeAction(rule: AutomationRule, context: any): Promise<void> {
-    const workflowEngine = new WorkflowEngine(this.db)
-    const notificationService = new NotificationService(this.db)
-    const schedulerService = new SchedulerService(this.db)
+    const workflowEngine = new WorkflowEngine(this.db, this.tenantId)
+    const notificationService = new NotificationService(this.db, this.tenantId)
+    const schedulerService = new SchedulerService(this.db, this.tenantId)
 
     switch (rule.action_type) {
       case 'workflow_transition':
@@ -262,9 +266,13 @@ export class AutomationEngine {
           }
           
           if (rule.action_config.role) {
-            const { results } = await this.db.prepare(`
-              SELECT id FROM users WHERE role = ? AND is_active = 1
-            `).bind(rule.action_config.role).all()
+            const usersByRoleSql = this.tenantId
+              ? `SELECT id FROM users WHERE role = ? AND is_active = 1 AND tenant_id = ?`
+              : `SELECT id FROM users WHERE role = ? AND is_active = 1`
+            const usersByRoleParams = this.tenantId
+              ? [rule.action_config.role, this.tenantId]
+              : [rule.action_config.role]
+            const { results } = await this.db.prepare(usersByRoleSql).bind(...usersByRoleParams).all()
             targetUsers.push(...results.map(u => u.id))
           }
 
@@ -396,46 +404,56 @@ export class AutomationEngine {
     changeSummary?: string
   ): Promise<number> {
     // Get next version number
-    const latestVersion = await this.db.prepare(`
-      SELECT MAX(version_number) as max_version 
-      FROM content_versions 
-      WHERE content_id = ?
-    `).bind(contentId).first()
+    const versionSql = this.tenantId
+      ? `SELECT MAX(version_number) as max_version FROM content_versions WHERE content_id = ? AND tenant_id = ?`
+      : `SELECT MAX(version_number) as max_version FROM content_versions WHERE content_id = ?`
+    const versionParams = this.tenantId ? [contentId, this.tenantId] : [contentId]
+    const latestVersion = await this.db.prepare(versionSql).bind(...versionParams).first()
 
     const nextVersion = (latestVersion?.max_version || 0) + 1
 
-    await this.db.prepare(`
-      INSERT INTO content_versions 
+    const insertVersionSql = this.tenantId
+      ? `INSERT INTO content_versions
+      (content_id, version_number, title, content, fields, user_id, change_summary, tenant_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      : `INSERT INTO content_versions
       (content_id, version_number, title, content, fields, user_id, change_summary)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      contentId,
-      nextVersion,
-      title,
-      content,
-      JSON.stringify(fields),
-      userId,
-      changeSummary
-    ).run()
+      VALUES (?, ?, ?, ?, ?, ?, ?)`
+    const insertVersionParams = this.tenantId
+      ? [contentId, nextVersion, title, content, JSON.stringify(fields), userId, changeSummary, this.tenantId]
+      : [contentId, nextVersion, title, content, JSON.stringify(fields), userId, changeSummary]
+    await this.db.prepare(insertVersionSql).bind(...insertVersionParams).run()
 
     // Update content table version number
-    await this.db.prepare(`
-      UPDATE content SET version_number = ? WHERE id = ?
-    `).bind(nextVersion, contentId).run()
+    const updateVersionSql = this.tenantId
+      ? `UPDATE content SET version_number = ? WHERE id = ? AND tenant_id = ?`
+      : `UPDATE content SET version_number = ? WHERE id = ?`
+    const updateVersionParams = this.tenantId
+      ? [nextVersion, contentId, this.tenantId]
+      : [nextVersion, contentId]
+    await this.db.prepare(updateVersionSql).bind(...updateVersionParams).run()
 
     return nextVersion
   }
 
   async getContentVersions(contentId: string): Promise<any[]> {
-    const { results } = await this.db.prepare(`
-      SELECT 
-        cv.*,
-        u.username as user_name
-      FROM content_versions cv
-      LEFT JOIN users u ON cv.user_id = u.id
-      WHERE cv.content_id = ?
-      ORDER BY cv.version_number DESC
-    `).bind(contentId).all()
+    const cvSql = this.tenantId
+      ? `SELECT
+          cv.*,
+          u.username as user_name
+        FROM content_versions cv
+        LEFT JOIN users u ON cv.user_id = u.id
+        WHERE cv.content_id = ? AND cv.tenant_id = ?
+        ORDER BY cv.version_number DESC`
+      : `SELECT
+          cv.*,
+          u.username as user_name
+        FROM content_versions cv
+        LEFT JOIN users u ON cv.user_id = u.id
+        WHERE cv.content_id = ?
+        ORDER BY cv.version_number DESC`
+    const cvParams = this.tenantId ? [contentId, this.tenantId] : [contentId]
+    const { results } = await this.db.prepare(cvSql).bind(...cvParams).all()
 
     return results.map(row => ({
       ...row,
@@ -450,24 +468,24 @@ export class AutomationEngine {
   ): Promise<boolean> {
     try {
       // Get the version data
-      const version = await this.db.prepare(`
-        SELECT * FROM content_versions 
-        WHERE content_id = ? AND version_number = ?
-      `).bind(contentId, versionNumber).first()
+      const rollbackVersionSql = this.tenantId
+        ? `SELECT * FROM content_versions WHERE content_id = ? AND version_number = ? AND tenant_id = ?`
+        : `SELECT * FROM content_versions WHERE content_id = ? AND version_number = ?`
+      const rollbackVersionParams = this.tenantId
+        ? [contentId, versionNumber, this.tenantId]
+        : [contentId, versionNumber]
+      const version = await this.db.prepare(rollbackVersionSql).bind(...rollbackVersionParams).first()
 
       if (!version) return false
 
       // Update the content
-      await this.db.prepare(`
-        UPDATE content 
-        SET title = ?, data = ?, updated_at = ?
-        WHERE id = ?
-      `).bind(
-        version.title,
-        version.content,
-        Date.now(),
-        contentId
-      ).run()
+      const rollbackContentSql = this.tenantId
+        ? `UPDATE content SET title = ?, data = ?, updated_at = ? WHERE id = ? AND tenant_id = ?`
+        : `UPDATE content SET title = ?, data = ?, updated_at = ? WHERE id = ?`
+      const rollbackContentParams = this.tenantId
+        ? [version.title, version.content, Date.now(), contentId, this.tenantId]
+        : [version.title, version.content, Date.now(), contentId]
+      await this.db.prepare(rollbackContentSql).bind(...rollbackContentParams).run()
 
       // Create a new version for the rollback
       await this.createContentVersion(

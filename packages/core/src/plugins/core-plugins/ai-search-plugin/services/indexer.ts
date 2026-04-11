@@ -8,12 +8,15 @@ import { CustomRAGService } from './custom-rag.service'
  */
 export class IndexManager {
   private customRAG?: CustomRAGService
+  private tenantId: string | null
 
   constructor(
     private db: D1Database,
     private ai?: any, // Workers AI for embeddings
-    private vectorize?: any // Vectorize for vector search
+    private vectorize?: any, // Vectorize for vector search
+    tenantId: string | null = null
   ) {
+    this.tenantId = tenantId
     // Initialize Custom RAG if bindings are available
     if (this.ai && this.vectorize) {
       this.customRAG = new CustomRAGService(db, ai, vectorize)
@@ -27,10 +30,13 @@ export class IndexManager {
   async indexCollection(collectionId: string): Promise<IndexStatus> {
     try {
       // Get collection info
-      const collectionStmt = this.db.prepare(
-        'SELECT id, name, display_name FROM collections WHERE id = ?'
-      )
-      const collection = await collectionStmt.bind(collectionId).first<{
+      const collectionQuery = this.tenantId
+        ? 'SELECT id, name, display_name FROM collections WHERE id = ? AND tenant_id = ?'
+        : 'SELECT id, name, display_name FROM collections WHERE id = ?'
+      const collectionStmt = this.tenantId
+        ? this.db.prepare(collectionQuery).bind(collectionId, this.tenantId)
+        : this.db.prepare(collectionQuery).bind(collectionId)
+      const collection = await collectionStmt.first<{
         id: string
         name: string
         display_name: string
@@ -192,16 +198,25 @@ export class IndexManager {
   async updateIndex(collectionId: number, contentId: string): Promise<void> {
     try {
       // Get content item
-          const stmt = this.db.prepare(`
-            SELECT 
+          const contentQuery = this.tenantId
+            ? `SELECT
               c.id, c.title, c.slug, c.data, c.status,
               c.created_at, c.updated_at, c.author_id,
               col.name as collection_name, col.display_name as collection_display_name
             FROM content c
             JOIN collections col ON c.collection_id = col.id
-            WHERE c.id = ? AND c.collection_id = ?
-          `)
-          const item = await stmt.bind(contentId, collectionId).first<{
+            WHERE c.id = ? AND c.collection_id = ? AND c.tenant_id = ?`
+            : `SELECT
+              c.id, c.title, c.slug, c.data, c.status,
+              c.created_at, c.updated_at, c.author_id,
+              col.name as collection_name, col.display_name as collection_display_name
+            FROM content c
+            JOIN collections col ON c.collection_id = col.id
+            WHERE c.id = ? AND c.collection_id = ?`
+          const stmt = this.tenantId
+            ? this.db.prepare(contentQuery).bind(contentId, collectionId, this.tenantId)
+            : this.db.prepare(contentQuery).bind(contentId, collectionId)
+          const item = await stmt.first<{
             id: string
             title: string
             slug: string

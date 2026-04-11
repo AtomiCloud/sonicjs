@@ -3,6 +3,7 @@ import { requireAuth, requireRole } from '../middleware'
 import { getCacheService, CACHE_CONFIGS } from '../services'
 import type { Bindings, Variables } from '../app'
 import { resolveContentVariables } from '../plugins/core-plugins/global-variables-plugin/variable-resolver'
+import { getTenantId } from '../utils/tenant'
 
 const apiContentCrudRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
@@ -12,23 +13,24 @@ const apiContentCrudRoutes = new Hono<{ Bindings: Bindings; Variables: Variables
 apiContentCrudRoutes.get('/check-slug', async (c) => {
   try {
     const db = c.env.DB
+    const tenantId = getTenantId(c)
     const collectionId = c.req.query('collectionId')
     const slug = c.req.query('slug')
     const excludeId = c.req.query('excludeId') // When editing, exclude current item
-    
+
     if (!collectionId || !slug) {
       return c.json({ error: 'collectionId and slug are required' }, 400)
     }
-    
+
     // Check for existing content with this slug in the collection
-    let query = 'SELECT id FROM content WHERE collection_id = ? AND slug = ?'
-    const params: string[] = [collectionId, slug]
-    
+    let query = 'SELECT id FROM content WHERE collection_id = ? AND slug = ? AND tenant_id = ?'
+    const params: string[] = [collectionId, slug, tenantId]
+
     if (excludeId) {
       query += ' AND id != ?'
       params.push(excludeId)
     }
-    
+
     const existing = await db.prepare(query).bind(...params).first()
     
     if (existing) {
@@ -53,9 +55,10 @@ apiContentCrudRoutes.get('/:id', async (c) => {
   try {
     const id = c.req.param('id')
     const db = c.env.DB
+    const tenantId = getTenantId(c)
 
-    const stmt = db.prepare('SELECT * FROM content WHERE id = ?')
-    const content = await stmt.bind(id).first()
+    const stmt = db.prepare('SELECT * FROM content WHERE id = ? AND tenant_id = ?')
+    const content = await stmt.bind(id, tenantId).first()
 
     if (!content) {
       return c.json({ error: 'Content not found' }, 404)
@@ -92,6 +95,7 @@ apiContentCrudRoutes.get('/:id', async (c) => {
 apiContentCrudRoutes.post('/', requireAuth(), requireRole(['admin', 'editor', 'author']), async (c) => {
   try {
     const db = c.env.DB
+    const tenantId = getTenantId(c)
     const user = c.get('user')
     const body = await c.req.json()
 
@@ -116,9 +120,9 @@ apiContentCrudRoutes.post('/', requireAuth(), requireRole(['admin', 'editor', 'a
 
     // Check for duplicate slug within the same collection
     const duplicateCheck = db.prepare(
-      'SELECT id FROM content WHERE collection_id = ? AND slug = ?'
+      'SELECT id FROM content WHERE collection_id = ? AND slug = ? AND tenant_id = ?'
     )
-    const existing = await duplicateCheck.bind(collectionId, finalSlug).first()
+    const existing = await duplicateCheck.bind(collectionId, finalSlug, tenantId).first()
 
     if (existing) {
       return c.json({ error: 'A content item with this slug already exists in this collection' }, 409)
@@ -131,9 +135,9 @@ apiContentCrudRoutes.post('/', requireAuth(), requireRole(['admin', 'editor', 'a
     const insertStmt = db.prepare(`
       INSERT INTO content (
         id, collection_id, slug, title, data, status,
-        author_id, created_at, updated_at
+        author_id, tenant_id, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
 
     await insertStmt.bind(
@@ -144,6 +148,7 @@ apiContentCrudRoutes.post('/', requireAuth(), requireRole(['admin', 'editor', 'a
       JSON.stringify(data || {}),
       status || 'draft',
       user?.userId || 'system',
+      tenantId,
       now,
       now
     ).run()
@@ -154,8 +159,8 @@ apiContentCrudRoutes.post('/', requireAuth(), requireRole(['admin', 'editor', 'a
     await cache.invalidate('content-filtered:*')
 
     // Get the created content
-    const getStmt = db.prepare('SELECT * FROM content WHERE id = ?')
-    const createdContent = await getStmt.bind(contentId).first() as any
+    const getStmt = db.prepare('SELECT * FROM content WHERE id = ? AND tenant_id = ?')
+    const createdContent = await getStmt.bind(contentId, tenantId).first() as any
 
     return c.json({
       data: {
@@ -183,11 +188,12 @@ apiContentCrudRoutes.put('/:id', requireAuth(), requireRole(['admin', 'editor', 
   try {
     const id = c.req.param('id')
     const db = c.env.DB
+    const tenantId = getTenantId(c)
     const body = await c.req.json()
 
     // Check if content exists
-    const existingStmt = db.prepare('SELECT * FROM content WHERE id = ?')
-    const existing = await existingStmt.bind(id).first() as any
+    const existingStmt = db.prepare('SELECT * FROM content WHERE id = ? AND tenant_id = ?')
+    const existing = await existingStmt.bind(id, tenantId).first() as any
 
     if (!existing) {
       return c.json({ error: 'Content not found' }, 404)
@@ -227,13 +233,14 @@ apiContentCrudRoutes.put('/:id', requireAuth(), requireRole(['admin', 'editor', 
     updates.push('updated_at = ?')
     params.push(now)
 
-    // Add id to params for WHERE clause
+    // Add id and tenant_id to params for WHERE clause
     params.push(id)
+    params.push(tenantId)
 
     // Execute update
     const updateStmt = db.prepare(`
       UPDATE content SET ${updates.join(', ')}
-      WHERE id = ?
+      WHERE id = ? AND tenant_id = ?
     `)
 
     await updateStmt.bind(...params).run()
@@ -245,8 +252,8 @@ apiContentCrudRoutes.put('/:id', requireAuth(), requireRole(['admin', 'editor', 
     await cache.invalidate('content-filtered:*')
 
     // Get updated content
-    const getStmt = db.prepare('SELECT * FROM content WHERE id = ?')
-    const updatedContent = await getStmt.bind(id).first() as any
+    const getStmt = db.prepare('SELECT * FROM content WHERE id = ? AND tenant_id = ?')
+    const updatedContent = await getStmt.bind(id, tenantId).first() as any
 
     return c.json({
       data: {
@@ -274,18 +281,19 @@ apiContentCrudRoutes.delete('/:id', requireAuth(), requireRole(['admin', 'editor
   try {
     const id = c.req.param('id')
     const db = c.env.DB
+    const tenantId = getTenantId(c)
 
     // Check if content exists
-    const existingStmt = db.prepare('SELECT collection_id FROM content WHERE id = ?')
-    const existing = await existingStmt.bind(id).first() as any
+    const existingStmt = db.prepare('SELECT collection_id FROM content WHERE id = ? AND tenant_id = ?')
+    const existing = await existingStmt.bind(id, tenantId).first() as any
 
     if (!existing) {
       return c.json({ error: 'Content not found' }, 404)
     }
 
     // Delete the content (hard delete for API, soft delete happens in admin routes)
-    const deleteStmt = db.prepare('DELETE FROM content WHERE id = ?')
-    await deleteStmt.bind(id).run()
+    const deleteStmt = db.prepare('DELETE FROM content WHERE id = ? AND tenant_id = ?')
+    await deleteStmt.bind(id, tenantId).run()
 
     // Invalidate cache
     const cache = getCacheService(CACHE_CONFIGS.api!)

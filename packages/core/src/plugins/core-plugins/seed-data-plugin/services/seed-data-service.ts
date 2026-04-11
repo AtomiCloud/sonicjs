@@ -1,7 +1,7 @@
 import type { D1Database } from '@cloudflare/workers-types'
 
 export class SeedDataService {
-  constructor(private db: D1Database) {}
+  constructor(private db: D1Database, private tenantId: string | null = null) {}
 
   // First names for generating realistic users
   private firstNames = [
@@ -112,12 +112,17 @@ export class SeedDataService {
       const createdAt = this.randomDate()
       const createdAtTimestamp = Math.floor(createdAt.getTime() / 1000)
 
-      const stmt = this.db.prepare(`
-        INSERT INTO users (id, email, username, first_name, last_name, password_hash, role, is_active, last_login_at, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `)
+      const stmt = this.tenantId
+        ? this.db.prepare(`
+          INSERT INTO users (id, email, username, first_name, last_name, password_hash, role, is_active, last_login_at, created_at, updated_at, tenant_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `)
+        : this.db.prepare(`
+          INSERT INTO users (id, email, username, first_name, last_name, password_hash, role, is_active, last_login_at, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `)
 
-      await stmt.bind(
+      const bindValues: any[] = [
         this.generateId(),
         email,
         username,
@@ -129,7 +134,11 @@ export class SeedDataService {
         Math.random() > 0.3 ? createdAtTimestamp : null,
         createdAtTimestamp,
         createdAtTimestamp
-      ).run()
+      ]
+      if (this.tenantId) {
+        bindValues.push(this.tenantId)
+      }
+      await stmt.bind(...bindValues).run()
 
       count++
     }
@@ -139,11 +148,15 @@ export class SeedDataService {
 
   // Create 200 content items across different types
   async createContent(): Promise<number> {
-    // Get all users and collections
-    const usersStmt = this.db.prepare('SELECT * FROM users')
+    // Get all users and collections (scoped by tenant)
+    const usersStmt = this.tenantId
+      ? this.db.prepare('SELECT * FROM users WHERE tenant_id = ?').bind(this.tenantId)
+      : this.db.prepare('SELECT * FROM users')
     const { results: allUsers } = await usersStmt.all()
 
-    const collectionsStmt = this.db.prepare('SELECT * FROM collections')
+    const collectionsStmt = this.tenantId
+      ? this.db.prepare('SELECT * FROM collections WHERE tenant_id = ?').bind(this.tenantId)
+      : this.db.prepare('SELECT * FROM collections')
     const { results: allCollections } = await collectionsStmt.all()
 
     if (!allUsers || allUsers.length === 0) {
@@ -205,12 +218,17 @@ export class SeedDataService {
       const createdAtTimestamp = Math.floor(createdAt.getTime() / 1000)
       const publishedAtTimestamp = status === 'published' ? createdAtTimestamp : null
 
-      const stmt = this.db.prepare(`
-        INSERT INTO content (id, collection_id, slug, title, data, status, published_at, author_id, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `)
+      const contentStmt = this.tenantId
+        ? this.db.prepare(`
+          INSERT INTO content (id, collection_id, slug, title, data, status, published_at, author_id, created_at, updated_at, tenant_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `)
+        : this.db.prepare(`
+          INSERT INTO content (id, collection_id, slug, title, data, status, published_at, author_id, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `)
 
-      await stmt.bind(
+      const contentBindValues: any[] = [
         this.generateId(),
         collection.id,
         slug,
@@ -221,7 +239,11 @@ export class SeedDataService {
         author.id,
         createdAtTimestamp,
         createdAtTimestamp
-      ).run()
+      ]
+      if (this.tenantId) {
+        contentBindValues.push(this.tenantId)
+      }
+      await contentStmt.bind(...contentBindValues).run()
 
       count++
     }
@@ -256,13 +278,13 @@ export class SeedDataService {
   // Clear all seed data (optional cleanup method)
   async clearSeedData(): Promise<void> {
     // Delete content first (due to foreign key constraints)
-    const deleteContentStmt = this.db.prepare('DELETE FROM content')
-    await deleteContentStmt.run()
-
-    // Delete users (but keep admin users)
-    const deleteUsersStmt = this.db.prepare(
-      "DELETE FROM users WHERE role != 'admin'"
-    )
-    await deleteUsersStmt.run()
+    if (this.tenantId) {
+      await this.db.prepare('DELETE FROM content WHERE tenant_id = ?').bind(this.tenantId).run()
+      // Delete users (but keep admin users)
+      await this.db.prepare("DELETE FROM users WHERE role != 'admin' AND tenant_id = ?").bind(this.tenantId).run()
+    } else {
+      await this.db.prepare('DELETE FROM content').run()
+      await this.db.prepare("DELETE FROM users WHERE role != 'admin'").run()
+    }
   }
 }

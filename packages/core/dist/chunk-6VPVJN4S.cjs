@@ -1,7 +1,7 @@
 'use strict';
 
-var chunkNA3BD6LU_cjs = require('./chunk-NA3BD6LU.cjs');
-var chunkR6AJ5T3M_cjs = require('./chunk-R6AJ5T3M.cjs');
+var chunkQNY7OU4B_cjs = require('./chunk-QNY7OU4B.cjs');
+var chunkA2XCPDQS_cjs = require('./chunk-A2XCPDQS.cjs');
 var chunkRCQ2HIQD_cjs = require('./chunk-RCQ2HIQD.cjs');
 var jwt = require('hono/jwt');
 var cookie = require('hono/cookie');
@@ -57,23 +57,23 @@ function bootstrapMiddleware(config = {}) {
     try {
       console.log("[Bootstrap] Starting system initialization...");
       console.log("[Bootstrap] Running database migrations...");
-      const migrationService = new chunkR6AJ5T3M_cjs.MigrationService(c.env.DB);
+      const migrationService = new chunkA2XCPDQS_cjs.MigrationService(c.env.DB);
       await migrationService.runPendingMigrations();
       console.log("[Bootstrap] Syncing collection configurations...");
       try {
-        await chunkNA3BD6LU_cjs.syncCollections(c.env.DB);
+        await chunkQNY7OU4B_cjs.syncCollections(c.env.DB);
       } catch (error) {
         console.error("[Bootstrap] Error syncing collections:", error);
       }
       console.log("[Bootstrap] Syncing form collections...");
       try {
-        await chunkNA3BD6LU_cjs.syncAllFormCollections(c.env.DB);
+        await chunkQNY7OU4B_cjs.syncAllFormCollections(c.env.DB);
       } catch (error) {
         console.error("[Bootstrap] Error syncing form collections:", error);
       }
       if (!config.plugins?.disableAll) {
         console.log("[Bootstrap] Bootstrapping core plugins...");
-        const bootstrapService = new chunkNA3BD6LU_cjs.PluginBootstrapService(c.env.DB);
+        const bootstrapService = new chunkQNY7OU4B_cjs.PluginBootstrapService(c.env.DB);
         const needsBootstrap = await bootstrapService.isBootstrapNeeded();
         if (needsBootstrap) {
           await bootstrapService.bootstrapCorePlugins();
@@ -92,11 +92,12 @@ function bootstrapMiddleware(config = {}) {
 }
 var JWT_SECRET_FALLBACK = "your-super-secret-jwt-key-change-in-production";
 var AuthManager = class {
-  static async generateToken(userId, email, role, secret) {
+  static async generateToken(userId, email, role, secret, tenantId) {
     const payload = {
       userId,
       email,
       role,
+      tenantId: tenantId ?? null,
       exp: Math.floor(Date.now() / 1e3) + 60 * 60 * 24,
       // 24 hours
       iat: Math.floor(Date.now() / 1e3)
@@ -241,6 +242,29 @@ var requireAuth = () => {
         if (payload && kv) {
           const cacheKey = `auth:${token.substring(0, 20)}`;
           await kv.put(cacheKey, JSON.stringify(payload), { expirationTtl: 300 });
+        }
+      }
+      if (!payload && token.startsWith("ffx_")) {
+        const db = c.env?.DB;
+        if (db) {
+          const now = (/* @__PURE__ */ new Date()).toISOString();
+          const row = await db.prepare(
+            `SELECT at.id, at.tenant_id, at.permissions, at.expires_at, u.id as user_id, u.email, u.role
+             FROM api_tokens at
+             JOIN users u ON at.user_id = u.id
+             WHERE at.token = ? AND (at.expires_at IS NULL OR at.expires_at > ?)`
+          ).bind(token, now).first();
+          if (row) {
+            await db.prepare("UPDATE api_tokens SET last_used_at = ? WHERE id = ?").bind(now, row.id).run();
+            payload = {
+              userId: row.user_id,
+              email: row.email,
+              role: row.role,
+              tenantId: row.tenant_id,
+              exp: 0,
+              iat: 0
+            };
+          }
         }
       }
       if (!payload) {
@@ -570,5 +594,5 @@ exports.securityHeadersMiddleware = securityHeadersMiddleware;
 exports.securityLoggingMiddleware = securityLoggingMiddleware;
 exports.validateCsrfToken = validateCsrfToken;
 exports.verifySecurityConfig = verifySecurityConfig;
-//# sourceMappingURL=chunk-UT7K7CJZ.cjs.map
-//# sourceMappingURL=chunk-UT7K7CJZ.cjs.map
+//# sourceMappingURL=chunk-6VPVJN4S.cjs.map
+//# sourceMappingURL=chunk-6VPVJN4S.cjs.map

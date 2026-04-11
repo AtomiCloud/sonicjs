@@ -5,6 +5,7 @@ import { AISearchService } from '../services/ai-search'
 import { IndexManager } from '../services/indexer'
 import { renderSettingsPage } from '../components/settings-page'
 import type { AISearchSettings, SearchQuery } from '../types'
+import { getTenantIdOrNull } from '../../../../utils/tenant'
 
 type Variables = {
   user: {
@@ -29,9 +30,10 @@ adminRoutes.get('/', async (c) => {
     const db = c.env.DB
     const ai = (c.env as any).AI // Workers AI for embeddings
     const vectorize = (c.env as any).VECTORIZE_INDEX // Vectorize for vector search
+    const tenantId = getTenantIdOrNull(c)
 
-    const service = new AISearchService(db, ai, vectorize)
-    const indexer = new IndexManager(db, ai, vectorize)
+    const service = new AISearchService(db, ai, vectorize, tenantId)
+    const indexer = new IndexManager(db, ai, vectorize, tenantId)
 
     // Get settings
     const settings = await service.getSettings()
@@ -43,7 +45,9 @@ adminRoutes.get('/', async (c) => {
     
     // If no collections, try direct query
     if (collections.length === 0) {
-      const directQuery = await db.prepare('SELECT id, name, display_name FROM collections WHERE is_active = 1').all()
+      const directQuery = tenantId
+        ? await db.prepare('SELECT id, name, display_name FROM collections WHERE is_active = 1 AND tenant_id = ?').bind(tenantId).all()
+        : await db.prepare('SELECT id, name, display_name FROM collections WHERE is_active = 1').all()
       console.log('[AI Search Settings Route] Direct DB query found:', directQuery.results?.length || 0, 'collections')
       if (directQuery.results && directQuery.results.length > 0) {
         console.log('[AI Search Settings Route] Sample from DB:', directQuery.results[0])
@@ -96,8 +100,9 @@ adminRoutes.post('/', async (c) => {
     const db = c.env.DB
     const ai = (c.env as any).AI
     const vectorize = (c.env as any).VECTORIZE_INDEX
-    const service = new AISearchService(db, ai, vectorize)
-    const indexer = new IndexManager(db, ai, vectorize)
+    const tenantId = getTenantIdOrNull(c)
+    const service = new AISearchService(db, ai, vectorize, tenantId)
+    const indexer = new IndexManager(db, ai, vectorize, tenantId)
 
     const body = await c.req.json()
     console.log('[AI Search POST] Received body:', JSON.stringify(body, null, 2))
@@ -156,7 +161,8 @@ adminRoutes.get('/api/settings', async (c) => {
     const db = c.env.DB
     const ai = (c.env as any).AI
     const vectorize = (c.env as any).VECTORIZE_INDEX
-    const service = new AISearchService(db, ai, vectorize)
+    const tenantId = getTenantIdOrNull(c)
+    const service = new AISearchService(db, ai, vectorize, tenantId)
 
     const settings = await service.getSettings()
     return c.json({ success: true, data: settings })
@@ -175,7 +181,8 @@ adminRoutes.get('/api/new-collections', async (c) => {
     const db = c.env.DB
     const ai = (c.env as any).AI
     const vectorize = (c.env as any).VECTORIZE_INDEX
-    const service = new AISearchService(db, ai, vectorize)
+    const tenantId = getTenantIdOrNull(c)
+    const service = new AISearchService(db, ai, vectorize, tenantId)
 
     const notifications = await service.detectNewCollections()
     return c.json({ success: true, data: notifications })
@@ -194,7 +201,8 @@ adminRoutes.get('/api/status', async (c) => {
     const db = c.env.DB
     const ai = (c.env as any).AI
     const vectorize = (c.env as any).VECTORIZE_INDEX
-    const indexer = new IndexManager(db, ai, vectorize)
+    const tenantId = getTenantIdOrNull(c)
+    const indexer = new IndexManager(db, ai, vectorize, tenantId)
 
     const status = await indexer.getAllIndexStatus()
     return c.json({ success: true, data: status })
@@ -213,7 +221,8 @@ adminRoutes.post('/api/reindex', async (c) => {
     const db = c.env.DB
     const ai = (c.env as any).AI
     const vectorize = (c.env as any).VECTORIZE_INDEX
-    const indexer = new IndexManager(db, ai, vectorize)
+    const tenantId = getTenantIdOrNull(c)
+    const indexer = new IndexManager(db, ai, vectorize, tenantId)
 
       const body = await c.req.json()
       const collectionIdRaw: unknown = body.collection_id

@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { renderTestimonialsList } from '../templates/pages/admin-testimonials-list.template'
 import { renderTestimonialsForm } from '../templates/pages/admin-testimonials-form.template'
+import { getTenantId } from '../utils/tenant'
 
 type Bindings = {
   DB: D1Database
@@ -32,6 +33,7 @@ const adminTestimonialsRoutes = new Hono<{ Bindings: Bindings; Variables: Variab
 
 adminTestimonialsRoutes.get('/', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')
     const { published, minRating, search, page = '1' } = c.req.query()
     const currentPage = parseInt(page, 10) || 1
@@ -55,8 +57,8 @@ adminTestimonialsRoutes.get('/', async (c) => {
       }))
     }
 
-    let whereClause = 'WHERE 1=1'
-    const params: any[] = []
+    let whereClause = 'WHERE tenant_id = ?'
+    const params: any[] = [tenantId]
 
     if (published !== undefined) {
       whereClause += ' AND isPublished = ?'
@@ -152,9 +154,10 @@ adminTestimonialsRoutes.post('/', async (c) => {
       }))
     }
 
+    const tenantId = getTenantId(c)
     const { results } = await db.prepare(`
-      INSERT INTO testimonials (author_name, author_title, author_company, testimonial_text, rating, isPublished, sortOrder)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO testimonials (author_name, author_title, author_company, testimonial_text, rating, isPublished, sortOrder, tenant_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       RETURNING *
     `).bind(
       validatedData.authorName,
@@ -163,7 +166,8 @@ adminTestimonialsRoutes.post('/', async (c) => {
       validatedData.testimonialText,
       validatedData.rating || null,
       validatedData.isPublished ? 1 : 0,
-      validatedData.sortOrder
+      validatedData.sortOrder,
+      tenantId
     ).all()
 
     if (results && results.length > 0) {
@@ -220,6 +224,7 @@ adminTestimonialsRoutes.post('/', async (c) => {
 
 adminTestimonialsRoutes.get('/:id', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const id = parseInt(c.req.param('id'))
     const user = c.get('user')
     const db = (c as any).env?.DB
@@ -237,7 +242,7 @@ adminTestimonialsRoutes.get('/:id', async (c) => {
       }))
     }
 
-    const { results } = await db.prepare('SELECT * FROM testimonials WHERE id = ?').bind(id).all()
+    const { results } = await db.prepare('SELECT * FROM testimonials WHERE id = ? AND tenant_id = ?').bind(id, tenantId).all()
 
     if (!results || results.length === 0) {
       return c.redirect('/admin/testimonials?message=Testimonial not found&type=error')
@@ -302,10 +307,11 @@ adminTestimonialsRoutes.put('/:id', async (c) => {
       }))
     }
 
+    const tenantId = getTenantId(c)
     const { results } = await db.prepare(`
       UPDATE testimonials
       SET author_name = ?, author_title = ?, author_company = ?, testimonial_text = ?, rating = ?, isPublished = ?, sortOrder = ?
-      WHERE id = ?
+      WHERE id = ? AND tenant_id = ?
       RETURNING *
     `).bind(
       validatedData.authorName,
@@ -315,7 +321,8 @@ adminTestimonialsRoutes.put('/:id', async (c) => {
       validatedData.rating || null,
       validatedData.isPublished ? 1 : 0,
       validatedData.sortOrder,
-      id
+      id,
+      tenantId
     ).all()
 
     if (results && results.length > 0) {
@@ -403,6 +410,7 @@ adminTestimonialsRoutes.put('/:id', async (c) => {
 
 adminTestimonialsRoutes.delete('/:id', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const id = parseInt(c.req.param('id'))
     const db = (c as any).env?.DB
 
@@ -410,7 +418,7 @@ adminTestimonialsRoutes.delete('/:id', async (c) => {
       return c.json({ error: 'Database not available' }, 500)
     }
 
-    const { changes } = await db.prepare('DELETE FROM testimonials WHERE id = ?').bind(id).run()
+    const { changes } = await db.prepare('DELETE FROM testimonials WHERE id = ? AND tenant_id = ?').bind(id, tenantId).run()
 
     if (changes === 0) {
       return c.json({ error: 'Testimonial not found' }, 404)

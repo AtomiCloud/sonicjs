@@ -5,6 +5,7 @@ import { isPluginActive } from '../middleware/plugin-middleware'
 import { normalizeFieldType } from './admin-collections-field-types'
 import { renderCollectionsListPage } from '../templates/pages/admin-collections-list.template'
 import { renderCollectionFormPage } from '../templates/pages/admin-collections-form.template'
+import { getTenantId } from '../utils/tenant'
 
 // Type definitions for collections
 interface Collection {
@@ -102,6 +103,7 @@ adminCollectionsRoutes.delete('*', requireRole(['admin']))
 // Collections management - List all collections
 adminCollectionsRoutes.get('/', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')
     const db = c.env.DB
     const url = new URL(c.req.url)
@@ -115,16 +117,17 @@ adminCollectionsRoutes.get('/', async (c) => {
         SELECT id, name, display_name, description, created_at, managed, schema
         FROM collections
         WHERE is_active = 1
+        AND tenant_id = ?
         AND (source_type IS NULL OR source_type = 'user')
         AND (name LIKE ? OR display_name LIKE ? OR description LIKE ?)
         ORDER BY created_at DESC
       `)
       const searchParam = `%${search}%`
-      const queryResults = await stmt.bind(searchParam, searchParam, searchParam).all()
+      const queryResults = await stmt.bind(tenantId, searchParam, searchParam, searchParam).all()
       results = queryResults.results
     } else {
-      stmt = db.prepare("SELECT id, name, display_name, description, created_at, managed, schema FROM collections WHERE is_active = 1 AND (source_type IS NULL OR source_type = 'user') ORDER BY created_at DESC")
-      const queryResults = await stmt.all()
+      stmt = db.prepare("SELECT id, name, display_name, description, created_at, managed, schema FROM collections WHERE is_active = 1 AND tenant_id = ? AND (source_type IS NULL OR source_type = 'user') ORDER BY created_at DESC")
+      const queryResults = await stmt.bind(tenantId).all()
       results = queryResults.results
     }
 
@@ -260,10 +263,11 @@ adminCollectionsRoutes.post('/', async (c) => {
     }
 
     const db = c.env.DB
+    const tenantId = getTenantId(c)
 
     // Check if collection already exists
-    const existingStmt = db.prepare('SELECT id FROM collections WHERE name = ?')
-    const existing = await existingStmt.bind(name).first()
+    const existingStmt = db.prepare('SELECT id FROM collections WHERE name = ? AND tenant_id = ?')
+    const existing = await existingStmt.bind(name, tenantId).first()
 
     if (existing) {
       const errorMsg = 'A collection with this name already exists.'
@@ -307,8 +311,8 @@ adminCollectionsRoutes.post('/', async (c) => {
     const now = Date.now()
 
     const insertStmt = db.prepare(`
-      INSERT INTO collections (id, name, display_name, description, schema, is_active, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO collections (id, name, display_name, description, schema, is_active, created_at, updated_at, tenant_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
 
     await insertStmt.bind(
@@ -319,7 +323,8 @@ adminCollectionsRoutes.post('/', async (c) => {
       JSON.stringify(basicSchema),
       1, // is_active
       now,
-      now
+      now,
+      tenantId
     ).run()
 
     // Clear cache (only if CACHE_KV is available)
@@ -367,11 +372,12 @@ adminCollectionsRoutes.post('/', async (c) => {
 adminCollectionsRoutes.get('/:id', async (c) => {
   const db = c.env.DB
   try {
+    const tenantId = getTenantId(c)
     const id = c.req.param('id')
     const user = c.get('user')
 
-    const stmt = db.prepare('SELECT * FROM collections WHERE id = ?')
-    const collection = await stmt.bind(id).first() as any
+    const stmt = db.prepare('SELECT * FROM collections WHERE id = ? AND tenant_id = ?')
+    const collection = await stmt.bind(id, tenantId).first() as any
 
     if (!collection) {
       // Check which editor plugins are active
@@ -540,6 +546,7 @@ adminCollectionsRoutes.get('/:id', async (c) => {
 // Update collection
 adminCollectionsRoutes.put('/:id', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const id = c.req.param('id')
     const formData = await c.req.formData()
     const displayName = formData.get('displayName') as string
@@ -558,10 +565,10 @@ adminCollectionsRoutes.put('/:id', async (c) => {
     const updateStmt = db.prepare(`
       UPDATE collections
       SET display_name = ?, description = ?, updated_at = ?
-      WHERE id = ?
+      WHERE id = ? AND tenant_id = ?
     `)
 
-    await updateStmt.bind(displayName, description || null, Date.now(), id).run()
+    await updateStmt.bind(displayName, description || null, Date.now(), id, tenantId).run()
 
     return c.html(html`
       <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
@@ -581,12 +588,13 @@ adminCollectionsRoutes.put('/:id', async (c) => {
 // Delete collection
 adminCollectionsRoutes.delete('/:id', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const id = c.req.param('id')
     const db = c.env.DB
 
     // Check if collection has content
-    const contentStmt = db.prepare('SELECT COUNT(*) as count FROM content WHERE collection_id = ?')
-    const contentResult = await contentStmt.bind(id).first() as any
+    const contentStmt = db.prepare('SELECT COUNT(*) as count FROM content WHERE collection_id = ? AND tenant_id = ?')
+    const contentResult = await contentStmt.bind(id, tenantId).first() as any
 
     if (contentResult && contentResult.count > 0) {
       return c.html(html`
@@ -601,8 +609,8 @@ adminCollectionsRoutes.delete('/:id', async (c) => {
     await deleteFieldsStmt.bind(id).run()
 
     // Delete collection
-    const deleteStmt = db.prepare('DELETE FROM collections WHERE id = ?')
-    await deleteStmt.bind(id).run()
+    const deleteStmt = db.prepare('DELETE FROM collections WHERE id = ? AND tenant_id = ?')
+    await deleteStmt.bind(id, tenantId).run()
 
     return c.html(html`
       <script>
@@ -641,10 +649,11 @@ adminCollectionsRoutes.post('/:id/fields', async (c) => {
     }
 
     const db = c.env.DB
+    const tenantId = getTenantId(c)
 
     // Get current collection to check its schema
-    const getCollectionStmt = db.prepare('SELECT * FROM collections WHERE id = ?')
-    const collection = await getCollectionStmt.bind(collectionId).first() as any
+    const getCollectionStmt = db.prepare('SELECT * FROM collections WHERE id = ? AND tenant_id = ?')
+    const collection = await getCollectionStmt.bind(collectionId, tenantId).first() as any
 
     if (!collection) {
       return c.json({ success: false, error: 'Collection not found.' })
@@ -728,10 +737,10 @@ adminCollectionsRoutes.post('/:id/fields', async (c) => {
       const updateSchemaStmt = db.prepare(`
         UPDATE collections
         SET schema = ?, updated_at = ?
-        WHERE id = ?
+        WHERE id = ? AND tenant_id = ?
       `)
 
-      await updateSchemaStmt.bind(JSON.stringify(schema), Date.now(), collectionId).run()
+      await updateSchemaStmt.bind(JSON.stringify(schema), Date.now(), collectionId, tenantId).run()
 
       console.log('[Add Field] Added field to schema:', fieldName, fieldConfig)
 
@@ -807,6 +816,7 @@ adminCollectionsRoutes.put('/:collectionId/fields/:fieldId', async (c) => {
     }
 
     const db = c.env.DB
+    const tenantId = getTenantId(c)
 
     // Check if this is a schema field (starts with "schema-")
     if (fieldId.startsWith('schema-')) {
@@ -817,8 +827,8 @@ adminCollectionsRoutes.put('/:collectionId/fields/:fieldId', async (c) => {
       console.log('[Field Update] Updating schema field:', fieldName)
 
       // Get the current collection
-      const getCollectionStmt = db.prepare('SELECT * FROM collections WHERE id = ?')
-      const collection = await getCollectionStmt.bind(collectionId).first()
+      const getCollectionStmt = db.prepare('SELECT * FROM collections WHERE id = ? AND tenant_id = ?')
+      const collection = await getCollectionStmt.bind(collectionId, tenantId).first()
 
       if (!collection) {
         return c.json({ success: false, error: 'Collection not found.' })
@@ -892,10 +902,10 @@ adminCollectionsRoutes.put('/:collectionId/fields/:fieldId', async (c) => {
       const updateCollectionStmt = db.prepare(`
         UPDATE collections
         SET schema = ?, updated_at = ?
-        WHERE id = ?
+        WHERE id = ? AND tenant_id = ?
       `)
 
-      const result = await updateCollectionStmt.bind(JSON.stringify(schema), Date.now(), collectionId).run()
+      const result = await updateCollectionStmt.bind(JSON.stringify(schema), Date.now(), collectionId, tenantId).run()
 
       console.log('[Field Update] Schema update result:', {
         success: result.success,
@@ -938,6 +948,7 @@ adminCollectionsRoutes.put('/:collectionId/fields/:fieldId', async (c) => {
 // Delete field
 adminCollectionsRoutes.delete('/:collectionId/fields/:fieldId', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const fieldId = c.req.param('fieldId')
     const collectionId = c.req.param('collectionId')
     const db = c.env.DB
@@ -947,8 +958,8 @@ adminCollectionsRoutes.delete('/:collectionId/fields/:fieldId', async (c) => {
       const fieldName = fieldId.replace('schema-', '')
 
       // Get the current collection
-      const getCollectionStmt = db.prepare('SELECT * FROM collections WHERE id = ?')
-      const collection = await getCollectionStmt.bind(collectionId).first() as any
+      const getCollectionStmt = db.prepare('SELECT * FROM collections WHERE id = ? AND tenant_id = ?')
+      const collection = await getCollectionStmt.bind(collectionId, tenantId).first() as any
 
       if (!collection) {
         return c.json({ success: false, error: 'Collection not found.' })
@@ -976,10 +987,10 @@ adminCollectionsRoutes.delete('/:collectionId/fields/:fieldId', async (c) => {
         const updateCollectionStmt = db.prepare(`
           UPDATE collections
           SET schema = ?, updated_at = ?
-          WHERE id = ?
+          WHERE id = ? AND tenant_id = ?
         `)
 
-        await updateCollectionStmt.bind(JSON.stringify(schema), Date.now(), collectionId).run()
+        await updateCollectionStmt.bind(JSON.stringify(schema), Date.now(), collectionId, tenantId).run()
 
         console.log('[Delete Field] Removed field from schema:', fieldName)
 

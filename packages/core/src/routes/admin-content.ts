@@ -11,6 +11,7 @@ import { ContentFormData, renderContentFormPage } from '../templates/pages/admin
 import { ContentListPageData, renderContentListPage } from '../templates/pages/admin-content-list.template'
 import { getBlocksFieldConfig, parseBlocksValue } from '../utils/blocks'
 import { escapeHtml, sanitizeRichText } from '../utils/sanitize'
+import { getTenantId } from '../utils/tenant'
 import { buildSchemaFieldOptions, resolveSchemaFieldType } from './admin-content-field-types'
 
 const adminContentRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>()
@@ -182,15 +183,15 @@ function extractFieldData(
 adminContentRoutes.use('*', requireAuth())
 
 // Get collection fields
-async function getCollectionFields(db: D1Database, collectionId: string) {
+async function getCollectionFields(db: D1Database, collectionId: string, tenantId: string) {
   const cache = getCacheService(CACHE_CONFIGS.collection!)
 
   return cache.getOrSet(
     cache.generateKey('fields', collectionId),
     async () => {
       // First, check if collection has a schema (code-based collection)
-      const collectionStmt = db.prepare('SELECT schema FROM collections WHERE id = ?')
-      const collectionRow = await collectionStmt.bind(collectionId).first() as any
+      const collectionStmt = db.prepare('SELECT schema FROM collections WHERE id = ? AND tenant_id = ?')
+      const collectionRow = await collectionStmt.bind(collectionId, tenantId).first() as any
 
       if (collectionRow && collectionRow.schema) {
         try {
@@ -241,14 +242,14 @@ async function getCollectionFields(db: D1Database, collectionId: string) {
 }
 
 // Get collection by ID
-async function getCollection(db: D1Database, collectionId: string) {
+async function getCollection(db: D1Database, collectionId: string, tenantId: string) {
   const cache = getCacheService(CACHE_CONFIGS.collection!)
 
   return cache.getOrSet(
     cache.generateKey('collection', collectionId),
     async () => {
-      const stmt = db.prepare('SELECT * FROM collections WHERE id = ? AND is_active = 1')
-      const collection = await stmt.bind(collectionId).first() as any
+      const stmt = db.prepare('SELECT * FROM collections WHERE id = ? AND is_active = 1 AND tenant_id = ?')
+      const collection = await stmt.bind(collectionId, tenantId).first() as any
 
       if (!collection) return null
 
@@ -266,6 +267,7 @@ async function getCollection(db: D1Database, collectionId: string) {
 // Content list (main page)
 adminContentRoutes.get('/', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')
     const url = new URL(c.req.url)
     const db = c.env.DB
@@ -279,8 +281,8 @@ adminContentRoutes.get('/', async (c) => {
     const offset = (page - 1) * limit
 
     // Get all collections for filter dropdown (exclude form-sourced)
-    const collectionsStmt = db.prepare("SELECT id, name, display_name FROM collections WHERE is_active = 1 AND (source_type IS NULL OR source_type = 'user') ORDER BY display_name")
-    const { results: collectionsResults } = await collectionsStmt.all()
+    const collectionsStmt = db.prepare("SELECT id, name, display_name FROM collections WHERE is_active = 1 AND (source_type IS NULL OR source_type = 'user') AND tenant_id = ? ORDER BY display_name")
+    const { results: collectionsResults } = await collectionsStmt.bind(tenantId).all()
     const models = (collectionsResults || []).map((row: any) => ({
       name: row.name,
       displayName: row.display_name
@@ -292,6 +294,10 @@ adminContentRoutes.get('/', async (c) => {
 
     // Hide content from form-sourced collections in the regular content list
     conditions.push("(col.source_type IS NULL OR col.source_type = 'user')")
+
+    // Tenant isolation
+    conditions.push('c.tenant_id = ?')
+    params.push(tenantId)
 
     // Always filter out deleted content unless specifically requested
     if (status !== 'deleted') {
@@ -439,6 +445,7 @@ adminContentRoutes.get('/', async (c) => {
 // New content form
 adminContentRoutes.get('/new', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')
     const url = new URL(c.req.url)
     const collectionId = url.searchParams.get('collection')
@@ -447,8 +454,8 @@ adminContentRoutes.get('/new', async (c) => {
       // Show collection selection page
       const db = c.env.DB
       // Exclude form-sourced collections — users shouldn't manually create content in form collections
-      const collectionsStmt = db.prepare("SELECT id, name, display_name, description FROM collections WHERE is_active = 1 AND (source_type IS NULL OR source_type = 'user') ORDER BY display_name")
-      const { results } = await collectionsStmt.all()
+      const collectionsStmt = db.prepare("SELECT id, name, display_name, description FROM collections WHERE is_active = 1 AND (source_type IS NULL OR source_type = 'user') AND tenant_id = ? ORDER BY display_name")
+      const { results } = await collectionsStmt.bind(tenantId).all()
 
       const collections = (results || []).map((row: any) => ({
         id: row.id,
@@ -494,7 +501,7 @@ adminContentRoutes.get('/new', async (c) => {
     }
 
     const db = c.env.DB
-    const collection = await getCollection(db, collectionId)
+    const collection = await getCollection(db, collectionId, tenantId)
 
     if (!collection) {
       const formData: ContentFormData = {
@@ -510,7 +517,7 @@ adminContentRoutes.get('/new', async (c) => {
       return c.html(renderContentFormPage(formData))
     }
 
-    const fields = await getCollectionFields(db, collectionId)
+    const fields = await getCollectionFields(db, collectionId, tenantId)
 
     // Check if workflow plugin is active
     const workflowEnabled = await isPluginActive(db, 'workflow')
@@ -587,6 +594,7 @@ adminContentRoutes.get('/new', async (c) => {
 // Edit content form
 adminContentRoutes.get('/:id/edit', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const id = c.req.param('id')
     const user = c.get('user')
     const db = c.env.DB
@@ -606,9 +614,9 @@ adminContentRoutes.get('/:id/edit', async (c) => {
                  col.schema as collection_schema
           FROM content c
           JOIN collections col ON c.collection_id = col.id
-          WHERE c.id = ?
+          WHERE c.id = ? AND c.tenant_id = ?
         `)
-        return await contentStmt.bind(id).first() as any
+        return await contentStmt.bind(id, tenantId).first() as any
       }
     )
 
@@ -634,7 +642,7 @@ adminContentRoutes.get('/:id/edit', async (c) => {
       schema: content.collection_schema ? JSON.parse(content.collection_schema) : {}
     }
 
-    const fields = await getCollectionFields(db, content.collection_id)
+    const fields = await getCollectionFields(db, content.collection_id, tenantId)
     const contentData = content.data ? JSON.parse(content.data) : {}
 
     // Check if workflow plugin is active
@@ -720,6 +728,7 @@ adminContentRoutes.get('/:id/edit', async (c) => {
 // Create content
 adminContentRoutes.post('/', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')
     const formData = await c.req.formData()
     const collectionId = formData.get('collection_id') as string
@@ -734,7 +743,7 @@ adminContentRoutes.post('/', async (c) => {
     }
 
     const db = c.env.DB
-    const collection = await getCollection(db, collectionId)
+    const collection = await getCollection(db, collectionId, tenantId)
 
     if (!collection) {
       return c.html(html`
@@ -744,7 +753,7 @@ adminContentRoutes.post('/', async (c) => {
       `)
     }
 
-    const fields = await getCollectionFields(db, collectionId)
+    const fields = await getCollectionFields(db, collectionId, tenantId)
 
     // Extract and validate field data
     const { data, errors } = extractFieldData(fields, formData)
@@ -793,9 +802,9 @@ adminContentRoutes.post('/', async (c) => {
     const insertStmt = db.prepare(`
       INSERT INTO content (
         id, collection_id, slug, title, data, status,
-        author_id, created_at, updated_at
+        author_id, created_at, updated_at, tenant_id
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
 
     await insertStmt.bind(
@@ -807,7 +816,8 @@ adminContentRoutes.post('/', async (c) => {
       status,
       user?.userId || 'unknown',
       now,
-      now
+      now,
+      tenantId
     ).run()
 
     // Invalidate collection content list cache
@@ -816,8 +826,8 @@ adminContentRoutes.post('/', async (c) => {
 
     // Create initial version
     const versionStmt = db.prepare(`
-      INSERT INTO content_versions (id, content_id, version, data, author_id, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO content_versions (id, content_id, version, data, author_id, created_at, tenant_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `)
 
     await versionStmt.bind(
@@ -826,13 +836,14 @@ adminContentRoutes.post('/', async (c) => {
       1,
       JSON.stringify(data),
       user?.userId || 'unknown',
-      now
+      now,
+      tenantId
     ).run()
 
     // Log workflow action
     const workflowStmt = db.prepare(`
-      INSERT INTO workflow_history (id, content_id, action, from_status, to_status, user_id, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO workflow_history (id, content_id, action, from_status, to_status, user_id, created_at, tenant_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `)
 
     await workflowStmt.bind(
@@ -842,7 +853,8 @@ adminContentRoutes.post('/', async (c) => {
       'none',
       status,
       user?.userId || 'unknown',
-      now
+      now,
+      tenantId
     ).run()
 
     // Handle different actions
@@ -879,6 +891,7 @@ adminContentRoutes.post('/', async (c) => {
 // Update content
 adminContentRoutes.put('/:id', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const id = c.req.param('id')
     const user = c.get('user')
     const formData = await c.req.formData()
@@ -887,8 +900,8 @@ adminContentRoutes.put('/:id', async (c) => {
     const db = c.env.DB
 
     // Get existing content
-    const contentStmt = db.prepare('SELECT * FROM content WHERE id = ?')
-    const existingContent = await contentStmt.bind(id).first() as any
+    const contentStmt = db.prepare('SELECT * FROM content WHERE id = ? AND tenant_id = ?')
+    const existingContent = await contentStmt.bind(id, tenantId).first() as any
 
     if (!existingContent) {
       return c.html(html`
@@ -898,7 +911,7 @@ adminContentRoutes.put('/:id', async (c) => {
       `)
     }
 
-    const collection = await getCollection(db, existingContent.collection_id)
+    const collection = await getCollection(db, existingContent.collection_id, tenantId)
     if (!collection) {
       return c.html(html`
         <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -907,7 +920,7 @@ adminContentRoutes.put('/:id', async (c) => {
       `)
     }
 
-    const fields = await getCollectionFields(db, existingContent.collection_id)
+    const fields = await getCollectionFields(db, existingContent.collection_id, tenantId)
 
     // Extract and validate field data
     const { data, errors } = extractFieldData(fields, formData)
@@ -958,7 +971,7 @@ adminContentRoutes.put('/:id', async (c) => {
         slug = ?, title = ?, data = ?, status = ?,
         scheduled_publish_at = ?, scheduled_unpublish_at = ?,
         meta_title = ?, meta_description = ?, updated_at = ?
-      WHERE id = ?
+      WHERE id = ? AND tenant_id = ?
     `)
 
     await updateStmt.bind(
@@ -971,7 +984,8 @@ adminContentRoutes.put('/:id', async (c) => {
       data.meta_title || null,
       data.meta_description || null,
       now,
-      id
+      id,
+      tenantId
     ).run()
 
     // Invalidate content cache
@@ -983,13 +997,13 @@ adminContentRoutes.put('/:id', async (c) => {
     const existingData = JSON.parse(existingContent.data || '{}')
     if (JSON.stringify(existingData) !== JSON.stringify(data)) {
       // Get next version number
-      const versionCountStmt = db.prepare('SELECT MAX(version) as max_version FROM content_versions WHERE content_id = ?')
-      const versionResult = await versionCountStmt.bind(id).first() as any
+      const versionCountStmt = db.prepare('SELECT MAX(version) as max_version FROM content_versions WHERE content_id = ? AND tenant_id = ?')
+      const versionResult = await versionCountStmt.bind(id, tenantId).first() as any
       const nextVersion = (versionResult?.max_version || 0) + 1
 
       const versionStmt = db.prepare(`
-        INSERT INTO content_versions (id, content_id, version, data, author_id, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO content_versions (id, content_id, version, data, author_id, created_at, tenant_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `)
 
       await versionStmt.bind(
@@ -998,15 +1012,16 @@ adminContentRoutes.put('/:id', async (c) => {
         nextVersion,
         JSON.stringify(data),
         user?.userId || 'unknown',
-        now
+        now,
+        tenantId
       ).run()
     }
 
     // Log workflow action if status changed
     if (status !== existingContent.status) {
       const workflowStmt = db.prepare(`
-        INSERT INTO workflow_history (id, content_id, action, from_status, to_status, user_id, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO workflow_history (id, content_id, action, from_status, to_status, user_id, created_at, tenant_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `)
 
       await workflowStmt.bind(
@@ -1016,7 +1031,8 @@ adminContentRoutes.put('/:id', async (c) => {
         existingContent.status,
         status,
         user?.userId || 'unknown',
-        now
+        now,
+        tenantId
       ).run()
     }
 
@@ -1054,17 +1070,18 @@ adminContentRoutes.put('/:id', async (c) => {
 // Content preview
 adminContentRoutes.post('/preview', requireRole(['admin', 'editor', 'author']), async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const formData = await c.req.formData()
     const collectionId = formData.get('collection_id') as string
 
     const db = c.env.DB
-    const collection = await getCollection(db, collectionId)
+    const collection = await getCollection(db, collectionId, tenantId)
 
     if (!collection) {
       return c.html('<p>Collection not found</p>')
     }
 
-    const fields = await getCollectionFields(db, collectionId)
+    const fields = await getCollectionFields(db, collectionId, tenantId)
 
     // Extract field data for preview (skip validation)
     const { data } = extractFieldData(fields, formData, { skipValidation: true })
@@ -1125,6 +1142,7 @@ adminContentRoutes.post('/preview', requireRole(['admin', 'editor', 'author']), 
 // Duplicate content
 adminContentRoutes.post('/duplicate', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')
     const formData = await c.req.formData()
     const originalId = formData.get('id') as string
@@ -1136,8 +1154,8 @@ adminContentRoutes.post('/duplicate', async (c) => {
     const db = c.env.DB
 
     // Get original content
-    const contentStmt = db.prepare('SELECT * FROM content WHERE id = ?')
-    const original = await contentStmt.bind(originalId).first() as any
+    const contentStmt = db.prepare('SELECT * FROM content WHERE id = ? AND tenant_id = ?')
+    const original = await contentStmt.bind(originalId, tenantId).first() as any
 
     if (!original) {
       return c.json({ success: false, error: 'Content not found' })
@@ -1154,9 +1172,9 @@ adminContentRoutes.post('/duplicate', async (c) => {
     const insertStmt = db.prepare(`
       INSERT INTO content (
         id, collection_id, slug, title, data, status,
-        author_id, created_at, updated_at
+        author_id, created_at, updated_at, tenant_id
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
 
     await insertStmt.bind(
@@ -1168,7 +1186,8 @@ adminContentRoutes.post('/duplicate', async (c) => {
       'draft', // Always start as draft
       user?.userId || 'unknown',
       now,
-      now
+      now,
+      tenantId
     ).run()
 
     return c.json({ success: true, id: newId })
@@ -1274,6 +1293,7 @@ adminContentRoutes.get('/bulk-actions', async (c) => {
 // Perform bulk action
 adminContentRoutes.post('/bulk-action', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const user = c.get('user')
     const body = await c.req.json()
     const { action, ids } = body
@@ -1291,9 +1311,9 @@ adminContentRoutes.post('/bulk-action', async (c) => {
       const stmt = db.prepare(`
         UPDATE content
         SET status = 'deleted', updated_at = ?
-        WHERE id IN (${placeholders})
+        WHERE id IN (${placeholders}) AND tenant_id = ?
       `)
-      await stmt.bind(now, ...ids).run()
+      await stmt.bind(now, ...ids, tenantId).run()
     } else if (action === 'publish' || action === 'draft') {
       // Update status
       const placeholders = ids.map(() => '?').join(',')
@@ -1301,9 +1321,9 @@ adminContentRoutes.post('/bulk-action', async (c) => {
       const stmt = db.prepare(`
         UPDATE content
         SET status = ?, published_at = ?, updated_at = ?
-        WHERE id IN (${placeholders})
+        WHERE id IN (${placeholders}) AND tenant_id = ?
       `)
-      await stmt.bind(action, publishedAt, now, ...ids).run()
+      await stmt.bind(action, publishedAt, now, ...ids, tenantId).run()
     } else {
       return c.json({ success: false, error: 'Invalid action' })
     }
@@ -1326,13 +1346,14 @@ adminContentRoutes.post('/bulk-action', async (c) => {
 // Delete content
 adminContentRoutes.delete('/:id', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const id = c.req.param('id')
     const db = c.env.DB
     const user = c.get('user')
 
     // Check if content exists
-    const contentStmt = db.prepare('SELECT id, title FROM content WHERE id = ?')
-    const content = await contentStmt.bind(id).first() as any
+    const contentStmt = db.prepare('SELECT id, title FROM content WHERE id = ? AND tenant_id = ?')
+    const content = await contentStmt.bind(id, tenantId).first() as any
 
     if (!content) {
       return c.json({ success: false, error: 'Content not found' }, 404)
@@ -1343,9 +1364,9 @@ adminContentRoutes.delete('/:id', async (c) => {
     const deleteStmt = db.prepare(`
       UPDATE content
       SET status = 'deleted', updated_at = ?
-      WHERE id = ?
+      WHERE id = ? AND tenant_id = ?
     `)
-    await deleteStmt.bind(now, id).run()
+    await deleteStmt.bind(now, id, tenantId).run()
 
     // Invalidate cache
     const cache = getCacheService(CACHE_CONFIGS.content!)
@@ -1374,12 +1395,13 @@ adminContentRoutes.delete('/:id', async (c) => {
 // Get version history
 adminContentRoutes.get('/:id/versions', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const id = c.req.param('id')
     const db = c.env.DB
 
     // Get current content
-    const contentStmt = db.prepare('SELECT * FROM content WHERE id = ?')
-    const content = await contentStmt.bind(id).first() as any
+    const contentStmt = db.prepare('SELECT * FROM content WHERE id = ? AND tenant_id = ?')
+    const content = await contentStmt.bind(id, tenantId).first() as any
 
     if (!content) {
       return c.html('<p>Content not found</p>')
@@ -1390,10 +1412,10 @@ adminContentRoutes.get('/:id/versions', async (c) => {
       SELECT cv.*, u.first_name, u.last_name, u.email
       FROM content_versions cv
       LEFT JOIN users u ON cv.author_id = u.id
-      WHERE cv.content_id = ?
+      WHERE cv.content_id = ? AND cv.tenant_id = ?
       ORDER BY cv.version DESC
     `)
-    const { results } = await versionsStmt.bind(id).all()
+    const { results } = await versionsStmt.bind(id, tenantId).all()
 
     const versions: ContentVersion[] = (results || []).map((row: any) => ({
       id: row.id,
@@ -1426,6 +1448,7 @@ adminContentRoutes.get('/:id/versions', async (c) => {
 // Restore version
 adminContentRoutes.post('/:id/restore/:version', async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const id = c.req.param('id')
     const version = parseInt(c.req.param('version') || '0')
     const user = c.get('user')
@@ -1433,18 +1456,18 @@ adminContentRoutes.post('/:id/restore/:version', async (c) => {
 
     // Get the specific version
     const versionStmt = db.prepare(`
-      SELECT * FROM content_versions 
-      WHERE content_id = ? AND version = ?
+      SELECT * FROM content_versions
+      WHERE content_id = ? AND version = ? AND tenant_id = ?
     `)
-    const versionData = await versionStmt.bind(id, version).first() as any
+    const versionData = await versionStmt.bind(id, version, tenantId).first() as any
 
     if (!versionData) {
       return c.json({ success: false, error: 'Version not found' })
     }
 
     // Get current content
-    const contentStmt = db.prepare('SELECT * FROM content WHERE id = ?')
-    const currentContent = await contentStmt.bind(id).first() as any
+    const contentStmt = db.prepare('SELECT * FROM content WHERE id = ? AND tenant_id = ?')
+    const currentContent = await contentStmt.bind(id, tenantId).first() as any
 
     if (!currentContent) {
       return c.json({ success: false, error: 'Content not found' })
@@ -1457,24 +1480,25 @@ adminContentRoutes.post('/:id/restore/:version', async (c) => {
     const updateStmt = db.prepare(`
       UPDATE content SET
         title = ?, data = ?, updated_at = ?
-      WHERE id = ?
+      WHERE id = ? AND tenant_id = ?
     `)
 
     await updateStmt.bind(
       restoredData.title || 'Untitled',
       versionData.data,
       now,
-      id
+      id,
+      tenantId
     ).run()
 
     // Create new version for the restoration
-    const nextVersionStmt = db.prepare('SELECT MAX(version) as max_version FROM content_versions WHERE content_id = ?')
-    const nextVersionResult = await nextVersionStmt.bind(id).first() as any
+    const nextVersionStmt = db.prepare('SELECT MAX(version) as max_version FROM content_versions WHERE content_id = ? AND tenant_id = ?')
+    const nextVersionResult = await nextVersionStmt.bind(id, tenantId).first() as any
     const nextVersion = (nextVersionResult?.max_version || 0) + 1
 
     const newVersionStmt = db.prepare(`
-      INSERT INTO content_versions (id, content_id, version, data, author_id, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO content_versions (id, content_id, version, data, author_id, created_at, tenant_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `)
 
     await newVersionStmt.bind(
@@ -1483,13 +1507,14 @@ adminContentRoutes.post('/:id/restore/:version', async (c) => {
       nextVersion,
       versionData.data,
       user?.userId || 'unknown',
-      now
+      now,
+      tenantId
     ).run()
 
     // Log workflow action
     const workflowStmt = db.prepare(`
-      INSERT INTO workflow_history (id, content_id, action, from_status, to_status, user_id, comment, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO workflow_history (id, content_id, action, from_status, to_status, user_id, comment, created_at, tenant_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
 
     await workflowStmt.bind(
@@ -1500,7 +1525,8 @@ adminContentRoutes.post('/:id/restore/:version', async (c) => {
       currentContent.status,
       user?.userId || 'unknown',
       `Restored to version ${version}`,
-      now
+      now,
+      tenantId
     ).run()
 
     return c.json({ success: true })
@@ -1513,6 +1539,7 @@ adminContentRoutes.post('/:id/restore/:version', async (c) => {
 // Preview specific version
 adminContentRoutes.get('/:id/version/:version/preview', requireRole(['admin', 'editor', 'author']), async (c) => {
   try {
+    const tenantId = getTenantId(c)
     const id = c.req.param('id')
     const version = parseInt(c.req.param('version') || '0')
     const db = c.env.DB
@@ -1523,9 +1550,9 @@ adminContentRoutes.get('/:id/version/:version/preview', requireRole(['admin', 'e
       FROM content_versions cv
       JOIN content c ON cv.content_id = c.id
       JOIN collections col ON c.collection_id = col.id
-      WHERE cv.content_id = ? AND cv.version = ?
+      WHERE cv.content_id = ? AND cv.version = ? AND cv.tenant_id = ?
     `)
-    const versionData = await versionStmt.bind(id, version).first() as any
+    const versionData = await versionStmt.bind(id, version, tenantId).first() as any
 
     if (!versionData) {
       return c.html('<p>Version not found</p>')
