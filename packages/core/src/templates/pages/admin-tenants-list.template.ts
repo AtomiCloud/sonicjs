@@ -154,10 +154,12 @@ export function renderTenantsListPage(data: TenantsListPageData): string {
             errorDiv.textContent = data.error || 'Failed to create tenant';
             errorDiv.classList.remove('hidden');
           } else {
-            successDiv.innerHTML = 'Tenant created! API Token: <code class="bg-zinc-800 px-1.5 py-0.5 rounded text-xs font-mono break-all">' + data.apiToken + '</code><br/><span class="text-xs text-zinc-500">Save this token — it will not be shown again.</span>';
+            successDiv.innerHTML = '<p class="font-medium mb-2">Tenant created!</p><p class="mb-1">API Token:</p><div class="flex items-center gap-2"><code id="api-token-value" class="bg-zinc-800 px-2 py-1 rounded text-xs font-mono break-all flex-1">' + data.apiToken + '</code><button type="button" onclick="navigator.clipboard.writeText(document.getElementById(\'api-token-value\').textContent).then(()=>{this.textContent=\'Copied!\';setTimeout(()=>this.textContent=\'Copy\',2000)})" class="shrink-0 rounded bg-zinc-700 px-2 py-1 text-xs text-white hover:bg-zinc-600">Copy</button></div><p class="text-xs text-zinc-500 mt-2">Save this token — it will not be shown again.</p>';
             successDiv.classList.remove('hidden');
             form.reset();
-            setTimeout(() => window.location.reload(), 3000);
+            btn.textContent = 'Done';
+            btn.onclick = () => window.location.reload();
+            btn.type = 'button';
           }
         } catch (err) {
           errorDiv.textContent = 'Network error';
