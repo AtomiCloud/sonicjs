@@ -4,7 +4,7 @@ import { schemaDefinitions } from '../schemas'
 import { getCacheService, CACHE_CONFIGS } from '../services'
 import { QueryFilterBuilder, QueryFilter } from '../utils'
 import { isPluginActive, optionalAuth } from '../middleware'
-import { getTenantId } from '../utils/tenant'
+import { getTenantId, getTenantIdOrNull } from '../utils/tenant'
 import { normalizePublicContentFilter } from './api-content-access-policy'
 import apiContentCrudRoutes from './api-content-crud'
 import type { Bindings, Variables as AppVariables } from '../app'
@@ -472,15 +472,15 @@ apiRoutes.get('/health', (c) => {
 })
 
 // Basic collections endpoint
-apiRoutes.get('/collections', async (c) => {
+apiRoutes.get('/collections', optionalAuth(), async (c) => {
   const executionStart = Date.now()
 
   try {
     const db = c.env.DB
-    const tenantId = getTenantId(c)
+    const tenantId = getTenantIdOrNull(c)
     const cacheEnabled = c.get('cacheEnabled')
     const cache = getCacheService(CACHE_CONFIGS.api!)
-    const cacheKey = cache.generateKey('collections', `tenant:${tenantId}:all`)
+    const cacheKey = cache.generateKey('collections', `tenant:${tenantId || 'all'}:all`)
 
     // Use cache only if cache plugin is active
     if (cacheEnabled) {
@@ -514,8 +514,11 @@ apiRoutes.get('/collections', async (c) => {
     c.header('X-Cache-Status', 'MISS')
     c.header('X-Cache-Source', 'database')
 
-    const stmt = db.prepare("SELECT * FROM collections WHERE is_active = 1 AND (source_type IS NULL OR source_type = 'user') AND tenant_id = ?")
-    const { results } = await stmt.bind(tenantId).all()
+    const query = tenantId
+      ? "SELECT * FROM collections WHERE is_active = 1 AND (source_type IS NULL OR source_type = 'user') AND tenant_id = ?"
+      : "SELECT * FROM collections WHERE is_active = 1 AND (source_type IS NULL OR source_type = 'user')"
+    const stmt = tenantId ? db.prepare(query).bind(tenantId) : db.prepare(query)
+    const { results } = await stmt.all()
 
     // Parse schema and format results
     const transformedResults = results.map((row: any) => ({
@@ -554,7 +557,7 @@ apiRoutes.get('/content', optionalAuth(), async (c) => {
 
   try {
     const db = c.env.DB
-    const tenantId = getTenantId(c)
+    const tenantId = getTenantIdOrNull(c)
     const queryParams = c.req.query()
 
     // Handle collection parameter - convert collection name to collection_id
@@ -706,7 +709,7 @@ apiRoutes.get('/collections/:collection/content', optionalAuth(), async (c) => {
   try {
     const collection = c.req.param('collection')
     const db = c.env.DB
-    const tenantId = getTenantId(c)
+    const tenantId = getTenantIdOrNull(c)
     const queryParams = c.req.query()
 
     // First check if collection exists
