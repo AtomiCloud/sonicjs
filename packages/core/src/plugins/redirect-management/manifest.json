@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "URL redirect management with exact, partial, and regex matching",
   "author": "ahaas",
-  "homepage": "https://sonicjs.com/plugins/redirect-management",
+  "homepage": "https://forgefoxy.com/plugins/redirect-management",
   "license": "MIT",
   "category": "utilities",
   "tags": [

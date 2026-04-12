@@ -1,19 +1,19 @@
-import { getTenantIdOrNull, renderConfirmationDialog, getConfirmationDialogScript, api_default, api_media_default, api_system_default, admin_api_default, router, adminCollectionsRoutes, adminFormsRoutes, adminSettingsRoutes, public_forms_default, router2, admin_content_default, adminMediaRoutes, userProfilesPlugin, adminPluginRoutes, adminLogsRoutes, userRoutes, auth_default, test_cleanup_default } from './chunk-LT7IH6SS.js';
-export { ROUTES_INFO, admin_api_default as adminApiRoutes, adminCheckboxRoutes, admin_code_examples_default as adminCodeExamplesRoutes, adminCollectionsRoutes, admin_content_default as adminContentRoutes, router as adminDashboardRoutes, adminDesignRoutes, adminLogsRoutes, adminMediaRoutes, adminPluginRoutes, adminSettingsRoutes, admin_testimonials_default as adminTestimonialsRoutes, userRoutes as adminUsersRoutes, api_content_crud_default as apiContentCrudRoutes, api_media_default as apiMediaRoutes, api_default as apiRoutes, api_system_default as apiSystemRoutes, auth_default as authRoutes, createUserProfilesPlugin, defineUserProfile, getTenantId, getTenantIdOrNull, getUserProfileConfig, isSuperAdmin, userProfilesPlugin } from './chunk-LT7IH6SS.js';
+import { getTenantIdOrNull, renderConfirmationDialog, getConfirmationDialogScript, api_default, api_media_default, api_system_default, admin_api_default, router, adminCollectionsRoutes, adminFormsRoutes, adminSettingsRoutes, public_forms_default, router2, admin_content_default, adminMediaRoutes, userProfilesPlugin, adminPluginRoutes, adminLogsRoutes, userRoutes, auth_default, test_cleanup_default } from './chunk-2TXB6KK6.js';
+export { ROUTES_INFO, admin_api_default as adminApiRoutes, adminCheckboxRoutes, admin_code_examples_default as adminCodeExamplesRoutes, adminCollectionsRoutes, admin_content_default as adminContentRoutes, router as adminDashboardRoutes, adminDesignRoutes, adminLogsRoutes, adminMediaRoutes, adminPluginRoutes, adminSettingsRoutes, admin_testimonials_default as adminTestimonialsRoutes, userRoutes as adminUsersRoutes, api_content_crud_default as apiContentCrudRoutes, api_media_default as apiMediaRoutes, api_default as apiRoutes, api_system_default as apiSystemRoutes, auth_default as authRoutes, createUserProfilesPlugin, defineUserProfile, getTenantId, getTenantIdOrNull, getUserProfileConfig, isSuperAdmin, userProfilesPlugin } from './chunk-2TXB6KK6.js';
 import { SettingsService, setAppInstance, schema_exports } from './chunk-TBJY2FF7.js';
 export { Logger, apiTokens, collections, content, contentVersions, getLogger, initLogger, insertCollectionSchema, insertContentSchema, insertLogConfigSchema, insertMediaSchema, insertPluginActivityLogSchema, insertPluginAssetSchema, insertPluginHookSchema, insertPluginRouteSchema, insertPluginSchema, insertSystemLogSchema, insertUserSchema, insertWorkflowHistorySchema, logConfig, media, pluginActivityLog, pluginAssets, pluginHooks, pluginRoutes, plugins, selectCollectionSchema, selectContentSchema, selectLogConfigSchema, selectMediaSchema, selectPluginActivityLogSchema, selectPluginAssetSchema, selectPluginHookSchema, selectPluginRouteSchema, selectPluginSchema, selectSystemLogSchema, selectUserSchema, selectWorkflowHistorySchema, systemLogs, users, workflowHistory } from './chunk-TBJY2FF7.js';
-import { requireAuth, AuthManager, metricsMiddleware, bootstrapMiddleware, securityHeadersMiddleware, csrfProtection } from './chunk-GGEXM5U5.js';
-export { AuthManager, PermissionManager, bootstrapMiddleware, cacheHeaders, compressionMiddleware, detailedLoggingMiddleware, getActivePlugins, isPluginActive, logActivity, loggingMiddleware, optionalAuth, performanceLoggingMiddleware, requireActivePlugin, requireActivePlugins, requireAnyPermission, requireAuth, requirePermission, requireRole, securityHeadersMiddleware as securityHeaders, securityLoggingMiddleware } from './chunk-GGEXM5U5.js';
+import { requireAuth, AuthManager, metricsMiddleware, bootstrapMiddleware, securityHeadersMiddleware, csrfProtection } from './chunk-EEB3PG7P.js';
+export { AuthManager, PermissionManager, bootstrapMiddleware, cacheHeaders, compressionMiddleware, detailedLoggingMiddleware, getActivePlugins, isPluginActive, logActivity, loggingMiddleware, optionalAuth, performanceLoggingMiddleware, requireActivePlugin, requireActivePlugins, requireAnyPermission, requireAuth, requirePermission, requireRole, securityHeadersMiddleware as securityHeaders, securityLoggingMiddleware } from './chunk-EEB3PG7P.js';
 import { PluginService, PLUGIN_REGISTRY } from './chunk-3GZLOTZK.js';
 export { PluginBootstrapService, PluginService as PluginServiceClass, backfillFormSubmissions, cleanupRemovedCollections, createContentFromSubmission, deriveCollectionSchemaFromFormio, deriveSubmissionTitle, fullCollectionSync, getAvailableCollectionNames, getManagedCollections, isCollectionManaged, loadCollectionConfig, loadCollectionConfigs, mapFormStatusToContentStatus, registerCollections, syncAllFormCollections, syncCollection, syncCollections, syncFormCollection, validateCollectionConfig } from './chunk-3GZLOTZK.js';
-export { MigrationService } from './chunk-4BOY76QM.js';
-export { renderFilterBar } from './chunk-FKMSQPKO.js';
-import { renderAdminLayout } from './chunk-XZM4V2PU.js';
-export { getConfirmationDialogScript, renderAlert, renderConfirmationDialog, renderForm, renderFormField, renderPagination, renderTable } from './chunk-XZM4V2PU.js';
-import { init_admin_layout_catalyst_template, renderAdminLayoutCatalyst } from './chunk-SZLKK4DC.js';
-export { HookSystemImpl, HookUtils, PluginManager as PluginManagerClass, PluginRegistryImpl, PluginValidator as PluginValidatorClass, ScopedHookSystem as ScopedHookSystemClass } from './chunk-TFNTM3OA.js';
-import { PluginBuilder } from './chunk-EXNEW5US.js';
-export { PluginBuilder, PluginHelpers } from './chunk-EXNEW5US.js';
+export { MigrationService } from './chunk-2KUQZXWM.js';
+export { renderFilterBar } from './chunk-CSOQPTKO.js';
+import { renderAdminLayout } from './chunk-KLX7B4L3.js';
+export { getConfirmationDialogScript, renderAlert, renderConfirmationDialog, renderForm, renderFormField, renderPagination, renderTable } from './chunk-KLX7B4L3.js';
+import { init_admin_layout_catalyst_template, renderAdminLayoutCatalyst } from './chunk-BGDZHSTR.js';
+export { HookSystemImpl, HookUtils, PluginManager as PluginManagerClass, PluginRegistryImpl, PluginValidator as PluginValidatorClass, ScopedHookSystem as ScopedHookSystemClass } from './chunk-PCUMA5NT.js';
+import { PluginBuilder } from './chunk-Y6DGPEG4.js';
+export { PluginBuilder, PluginHelpers } from './chunk-Y6DGPEG4.js';
 import { package_default, getCoreVersion } from './chunk-EWXV2KG2.js';
 export { QueryFilterBuilder, SONICJS_VERSION, TemplateRenderer, buildQuery, getCoreVersion, renderTemplate, templateRenderer } from './chunk-EWXV2KG2.js';
 import './chunk-X7ZAEI5S.js';
@@ -4910,7 +4910,7 @@ var manifest_default = {
   name: "AI Search",
   description: "Advanced search with Cloudflare AI Search. Full-text search, semantic search, and advanced filtering across all content collections.",
   version: "1.0.0",
-  author: "SonicJS"};
+  author: "ForgeFoxy"};
 
 // src/plugins/core-plugins/ai-search-plugin/index.ts
 var aiSearchPlugin = new PluginBuilder({
@@ -7645,7 +7645,7 @@ adminRoutes3.get("/settings", async (c) => {
   const db = c.env.DB;
   const user = c.get("user");
   const settings = await getSettings3(db);
-  const { renderAdminLayoutCatalyst: renderAdminLayoutCatalyst2 } = await import('./admin-layout-catalyst.template-MQGACL6H.js');
+  const { renderAdminLayoutCatalyst: renderAdminLayoutCatalyst2 } = await import('./admin-layout-catalyst.template-CPZ74YI2.js');
   const content2 = `
     <div>
       <div class="mb-6">
@@ -10214,7 +10214,7 @@ var faviconSvg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 function createSonicJSApp(config = {}) {
   const app2 = new Hono();
   const appVersion = config.version || getCoreVersion();
-  const appName = config.name || "SonicJS AI";
+  const appName = config.name || "ForgeFoxy";
   app2.use("*", async (c, next) => {
     c.set("appVersion", appVersion);
     await next();

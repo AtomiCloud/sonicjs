@@ -3,9 +3,9 @@
   "name": "Media Manager",
   "version": "1.0.0-beta.1",
   "description": "Core media upload and management system with support for images, videos, and documents. Includes automatic optimization, thumbnail generation, and cloud storage integration",
-  "author": "SonicJS Team",
-  "homepage": "https://sonicjs.com/plugins/core-media",
-  "repository": "https://github.com/lane711/sonicjs-ai/tree/main/src/plugins/core-plugins",
+  "author": "ForgeFoxy Team",
+  "homepage": "https://forgefoxy.com/plugins/core-media",
+  "repository": "https://github.com/AtomiCloud/sonicjs/tree/main/src/plugins/core-plugins",
   "license": "MIT",
   "category": "media",
   "tags": [

@@ -536,7 +536,7 @@ function renderGeneralSettings(settings?: GeneralSettings): string {
             <input
               type="text"
               name="siteName"
-              value="${settings?.siteName || 'SonicJS AI'}"
+              value="${settings?.siteName || 'ForgeFoxy'}"
               class="w-full rounded-lg bg-white dark:bg-white/5 px-3 py-2 text-sm/6 text-zinc-950 dark:text-white ring-1 ring-inset ring-zinc-950/10 dark:ring-white/10 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-indigo-500 dark:focus:ring-indigo-400"
               placeholder="Enter site name"
             />

@@ -4,8 +4,8 @@
   "description": "Configurable custom profile fields for users",
   "version": "1.0.0-beta.1",
   "author": {
-    "name": "SonicJS Team",
-    "email": "team@sonicjs.com"
+    "name": "ForgeFoxy Team",
+    "email": "team@forgefoxy.com"
   },
   "category": "users",
   "icon": "user",

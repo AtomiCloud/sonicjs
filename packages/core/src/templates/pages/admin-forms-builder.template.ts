@@ -306,7 +306,7 @@ export function renderFormBuilderPage(data: FormBuilderPageData): string {
 
   const pageContent = `
     <style>
-      /* Form.io Builder Styling to match SonicJS theme */
+      /* Form.io Builder Styling to match ForgeFoxy theme */
       .formio-builder {
         background: transparent !important;
         border: none !important;

@@ -32,8 +32,8 @@ test.describe('Contact Form Plugin', () => {
 
     // If redirected to login, fill it out
     if (page.url().includes('/auth/login')) {
-      await page.fill('input[name="email"]', 'admin@sonicjs.com'); 
-      await page.fill('input[name="password"]', 'sonicjs!');       
+      await page.fill('input[name="email"]', 'admin@forgefoxy.com'); 
+      await page.fill('input[name="password"]', 'forgefoxy!');       
       await page.click('button[type="submit"]');
       await page.waitForURL('**/admin/plugins/contact-form/settings');
     }

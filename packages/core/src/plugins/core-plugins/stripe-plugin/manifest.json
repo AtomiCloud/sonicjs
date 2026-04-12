@@ -3,7 +3,7 @@
   "name": "Stripe Subscriptions",
   "version": "1.0.0-beta.1",
   "description": "Stripe subscription management with webhook handling, checkout sessions, and subscription gating",
-  "author": "SonicJS Team",
+  "author": "ForgeFoxy Team",
   "category": "payments",
   "icon": "credit-card",
   "dependencies": [],

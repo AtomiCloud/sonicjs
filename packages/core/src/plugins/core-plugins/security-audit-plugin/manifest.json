@@ -3,7 +3,7 @@
   "name": "Security Audit",
   "version": "1.0.0-beta.1",
   "description": "Security event logging, brute-force detection, and analytics dashboard. Monitors login attempts, registrations, lockouts, and suspicious activity.",
-  "author": "SonicJS Team",
+  "author": "ForgeFoxy Team",
   "category": "security",
   "tags": [
     "security",

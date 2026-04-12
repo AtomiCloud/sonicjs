@@ -11,7 +11,7 @@ export function renderRegisterPage(data: RegisterPageData): string {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Register - SonicJS AI</title>
+      <title>Register - ForgeFoxy</title>
       <link rel="icon" type="image/svg+xml" href="/favicon.svg">
       <script src="https://unpkg.com/htmx.org@2.0.3"></script>
       <script src="https://cdn.tailwindcss.com"></script>
@@ -40,7 +40,7 @@ export function renderRegisterPage(data: RegisterPageData): string {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
             </svg>
           </div>
-          <h1 class="mt-6 text-3xl font-semibold tracking-tight text-white">SonicJS AI</h1>
+          <h1 class="mt-6 text-3xl font-semibold tracking-tight text-white">ForgeFoxy</h1>
           <p class="mt-2 text-sm text-zinc-400">Create your account and get started</p>
         </div>
 

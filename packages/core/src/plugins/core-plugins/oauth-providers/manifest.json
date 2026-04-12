@@ -4,8 +4,8 @@
   "description": "OAuth2/OIDC social login with GitHub, Google, and more",
   "version": "1.0.0-beta.1",
   "author": {
-    "name": "SonicJS Team",
-    "email": "team@sonicjs.com"
+    "name": "ForgeFoxy Team",
+    "email": "team@forgefoxy.com"
   },
   "category": "authentication",
   "icon": "shield",

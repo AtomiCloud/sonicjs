@@ -3,9 +3,9 @@
   "name": "Global Variables",
   "version": "1.0.0-beta.1",
   "description": "Dynamic content variables that can be referenced as inline tokens in rich text fields. Supports {variable_key} syntax with server-side resolution.",
-  "author": "SonicJS Team",
-  "homepage": "https://sonicjs.com/plugins/global-variables",
-  "repository": "https://github.com/SonicJs-Org/sonicjs",
+  "author": "ForgeFoxy Team",
+  "homepage": "https://forgefoxy.com/plugins/global-variables",
+  "repository": "https://github.com/AtomiCloud/sonicjs",
   "license": "MIT",
   "category": "content",
   "tags": [

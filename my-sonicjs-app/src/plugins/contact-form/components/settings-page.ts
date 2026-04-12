@@ -161,7 +161,7 @@ function renderLocalLayout(title: string, content: any) {
         <div class="fixed inset-y-0 left-0 w-64 max-lg:hidden">
           <nav class="flex h-full min-h-0 flex-col bg-white shadow-sm ring-1 ring-zinc-950/5 dark:bg-zinc-900 dark:ring-white/10">
             <div class="flex flex-col border-b border-zinc-950/5 p-4 dark:border-white/5">
-              <a href="/admin" class="flex items-center gap-2 font-bold text-xl dark:text-white">SonicJS</a>
+              <a href="/admin" class="flex items-center gap-2 font-bold text-xl dark:text-white">ForgeFoxy</a>
             </div>
             <div class="flex flex-1 flex-col overflow-y-auto p-4 gap-0.5">
                <a href="/admin" class="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-sm font-medium text-zinc-950 hover:bg-zinc-950/5 dark:text-white dark:hover:bg-white/5">Dashboard</a>

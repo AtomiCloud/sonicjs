@@ -3,9 +3,9 @@
   "name": "Workflow Engine",
   "version": "1.0.0-beta.1",
   "description": "Content workflow and approval system with customizable states, transitions, and review processes",
-  "author": "SonicJS Team",
-  "homepage": "https://sonicjs.com/plugins/workflow",
-  "repository": "https://github.com/lane711/sonicjs-ai/tree/main/src/plugins/core-plugins/workflow-plugin",
+  "author": "ForgeFoxy Team",
+  "homepage": "https://forgefoxy.com/plugins/workflow",
+  "repository": "https://github.com/AtomiCloud/sonicjs/tree/main/src/plugins/core-plugins/workflow-plugin",
   "license": "MIT",
   "category": "content",
   "tags": [
