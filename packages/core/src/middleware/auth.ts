@@ -254,6 +254,14 @@ export const requireAuth = () => {
       // Set tenant context directly from auth payload
       if (payload.tenantId) {
         c.set('tenantId', payload.tenantId)
+      } else if (payload.role === 'super_admin') {
+        // Super-admin: check X-Tenant-Id header or admin_tenant_id cookie
+        const headerTenantId = c.req.header('X-Tenant-Id')
+        const cookieTenantId = getCookie(c, 'admin_tenant_id')
+        const resolvedTenantId = headerTenantId || cookieTenantId
+        if (resolvedTenantId) {
+          c.set('tenantId', resolvedTenantId)
+        }
       }
 
       return await next()
@@ -346,6 +354,14 @@ export const optionalAuth = () => {
           c.set('user', payload)
           if (payload.tenantId) {
             c.set('tenantId', payload.tenantId)
+          } else if (payload.role === 'super_admin') {
+            // Super-admin: check X-Tenant-Id header or admin_tenant_id cookie
+            const headerTenantId = c.req.header('X-Tenant-Id')
+            const cookieTenantId = getCookie(c, 'admin_tenant_id')
+            const resolvedTenantId = headerTenantId || cookieTenantId
+            if (resolvedTenantId) {
+              c.set('tenantId', resolvedTenantId)
+            }
           }
         }
       }
