@@ -3,6 +3,7 @@ import { requireAuth, requireRole } from '../middleware'
 import { getCacheService, CACHE_CONFIGS } from '../services'
 import type { Bindings, Variables } from '../app'
 import { resolveContentVariables } from '../plugins/core-plugins/global-variables-plugin/variable-resolver'
+import { fireDeployHook } from '../utils/deploy-hook'
 import { getTenantId } from '../utils/tenant'
 
 const apiContentCrudRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>()
@@ -162,6 +163,9 @@ apiContentCrudRoutes.post('/', requireAuth(), requireRole(['admin', 'editor', 'a
     const getStmt = db.prepare('SELECT * FROM content WHERE id = ? AND tenant_id = ?')
     const createdContent = await getStmt.bind(contentId, tenantId).first() as any
 
+    // Fire deploy hook (fire-and-forget)
+    fireDeployHook(db, tenantId).catch(() => {})
+
     return c.json({
       data: {
         id: createdContent.id,
@@ -254,6 +258,9 @@ apiContentCrudRoutes.put('/:id', requireAuth(), requireRole(['admin', 'editor', 
     // Get updated content
     const getStmt = db.prepare('SELECT * FROM content WHERE id = ? AND tenant_id = ?')
     const updatedContent = await getStmt.bind(id, tenantId).first() as any
+
+    // Fire deploy hook (fire-and-forget)
+    fireDeployHook(db, tenantId).catch(() => {})
 
     return c.json({
       data: {

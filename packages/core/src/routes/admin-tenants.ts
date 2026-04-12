@@ -233,11 +233,20 @@ router.delete('/api/:id', async (c) => {
 // ============================================================================
 
 function renderTenantDetailPage(
-  tenant: { id: string; name: string; slug: string; is_active: number; created_at: number },
+  tenant: { id: string; name: string; slug: string; is_active: number; created_at: number; settings?: string | null },
   users: Array<{ id: string; email: string; username: string; role: string; is_active: number; created_at: number }>,
   contentCount: number,
   tokens: Array<{ id: string; name: string; created_at: number; last_used_at: number | null; expires_at: number | null }>
 ): string {
+  // Parse deploy hook URL from tenant settings
+  let deployHookUrl = ''
+  try {
+    if (tenant.settings) {
+      const settings = JSON.parse(tenant.settings as string)
+      deployHookUrl = settings.deploy_hook_url || ''
+    }
+  } catch { /* ignore parse errors */ }
+
   const statusBadge = tenant.is_active
     ? '<span class="inline-flex items-center rounded-md bg-green-500/10 px-2 py-1 text-xs font-medium text-green-400 ring-1 ring-inset ring-green-500/20">Active</span>'
     : '<span class="inline-flex items-center rounded-md bg-red-500/10 px-2 py-1 text-xs font-medium text-red-400 ring-1 ring-inset ring-red-500/20">Inactive</span>'
@@ -298,6 +307,25 @@ function renderTenantDetailPage(
         </div>
       </div>
 
+      <!-- Deploy Hook -->
+      <div class="rounded-xl bg-zinc-800/50 ring-1 ring-white/10 p-6 mb-8">
+        <h2 class="text-lg font-semibold text-white mb-4">Deploy Hook</h2>
+        <form id="deployHookForm" class="flex items-end gap-3" onsubmit="saveDeployHook(event)">
+          <div class="flex-1">
+            <label for="deploy_hook_url" class="block text-sm font-medium text-zinc-400 mb-1">Deploy Hook URL</label>
+            <input type="url" id="deploy_hook_url" name="deploy_hook_url"
+              value="${deployHookUrl}"
+              placeholder="https://api.example.com/deploy"
+              class="block w-full rounded-lg border-0 bg-zinc-900 px-3 py-2 text-white ring-1 ring-inset ring-white/10 placeholder:text-zinc-500 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm" />
+          </div>
+          <button type="submit"
+            class="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400 transition-colors">
+            Save
+          </button>
+        </form>
+        <p class="mt-2 text-xs text-zinc-500">A POST request will be sent to this URL after each content create or update.</p>
+      </div>
+
       <!-- Users -->
       <h2 class="text-lg font-semibold text-white mb-4">Users</h2>
       <div class="overflow-x-auto rounded-xl ring-1 ring-white/10 mb-8">
@@ -331,6 +359,29 @@ function renderTenantDetailPage(
     </div>
 
     <script>
+      async function saveDeployHook(e) {
+        e.preventDefault();
+        const url = document.getElementById('deploy_hook_url').value;
+        const currentSettings = ${JSON.stringify(tenant.settings || '{}')};
+        let settings = {};
+        try { settings = JSON.parse(currentSettings); } catch {}
+        settings.deploy_hook_url = url;
+        const res = await fetch('/admin/tenants/api/${tenant.id}', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ settings: JSON.stringify(settings) })
+        });
+        if (res.ok) {
+          const btn = e.target.querySelector('button[type="submit"]');
+          const orig = btn.textContent;
+          btn.textContent = 'Saved!';
+          btn.classList.replace('bg-indigo-500', 'bg-green-500');
+          setTimeout(() => { btn.textContent = orig; btn.classList.replace('bg-green-500', 'bg-indigo-500'); }, 2000);
+        } else {
+          alert('Failed to save deploy hook URL');
+        }
+      }
+
       async function toggleTenantStatus(id, newStatus) {
         if (!confirm(newStatus ? 'Activate this tenant?' : 'Deactivate this tenant?')) return;
         const res = await fetch('/admin/tenants/api/' + id, {

@@ -1,5 +1,5 @@
 import { syncCollections, syncAllFormCollections, PluginBootstrapService } from './chunk-3GZLOTZK.js';
-import { MigrationService } from './chunk-UNOY2DWZ.js';
+import { MigrationService } from './chunk-OK67RC2X.js';
 import { metricsTracker } from './chunk-FICTAGD4.js';
 import { sign, verify } from 'hono/jwt';
 import { setCookie, getCookie } from 'hono/cookie';
@@ -298,7 +298,7 @@ var requireRole = (requiredRole) => {
       return c.json({ error: "Authentication required" }, 401);
     }
     const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
-    if (!roles.includes(user.role)) {
+    if (!roles.includes(user.role) && user.role !== "super_admin") {
       const acceptHeader = c.req.header("Accept") || "";
       if (acceptHeader.includes("text/html")) {
         return c.redirect("/auth/login?error=You do not have permission to access this area");
@@ -597,5 +597,5 @@ var getActivePlugins = () => [];
 var isPluginActive = () => false;
 
 export { AuthManager, PermissionManager, bootstrapMiddleware, cacheHeaders, compressionMiddleware, csrfProtection, detailedLoggingMiddleware, generateCsrfToken, getActivePlugins, isPluginActive, logActivity, loggingMiddleware, metricsMiddleware, optionalAuth, performanceLoggingMiddleware, rateLimit, requireActivePlugin, requireActivePlugins, requireAnyPermission, requireAuth, requirePermission, requireRole, securityHeadersMiddleware, securityLoggingMiddleware, validateCsrfToken, verifySecurityConfig };
-//# sourceMappingURL=chunk-M74ZQGAM.js.map
-//# sourceMappingURL=chunk-M74ZQGAM.js.map
+//# sourceMappingURL=chunk-4RG63RXO.js.map
+//# sourceMappingURL=chunk-4RG63RXO.js.map

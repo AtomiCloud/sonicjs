@@ -10,6 +10,7 @@ import { ContentVersion, renderVersionHistory, VersionHistoryData } from '../tem
 import { ContentFormData, renderContentFormPage } from '../templates/pages/admin-content-form.template'
 import { ContentListPageData, renderContentListPage } from '../templates/pages/admin-content-list.template'
 import { getBlocksFieldConfig, parseBlocksValue } from '../utils/blocks'
+import { fireDeployHook } from '../utils/deploy-hook'
 import { escapeHtml, sanitizeRichText } from '../utils/sanitize'
 import { getTenantId } from '../utils/tenant'
 import { buildSchemaFieldOptions, resolveSchemaFieldType } from './admin-content-field-types'
@@ -857,6 +858,9 @@ adminContentRoutes.post('/', async (c) => {
       tenantId
     ).run()
 
+    // Fire deploy hook (fire-and-forget)
+    fireDeployHook(db, tenantId).catch(() => {})
+
     // Handle different actions
     const referrerParams = formData.get('referrer_params') as string
     const redirectUrl = action === 'save_and_continue'
@@ -1035,6 +1039,9 @@ adminContentRoutes.put('/:id', async (c) => {
         tenantId
       ).run()
     }
+
+    // Fire deploy hook (fire-and-forget)
+    fireDeployHook(db, tenantId).catch(() => {})
 
     // Handle different actions
     const referrerParams = formData.get('referrer_params') as string

@@ -1,12 +1,12 @@
-import { getTenantIdOrNull, renderConfirmationDialog, getConfirmationDialogScript, api_default, api_media_default, api_system_default, admin_api_default, router, adminCollectionsRoutes, adminFormsRoutes, adminSettingsRoutes, public_forms_default, router2, admin_content_default, adminMediaRoutes, userProfilesPlugin, adminPluginRoutes, adminLogsRoutes, userRoutes, auth_default, test_cleanup_default } from './chunk-4MLQLM6B.js';
-export { ROUTES_INFO, admin_api_default as adminApiRoutes, adminCheckboxRoutes, admin_code_examples_default as adminCodeExamplesRoutes, adminCollectionsRoutes, admin_content_default as adminContentRoutes, router as adminDashboardRoutes, adminDesignRoutes, adminLogsRoutes, adminMediaRoutes, adminPluginRoutes, adminSettingsRoutes, admin_testimonials_default as adminTestimonialsRoutes, userRoutes as adminUsersRoutes, api_content_crud_default as apiContentCrudRoutes, api_media_default as apiMediaRoutes, api_default as apiRoutes, api_system_default as apiSystemRoutes, auth_default as authRoutes, createUserProfilesPlugin, defineUserProfile, getTenantId, getTenantIdOrNull, getUserProfileConfig, isSuperAdmin, userProfilesPlugin } from './chunk-4MLQLM6B.js';
+import { getTenantIdOrNull, renderConfirmationDialog, getConfirmationDialogScript, api_default, api_media_default, api_system_default, admin_api_default, router, adminCollectionsRoutes, adminFormsRoutes, adminSettingsRoutes, public_forms_default, router2, admin_content_default, adminMediaRoutes, userProfilesPlugin, adminPluginRoutes, adminLogsRoutes, userRoutes, auth_default, test_cleanup_default } from './chunk-AUVPSTGW.js';
+export { ROUTES_INFO, admin_api_default as adminApiRoutes, adminCheckboxRoutes, admin_code_examples_default as adminCodeExamplesRoutes, adminCollectionsRoutes, admin_content_default as adminContentRoutes, router as adminDashboardRoutes, adminDesignRoutes, adminLogsRoutes, adminMediaRoutes, adminPluginRoutes, adminSettingsRoutes, admin_testimonials_default as adminTestimonialsRoutes, userRoutes as adminUsersRoutes, api_content_crud_default as apiContentCrudRoutes, api_media_default as apiMediaRoutes, api_default as apiRoutes, api_system_default as apiSystemRoutes, auth_default as authRoutes, createUserProfilesPlugin, defineUserProfile, getTenantId, getTenantIdOrNull, getUserProfileConfig, isSuperAdmin, userProfilesPlugin } from './chunk-AUVPSTGW.js';
 import { SettingsService, setAppInstance, schema_exports } from './chunk-TBJY2FF7.js';
 export { Logger, apiTokens, collections, content, contentVersions, getLogger, initLogger, insertCollectionSchema, insertContentSchema, insertLogConfigSchema, insertMediaSchema, insertPluginActivityLogSchema, insertPluginAssetSchema, insertPluginHookSchema, insertPluginRouteSchema, insertPluginSchema, insertSystemLogSchema, insertUserSchema, insertWorkflowHistorySchema, logConfig, media, pluginActivityLog, pluginAssets, pluginHooks, pluginRoutes, plugins, selectCollectionSchema, selectContentSchema, selectLogConfigSchema, selectMediaSchema, selectPluginActivityLogSchema, selectPluginAssetSchema, selectPluginHookSchema, selectPluginRouteSchema, selectPluginSchema, selectSystemLogSchema, selectUserSchema, selectWorkflowHistorySchema, systemLogs, users, workflowHistory } from './chunk-TBJY2FF7.js';
-import { requireAuth, AuthManager, metricsMiddleware, bootstrapMiddleware, securityHeadersMiddleware, csrfProtection } from './chunk-M74ZQGAM.js';
-export { AuthManager, PermissionManager, bootstrapMiddleware, cacheHeaders, compressionMiddleware, detailedLoggingMiddleware, getActivePlugins, isPluginActive, logActivity, loggingMiddleware, optionalAuth, performanceLoggingMiddleware, requireActivePlugin, requireActivePlugins, requireAnyPermission, requireAuth, requirePermission, requireRole, securityHeadersMiddleware as securityHeaders, securityLoggingMiddleware } from './chunk-M74ZQGAM.js';
+import { requireAuth, AuthManager, metricsMiddleware, bootstrapMiddleware, securityHeadersMiddleware, csrfProtection } from './chunk-4RG63RXO.js';
+export { AuthManager, PermissionManager, bootstrapMiddleware, cacheHeaders, compressionMiddleware, detailedLoggingMiddleware, getActivePlugins, isPluginActive, logActivity, loggingMiddleware, optionalAuth, performanceLoggingMiddleware, requireActivePlugin, requireActivePlugins, requireAnyPermission, requireAuth, requirePermission, requireRole, securityHeadersMiddleware as securityHeaders, securityLoggingMiddleware } from './chunk-4RG63RXO.js';
 import { PluginService, PLUGIN_REGISTRY } from './chunk-3GZLOTZK.js';
 export { PluginBootstrapService, PluginService as PluginServiceClass, backfillFormSubmissions, cleanupRemovedCollections, createContentFromSubmission, deriveCollectionSchemaFromFormio, deriveSubmissionTitle, fullCollectionSync, getAvailableCollectionNames, getManagedCollections, isCollectionManaged, loadCollectionConfig, loadCollectionConfigs, mapFormStatusToContentStatus, registerCollections, syncAllFormCollections, syncCollection, syncCollections, syncFormCollection, validateCollectionConfig } from './chunk-3GZLOTZK.js';
-export { MigrationService } from './chunk-UNOY2DWZ.js';
+export { MigrationService } from './chunk-OK67RC2X.js';
 export { renderFilterBar } from './chunk-3MOR4LC6.js';
 import { renderAdminLayout } from './chunk-KUNCU4E3.js';
 export { getConfirmationDialogScript, renderAlert, renderConfirmationDialog, renderForm, renderFormField, renderPagination, renderTable } from './chunk-KUNCU4E3.js';
@@ -1675,6 +1675,14 @@ router3.delete("/api/:id", async (c) => {
   }
 });
 function renderTenantDetailPage(tenant, users2, contentCount, tokens) {
+  let deployHookUrl = "";
+  try {
+    if (tenant.settings) {
+      const settings = JSON.parse(tenant.settings);
+      deployHookUrl = settings.deploy_hook_url || "";
+    }
+  } catch {
+  }
   const statusBadge2 = tenant.is_active ? '<span class="inline-flex items-center rounded-md bg-green-500/10 px-2 py-1 text-xs font-medium text-green-400 ring-1 ring-inset ring-green-500/20">Active</span>' : '<span class="inline-flex items-center rounded-md bg-red-500/10 px-2 py-1 text-xs font-medium text-red-400 ring-1 ring-inset ring-red-500/20">Inactive</span>';
   const userRows = users2.map((u) => `
     <tr>
@@ -1726,6 +1734,25 @@ function renderTenantDetailPage(tenant, users2, contentCount, tokens) {
         </div>
       </div>
 
+      <!-- Deploy Hook -->
+      <div class="rounded-xl bg-zinc-800/50 ring-1 ring-white/10 p-6 mb-8">
+        <h2 class="text-lg font-semibold text-white mb-4">Deploy Hook</h2>
+        <form id="deployHookForm" class="flex items-end gap-3" onsubmit="saveDeployHook(event)">
+          <div class="flex-1">
+            <label for="deploy_hook_url" class="block text-sm font-medium text-zinc-400 mb-1">Deploy Hook URL</label>
+            <input type="url" id="deploy_hook_url" name="deploy_hook_url"
+              value="${deployHookUrl}"
+              placeholder="https://api.example.com/deploy"
+              class="block w-full rounded-lg border-0 bg-zinc-900 px-3 py-2 text-white ring-1 ring-inset ring-white/10 placeholder:text-zinc-500 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm" />
+          </div>
+          <button type="submit"
+            class="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400 transition-colors">
+            Save
+          </button>
+        </form>
+        <p class="mt-2 text-xs text-zinc-500">A POST request will be sent to this URL after each content create or update.</p>
+      </div>
+
       <!-- Users -->
       <h2 class="text-lg font-semibold text-white mb-4">Users</h2>
       <div class="overflow-x-auto rounded-xl ring-1 ring-white/10 mb-8">
@@ -1759,6 +1786,29 @@ function renderTenantDetailPage(tenant, users2, contentCount, tokens) {
     </div>
 
     <script>
+      async function saveDeployHook(e) {
+        e.preventDefault();
+        const url = document.getElementById('deploy_hook_url').value;
+        const currentSettings = ${JSON.stringify(tenant.settings || "{}")};
+        let settings = {};
+        try { settings = JSON.parse(currentSettings); } catch {}
+        settings.deploy_hook_url = url;
+        const res = await fetch('/admin/tenants/api/${tenant.id}', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ settings: JSON.stringify(settings) })
+        });
+        if (res.ok) {
+          const btn = e.target.querySelector('button[type="submit"]');
+          const orig = btn.textContent;
+          btn.textContent = 'Saved!';
+          btn.classList.replace('bg-indigo-500', 'bg-green-500');
+          setTimeout(() => { btn.textContent = orig; btn.classList.replace('bg-green-500', 'bg-indigo-500'); }, 2000);
+        } else {
+          alert('Failed to save deploy hook URL');
+        }
+      }
+
       async function toggleTenantStatus(id, newStatus) {
         if (!confirm(newStatus ? 'Activate this tenant?' : 'Deactivate this tenant?')) return;
         const res = await fetch('/admin/tenants/api/' + id, {

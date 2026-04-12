@@ -1,7 +1,7 @@
 'use strict';
 
 var chunkQNY7OU4B_cjs = require('./chunk-QNY7OU4B.cjs');
-var chunkPHGSFFMS_cjs = require('./chunk-PHGSFFMS.cjs');
+var chunkW67PG5VA_cjs = require('./chunk-W67PG5VA.cjs');
 var chunkRCQ2HIQD_cjs = require('./chunk-RCQ2HIQD.cjs');
 var jwt = require('hono/jwt');
 var cookie = require('hono/cookie');
@@ -57,7 +57,7 @@ function bootstrapMiddleware(config = {}) {
     try {
       console.log("[Bootstrap] Starting system initialization...");
       console.log("[Bootstrap] Running database migrations...");
-      const migrationService = new chunkPHGSFFMS_cjs.MigrationService(c.env.DB);
+      const migrationService = new chunkW67PG5VA_cjs.MigrationService(c.env.DB);
       await migrationService.runPendingMigrations();
       console.log("[Bootstrap] Syncing collection configurations...");
       try {
@@ -300,7 +300,7 @@ var requireRole = (requiredRole) => {
       return c.json({ error: "Authentication required" }, 401);
     }
     const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
-    if (!roles.includes(user.role)) {
+    if (!roles.includes(user.role) && user.role !== "super_admin") {
       const acceptHeader = c.req.header("Accept") || "";
       if (acceptHeader.includes("text/html")) {
         return c.redirect("/auth/login?error=You do not have permission to access this area");
@@ -624,5 +624,5 @@ exports.securityHeadersMiddleware = securityHeadersMiddleware;
 exports.securityLoggingMiddleware = securityLoggingMiddleware;
 exports.validateCsrfToken = validateCsrfToken;
 exports.verifySecurityConfig = verifySecurityConfig;
-//# sourceMappingURL=chunk-5WT75AQ5.cjs.map
-//# sourceMappingURL=chunk-5WT75AQ5.cjs.map
+//# sourceMappingURL=chunk-TMQ63NY6.cjs.map
+//# sourceMappingURL=chunk-TMQ63NY6.cjs.map

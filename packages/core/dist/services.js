@@ -1,6 +1,6 @@
 export { CACHE_CONFIGS, CATEGORY_INFO, CacheService, Logger, SettingsService, TelemetryService, buildRouteList, createInstallationIdentity, getAppInstance, getCacheService, getLogger, getTelemetryService, initLogger, initTelemetry, setAppInstance } from './chunk-TBJY2FF7.js';
 export { PluginBootstrapService, PluginService, backfillFormSubmissions, cleanupRemovedCollections, createContentFromSubmission, deriveCollectionSchemaFromFormio, deriveSubmissionTitle, fullCollectionSync, getAvailableCollectionNames, getManagedCollections, isCollectionManaged, loadCollectionConfig, loadCollectionConfigs, mapFormStatusToContentStatus, registerCollections, syncAllFormCollections, syncCollection, syncCollections, syncFormCollection, validateCollectionConfig } from './chunk-3GZLOTZK.js';
-export { MigrationService } from './chunk-UNOY2DWZ.js';
+export { MigrationService } from './chunk-OK67RC2X.js';
 import './chunk-X7ZAEI5S.js';
 import './chunk-V4OQ3NZ2.js';
 //# sourceMappingURL=services.js.map
