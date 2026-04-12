@@ -64,7 +64,23 @@ authRoutes.get('/login', async (c) => {
   } catch (error) {
     // Ignore database errors - plugin system might not be initialized
   }
-  
+
+  // Check if Google OAuth is configured and enabled
+  let googleOAuthEnabled = false
+  try {
+    const oauthSettings = await db.prepare("SELECT settings FROM plugins WHERE id = 'oauth-providers' AND status = 'active'").first() as { settings: string | null } | null
+    if (oauthSettings?.settings) {
+      try {
+        const parsed = JSON.parse(oauthSettings.settings)
+        googleOAuthEnabled = !!(parsed?.providers?.google?.enabled && parsed?.providers?.google?.clientId)
+      } catch {}
+    }
+  } catch {
+    // Ignore database errors - plugin system might not be initialized
+  }
+
+  pageData.oauthEnabled = googleOAuthEnabled
+
   return c.html(renderLoginPage(pageData, demoLoginActive))
 })
 

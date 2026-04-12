@@ -1,7 +1,7 @@
 import { getCacheService, CACHE_CONFIGS, SettingsService, getLogger, getAppInstance, buildRouteList, CATEGORY_INFO } from './chunk-TBJY2FF7.js';
-import { requireAuth, requireRole, isPluginActive, optionalAuth, rateLimit, AuthManager, logActivity, generateCsrfToken } from './chunk-D53LHIRF.js';
+import { requireAuth, requireRole, isPluginActive, optionalAuth, rateLimit, AuthManager, logActivity, generateCsrfToken } from './chunk-GGEXM5U5.js';
 import { PluginService, PLUGIN_REGISTRY, findPluginByCodeName, createContentFromSubmission } from './chunk-3GZLOTZK.js';
-import { MigrationService } from './chunk-4NJPPKKY.js';
+import { MigrationService } from './chunk-4BOY76QM.js';
 import { renderDesignPage, renderCheckboxPage, renderTestimonialsList, renderCodeExamplesList, renderAlert, renderTable, renderPagination, renderConfirmationDialog, getConfirmationDialogScript, renderAdminLayout, adminLayoutV2, renderForm } from './chunk-XZM4V2PU.js';
 import { init_admin_layout_catalyst_template, renderAdminLayoutCatalyst } from './chunk-SZLKK4DC.js';
 import { PluginBuilder, TurnstileService } from './chunk-EXNEW5US.js';
@@ -2434,7 +2434,7 @@ adminApiRoutes.delete("/collections/:id", async (c) => {
 });
 adminApiRoutes.get("/migrations/status", async (c) => {
   try {
-    const { MigrationService: MigrationService2 } = await import('./migrations-U7IMYJSB.js');
+    const { MigrationService: MigrationService2 } = await import('./migrations-VN4KRSEU.js');
     const db = c.env.DB;
     const migrationService = new MigrationService2(db);
     const status = await migrationService.getMigrationStatus();
@@ -2459,7 +2459,7 @@ adminApiRoutes.post("/migrations/run", async (c) => {
         error: "Unauthorized. Admin access required."
       }, 403);
     }
-    const { MigrationService: MigrationService2 } = await import('./migrations-U7IMYJSB.js');
+    const { MigrationService: MigrationService2 } = await import('./migrations-VN4KRSEU.js');
     const db = c.env.DB;
     const migrationService = new MigrationService2(db);
     const result = await migrationService.runPendingMigrations();
@@ -2481,7 +2481,7 @@ adminApiRoutes.post("/migrations/run", async (c) => {
 });
 adminApiRoutes.get("/migrations/validate", async (c) => {
   try {
-    const { MigrationService: MigrationService2 } = await import('./migrations-U7IMYJSB.js');
+    const { MigrationService: MigrationService2 } = await import('./migrations-VN4KRSEU.js');
     const db = c.env.DB;
     const migrationService = new MigrationService2(db);
     const validation = await migrationService.validateSchema();
@@ -2610,6 +2610,27 @@ function renderLoginPage(data, demoLoginActive = false) {
                 Sign In
               </button>
             </form>
+
+            ${data.oauthEnabled ? `
+            <!-- OAuth Separator -->
+            <div class="mt-6">
+              <div class="relative">
+                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-zinc-700"></div></div>
+                <div class="relative flex justify-center text-sm"><span class="bg-zinc-900 px-2 text-zinc-400">or continue with</span></div>
+              </div>
+              <div class="mt-6">
+                <a href="/auth/oauth/google" class="flex w-full items-center justify-center gap-3 rounded-lg bg-white px-3 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-100 transition-colors">
+                  <svg class="h-5 w-5" viewBox="0 0 24 24">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                  </svg>
+                  Sign in with Google
+                </a>
+              </div>
+            </div>
+            ` : ""}
 
             <!-- Links -->
             <div class="mt-6 text-center">
@@ -5270,6 +5291,19 @@ authRoutes.get("/login", async (c) => {
     demoLoginActive = !!plugin;
   } catch (error2) {
   }
+  let googleOAuthEnabled = false;
+  try {
+    const oauthSettings = await db.prepare("SELECT settings FROM plugins WHERE id = 'oauth-providers' AND status = 'active'").first();
+    if (oauthSettings?.settings) {
+      try {
+        const parsed = JSON.parse(oauthSettings.settings);
+        googleOAuthEnabled = !!(parsed?.providers?.google?.enabled && parsed?.providers?.google?.clientId);
+      } catch {
+      }
+    }
+  } catch {
+  }
+  pageData.oauthEnabled = googleOAuthEnabled;
   return c.html(renderLoginPage(pageData, demoLoginActive));
 });
 authRoutes.get("/register", async (c) => {
@@ -17508,9 +17542,34 @@ function renderPluginSettingsPage(data) {
         const form = document.getElementById('settings-form');
         const formData = new FormData(form);
         const isAuthPlugin = '${plugin.id}' === 'core-auth';
+        const isOAuthPlugin = '${plugin.id}' === 'oauth-providers';
         let settings = {};
 
-        if (isAuthPlugin) {
+        if (isOAuthPlugin) {
+          // Handle nested OAuth providers settings structure
+          settings = { providers: { google: {}, github: {} } };
+
+          for (let [key, value] of formData.entries()) {
+            if (key.startsWith('oauth_')) {
+              const parts = key.replace('oauth_', '').split('_');
+              const provider = parts[0]; // e.g. "google"
+              const field = parts.slice(1).join('_'); // e.g. "clientId"
+
+              const input = form.querySelector(\`[name="\${key}"]\`);
+              if (!settings.providers[provider]) settings.providers[provider] = {};
+              settings.providers[provider][field] = input.type === 'checkbox' ? input.checked : value;
+            }
+          }
+
+          // Ensure unchecked checkboxes are set to false
+          ['google', 'github'].forEach(function(provider) {
+            const enabledCheckbox = form.querySelector(\`[name="oauth_\${provider}_enabled"]\`);
+            if (enabledCheckbox && !enabledCheckbox.checked) {
+              if (!settings.providers[provider]) settings.providers[provider] = {};
+              settings.providers[provider].enabled = false;
+            }
+          });
+        } else if (isAuthPlugin) {
           // Handle nested auth settings structure
           settings = {
             requiredFields: {},
@@ -17979,7 +18038,8 @@ function formatTimestamp(timestamp) {
 }
 var pluginSettingsComponents = {
   "otp-login": renderOTPLoginSettingsContent,
-  "email": renderEmailSettingsContent
+  "email": renderEmailSettingsContent,
+  "oauth-providers": renderOAuthProvidersSettingsContent
 };
 function renderOTPLoginSettingsContent(plugin, settings) {
   const siteName = settings.siteName || "SonicJS";
@@ -18482,6 +18542,74 @@ function renderEmailSettingsContent(plugin, settings) {
         }
       });
     </script>
+  `;
+}
+function renderOAuthProvidersSettingsContent(plugin, settings) {
+  const providers = settings.providers || {};
+  const google = providers.google || { clientId: "", clientSecret: "", enabled: false };
+  const inputClass = "backdrop-blur-sm bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-300 focus:border-blue-400 focus:outline-none transition-colors w-full";
+  return `
+    <form id="settings-form" class="space-y-8">
+      <div>
+        <h2 class="text-xl font-semibold text-white mb-2">OAuth Providers</h2>
+        <p class="text-gray-400 mb-6">Configure social login providers for your application.</p>
+      </div>
+
+      <!-- Google Provider -->
+      <div class="backdrop-blur-md bg-white/5 rounded-xl border border-white/10 p-6">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+            <svg class="h-6 w-6" viewBox="0 0 24 24">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-white">Google</h3>
+            <p class="text-sm text-gray-400">Allow users to sign in with their Google account</p>
+          </div>
+        </div>
+
+        <!-- Enable Toggle -->
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <label for="oauth_google_enabled" class="text-sm font-medium text-gray-300">Enable Google Login</label>
+            <p class="text-xs text-gray-400">Show the Google sign-in button on the login page</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" name="oauth_google_enabled" id="oauth_google_enabled" ${google.enabled ? "checked" : ""} class="sr-only peer">
+            <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+          </label>
+        </div>
+
+        <!-- Client ID -->
+        <div class="mb-4">
+          <label for="oauth_google_clientId" class="block text-sm font-medium text-gray-300 mb-2">Client ID</label>
+          <input type="text" name="oauth_google_clientId" id="oauth_google_clientId" value="${escapeHtmlAttr(google.clientId || "")}" placeholder="123456789.apps.googleusercontent.com" class="${inputClass}">
+        </div>
+
+        <!-- Client Secret -->
+        <div class="mb-4">
+          <label for="oauth_google_clientSecret" class="block text-sm font-medium text-gray-300 mb-2">Client Secret</label>
+          <input type="password" name="oauth_google_clientSecret" id="oauth_google_clientSecret" value="${escapeHtmlAttr(google.clientSecret || "")}" placeholder="GOCSPX-..." class="${inputClass}">
+        </div>
+
+        <!-- Setup Instructions -->
+        <div class="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mt-4">
+          <h4 class="text-sm font-semibold text-blue-300 mb-2">Setup Instructions</h4>
+          <ol class="text-sm text-blue-200/80 space-y-1 list-decimal list-inside">
+            <li>Go to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" class="underline hover:text-blue-100">Google Cloud Console</a></li>
+            <li>Create a new OAuth 2.0 Client ID (Web application type)</li>
+            <li>Add your callback URL to Authorized redirect URIs:</li>
+          </ol>
+          <div class="mt-2 bg-black/30 rounded-md px-3 py-2">
+            <code class="text-sm text-blue-200 select-all">https://your-domain.com/auth/oauth/google/callback</code>
+          </div>
+        </div>
+      </div>
+    </form>
   `;
 }
 
@@ -29273,5 +29401,5 @@ var ROUTES_INFO = {
 };
 
 export { ROUTES_INFO, adminCheckboxRoutes, adminCollectionsRoutes, adminDesignRoutes, adminFormsRoutes, adminLogsRoutes, adminMediaRoutes, adminPluginRoutes, adminSettingsRoutes, admin_api_default, admin_code_examples_default, admin_content_default, admin_testimonials_default, api_content_crud_default, api_default, api_media_default, api_system_default, auth_default, createUserProfilesPlugin, defineUserProfile, getConfirmationDialogScript2 as getConfirmationDialogScript, getTenantId, getTenantIdOrNull, getUserProfileConfig, isSuperAdmin, public_forms_default, renderConfirmationDialog2 as renderConfirmationDialog, router, router2, test_cleanup_default, userProfilesPlugin, userRoutes };
-//# sourceMappingURL=chunk-2VONVQZ4.js.map
-//# sourceMappingURL=chunk-2VONVQZ4.js.map
+//# sourceMappingURL=chunk-LT7IH6SS.js.map
+//# sourceMappingURL=chunk-LT7IH6SS.js.map

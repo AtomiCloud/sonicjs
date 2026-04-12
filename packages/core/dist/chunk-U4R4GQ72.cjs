@@ -1,9 +1,9 @@
 'use strict';
 
 var chunkNZWFCUDA_cjs = require('./chunk-NZWFCUDA.cjs');
-var chunkASN3TLGE_cjs = require('./chunk-ASN3TLGE.cjs');
+var chunkT7GBVPW4_cjs = require('./chunk-T7GBVPW4.cjs');
 var chunkQNY7OU4B_cjs = require('./chunk-QNY7OU4B.cjs');
-var chunkZPXIHEHV_cjs = require('./chunk-ZPXIHEHV.cjs');
+var chunk7ELF7BB3_cjs = require('./chunk-7ELF7BB3.cjs');
 var chunkUFFKDP2E_cjs = require('./chunk-UFFKDP2E.cjs');
 var chunkKF4GHKB7_cjs = require('./chunk-KF4GHKB7.cjs');
 var chunk635JAMSE_cjs = require('./chunk-635JAMSE.cjs');
@@ -206,7 +206,7 @@ apiContentCrudRoutes.get("/:id", async (c) => {
     }, 500);
   }
 });
-apiContentCrudRoutes.post("/", chunkASN3TLGE_cjs.requireAuth(), chunkASN3TLGE_cjs.requireRole(["admin", "editor", "author"]), async (c) => {
+apiContentCrudRoutes.post("/", chunkT7GBVPW4_cjs.requireAuth(), chunkT7GBVPW4_cjs.requireRole(["admin", "editor", "author"]), async (c) => {
   try {
     const db = c.env.DB;
     const tenantId = getTenantId(c);
@@ -274,7 +274,7 @@ apiContentCrudRoutes.post("/", chunkASN3TLGE_cjs.requireAuth(), chunkASN3TLGE_cj
     }, 500);
   }
 });
-apiContentCrudRoutes.put("/:id", chunkASN3TLGE_cjs.requireAuth(), chunkASN3TLGE_cjs.requireRole(["admin", "editor", "author"]), async (c) => {
+apiContentCrudRoutes.put("/:id", chunkT7GBVPW4_cjs.requireAuth(), chunkT7GBVPW4_cjs.requireRole(["admin", "editor", "author"]), async (c) => {
   try {
     const id = c.req.param("id");
     const db = c.env.DB;
@@ -340,7 +340,7 @@ apiContentCrudRoutes.put("/:id", chunkASN3TLGE_cjs.requireAuth(), chunkASN3TLGE_
     }, 500);
   }
 });
-apiContentCrudRoutes.delete("/:id", chunkASN3TLGE_cjs.requireAuth(), chunkASN3TLGE_cjs.requireRole(["admin", "editor", "author"]), async (c) => {
+apiContentCrudRoutes.delete("/:id", chunkT7GBVPW4_cjs.requireAuth(), chunkT7GBVPW4_cjs.requireRole(["admin", "editor", "author"]), async (c) => {
   try {
     const id = c.req.param("id");
     const db = c.env.DB;
@@ -377,7 +377,7 @@ apiRoutes.use("*", async (c, next) => {
   c.header("X-Response-Time", `${totalTime}ms`);
 });
 apiRoutes.use("*", async (c, next) => {
-  const cacheEnabled = await chunkASN3TLGE_cjs.isPluginActive(c.env.DB, "core-cache");
+  const cacheEnabled = await chunkT7GBVPW4_cjs.isPluginActive(c.env.DB, "core-cache");
   c.set("cacheEnabled", cacheEnabled);
   await next();
 });
@@ -869,7 +869,7 @@ apiRoutes.get("/collections", async (c) => {
     return c.json({ error: "Failed to fetch collections" }, 500);
   }
 });
-apiRoutes.get("/content", chunkASN3TLGE_cjs.optionalAuth(), async (c) => {
+apiRoutes.get("/content", chunkT7GBVPW4_cjs.optionalAuth(), async (c) => {
   const executionStart = Date.now();
   try {
     const db = c.env.DB;
@@ -982,7 +982,7 @@ apiRoutes.get("/content", chunkASN3TLGE_cjs.optionalAuth(), async (c) => {
     }, 500);
   }
 });
-apiRoutes.get("/collections/:collection/content", chunkASN3TLGE_cjs.optionalAuth(), async (c) => {
+apiRoutes.get("/collections/:collection/content", chunkT7GBVPW4_cjs.optionalAuth(), async (c) => {
   const executionStart = Date.now();
   try {
     const collection = c.req.param("collection");
@@ -1137,7 +1137,7 @@ var fileValidationSchema = zod.z.object({
   // 50MB max
 });
 var apiMediaRoutes = new hono.Hono();
-apiMediaRoutes.use("*", chunkASN3TLGE_cjs.requireAuth());
+apiMediaRoutes.use("*", chunkT7GBVPW4_cjs.requireAuth());
 apiMediaRoutes.post("/upload", async (c) => {
   try {
     const tenantId = getTenantId(c);
@@ -1907,8 +1907,8 @@ apiSystemRoutes.get("/env", (c) => {
 });
 var api_system_default = apiSystemRoutes;
 var adminApiRoutes = new hono.Hono();
-adminApiRoutes.use("*", chunkASN3TLGE_cjs.requireAuth());
-adminApiRoutes.use("*", chunkASN3TLGE_cjs.requireRole(["admin", "editor"]));
+adminApiRoutes.use("*", chunkT7GBVPW4_cjs.requireAuth());
+adminApiRoutes.use("*", chunkT7GBVPW4_cjs.requireRole(["admin", "editor"]));
 adminApiRoutes.get("/stats", async (c) => {
   try {
     const db = c.env.DB;
@@ -2436,7 +2436,7 @@ adminApiRoutes.delete("/collections/:id", async (c) => {
 });
 adminApiRoutes.get("/migrations/status", async (c) => {
   try {
-    const { MigrationService: MigrationService2 } = await import('./migrations-X5PIXSFQ.cjs');
+    const { MigrationService: MigrationService2 } = await import('./migrations-5MPUKKC5.cjs');
     const db = c.env.DB;
     const migrationService = new MigrationService2(db);
     const status = await migrationService.getMigrationStatus();
@@ -2461,7 +2461,7 @@ adminApiRoutes.post("/migrations/run", async (c) => {
         error: "Unauthorized. Admin access required."
       }, 403);
     }
-    const { MigrationService: MigrationService2 } = await import('./migrations-X5PIXSFQ.cjs');
+    const { MigrationService: MigrationService2 } = await import('./migrations-5MPUKKC5.cjs');
     const db = c.env.DB;
     const migrationService = new MigrationService2(db);
     const result = await migrationService.runPendingMigrations();
@@ -2483,7 +2483,7 @@ adminApiRoutes.post("/migrations/run", async (c) => {
 });
 adminApiRoutes.get("/migrations/validate", async (c) => {
   try {
-    const { MigrationService: MigrationService2 } = await import('./migrations-X5PIXSFQ.cjs');
+    const { MigrationService: MigrationService2 } = await import('./migrations-5MPUKKC5.cjs');
     const db = c.env.DB;
     const migrationService = new MigrationService2(db);
     const validation = await migrationService.validateSchema();
@@ -2612,6 +2612,27 @@ function renderLoginPage(data, demoLoginActive = false) {
                 Sign In
               </button>
             </form>
+
+            ${data.oauthEnabled ? `
+            <!-- OAuth Separator -->
+            <div class="mt-6">
+              <div class="relative">
+                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-zinc-700"></div></div>
+                <div class="relative flex justify-center text-sm"><span class="bg-zinc-900 px-2 text-zinc-400">or continue with</span></div>
+              </div>
+              <div class="mt-6">
+                <a href="/auth/oauth/google" class="flex w-full items-center justify-center gap-3 rounded-lg bg-white px-3 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-100 transition-colors">
+                  <svg class="h-5 w-5" viewBox="0 0 24 24">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                  </svg>
+                  Sign in with Google
+                </a>
+              </div>
+            </div>
+            ` : ""}
 
             <!-- Links -->
             <div class="mt-6 text-center">
@@ -5238,7 +5259,7 @@ var JWT_SECRET_FALLBACK = "your-super-secret-jwt-key-change-in-production";
 async function setCsrfCookie(c) {
   const secret = c.env?.JWT_SECRET || JWT_SECRET_FALLBACK;
   const isDev = c.env?.ENVIRONMENT === "development" || !c.env?.ENVIRONMENT;
-  const csrfToken = await chunkASN3TLGE_cjs.generateCsrfToken(secret);
+  const csrfToken = await chunkT7GBVPW4_cjs.generateCsrfToken(secret);
   cookie.setCookie(c, "csrf_token", csrfToken, {
     httpOnly: false,
     secure: !isDev,
@@ -5272,6 +5293,19 @@ authRoutes.get("/login", async (c) => {
     demoLoginActive = !!plugin;
   } catch (error2) {
   }
+  let googleOAuthEnabled = false;
+  try {
+    const oauthSettings = await db.prepare("SELECT settings FROM plugins WHERE id = 'oauth-providers' AND status = 'active'").first();
+    if (oauthSettings?.settings) {
+      try {
+        const parsed = JSON.parse(oauthSettings.settings);
+        googleOAuthEnabled = !!(parsed?.providers?.google?.enabled && parsed?.providers?.google?.clientId);
+      } catch {
+      }
+    }
+  } catch {
+  }
+  pageData.oauthEnabled = googleOAuthEnabled;
   return c.html(renderLoginPage(pageData, demoLoginActive));
 });
 authRoutes.get("/register", async (c) => {
@@ -5295,7 +5329,7 @@ var loginSchema = zod.z.object({
 });
 authRoutes.post(
   "/register",
-  chunkASN3TLGE_cjs.rateLimit({ max: 30, windowMs: 60 * 1e3, keyPrefix: "register" }),
+  chunkT7GBVPW4_cjs.rateLimit({ max: 30, windowMs: 60 * 1e3, keyPrefix: "register" }),
   async (c) => {
     try {
       const db = c.env.DB;
@@ -5348,7 +5382,7 @@ authRoutes.post(
       if (existingUser) {
         return c.json({ error: "User with this email or username already exists" }, 400);
       }
-      const passwordHash = await chunkASN3TLGE_cjs.AuthManager.hashPassword(password);
+      const passwordHash = await chunkT7GBVPW4_cjs.AuthManager.hashPassword(password);
       const userId = crypto.randomUUID();
       const now = /* @__PURE__ */ new Date();
       const assignedRole = isFirstUser ? "super_admin" : "viewer";
@@ -5384,7 +5418,7 @@ authRoutes.post(
           await saveCustomData(db, userId, sanitized);
         }
       }
-      const token = await chunkASN3TLGE_cjs.AuthManager.generateToken(userId, normalizedEmail, assignedRole, c.env.JWT_SECRET, assignedTenantId);
+      const token = await chunkT7GBVPW4_cjs.AuthManager.generateToken(userId, normalizedEmail, assignedRole, c.env.JWT_SECRET, assignedTenantId);
       cookie.setCookie(c, "auth_token", token, {
         httpOnly: true,
         secure: true,
@@ -5419,7 +5453,7 @@ authRoutes.post(
 );
 authRoutes.post(
   "/login",
-  chunkASN3TLGE_cjs.rateLimit({ max: 30, windowMs: 60 * 1e3, keyPrefix: "login" }),
+  chunkT7GBVPW4_cjs.rateLimit({ max: 30, windowMs: 60 * 1e3, keyPrefix: "login" }),
   async (c) => {
     try {
       const body = await c.req.json();
@@ -5456,19 +5490,19 @@ authRoutes.post(
       if (!user) {
         return c.json({ error: "Invalid email or password" }, 401);
       }
-      const isValidPassword = await chunkASN3TLGE_cjs.AuthManager.verifyPassword(password, user.password_hash);
+      const isValidPassword = await chunkT7GBVPW4_cjs.AuthManager.verifyPassword(password, user.password_hash);
       if (!isValidPassword) {
         return c.json({ error: "Invalid email or password" }, 401);
       }
-      if (chunkASN3TLGE_cjs.AuthManager.isLegacyHash(user.password_hash)) {
+      if (chunkT7GBVPW4_cjs.AuthManager.isLegacyHash(user.password_hash)) {
         try {
-          const newHash = await chunkASN3TLGE_cjs.AuthManager.hashPassword(password);
+          const newHash = await chunkT7GBVPW4_cjs.AuthManager.hashPassword(password);
           await db.prepare("UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?").bind(newHash, Date.now(), user.id).run();
         } catch (rehashError) {
           console.error("Password rehash failed (non-fatal):", rehashError);
         }
       }
-      const token = await chunkASN3TLGE_cjs.AuthManager.generateToken(user.id, user.email, user.role, c.env.JWT_SECRET, user.tenant_id || null);
+      const token = await chunkT7GBVPW4_cjs.AuthManager.generateToken(user.id, user.email, user.role, c.env.JWT_SECRET, user.tenant_id || null);
       cookie.setCookie(c, "auth_token", token, {
         httpOnly: true,
         secure: true,
@@ -5522,7 +5556,7 @@ authRoutes.get("/logout", (c) => {
   clearCsrfCookie(c);
   return c.redirect("/auth/login?message=You have been logged out successfully");
 });
-authRoutes.get("/me", chunkASN3TLGE_cjs.requireAuth(), async (c) => {
+authRoutes.get("/me", chunkT7GBVPW4_cjs.requireAuth(), async (c) => {
   try {
     const user = c.get("user");
     if (!user) {
@@ -5545,14 +5579,14 @@ authRoutes.get("/me", chunkASN3TLGE_cjs.requireAuth(), async (c) => {
     return c.json({ error: "Failed to get user" }, 500);
   }
 });
-authRoutes.post("/refresh", chunkASN3TLGE_cjs.requireAuth(), async (c) => {
+authRoutes.post("/refresh", chunkT7GBVPW4_cjs.requireAuth(), async (c) => {
   try {
     const user = c.get("user");
     if (!user) {
       return c.json({ error: "Not authenticated" }, 401);
     }
     const tenantId = getTenantIdOrNull(c);
-    const token = await chunkASN3TLGE_cjs.AuthManager.generateToken(user.userId, user.email, user.role, c.env.JWT_SECRET, tenantId);
+    const token = await chunkT7GBVPW4_cjs.AuthManager.generateToken(user.userId, user.email, user.role, c.env.JWT_SECRET, tenantId);
     cookie.setCookie(c, "auth_token", token, {
       httpOnly: true,
       secure: true,
@@ -5569,7 +5603,7 @@ authRoutes.post("/refresh", chunkASN3TLGE_cjs.requireAuth(), async (c) => {
 });
 authRoutes.post(
   "/register/form",
-  chunkASN3TLGE_cjs.rateLimit({ max: 30, windowMs: 60 * 1e3, keyPrefix: "register" }),
+  chunkT7GBVPW4_cjs.rateLimit({ max: 30, windowMs: 60 * 1e3, keyPrefix: "register" }),
   async (c) => {
     try {
       const db = c.env.DB;
@@ -5634,7 +5668,7 @@ authRoutes.post(
         </div>
       `);
       }
-      const passwordHash = await chunkASN3TLGE_cjs.AuthManager.hashPassword(password);
+      const passwordHash = await chunkT7GBVPW4_cjs.AuthManager.hashPassword(password);
       const role = isFirstUser ? "super_admin" : "viewer";
       const assignedFormTenantId = isFirstUser ? null : formTenantId;
       const userId = crypto.randomUUID();
@@ -5671,7 +5705,7 @@ authRoutes.post(
           await saveCustomData(db, userId, sanitized);
         }
       }
-      const token = await chunkASN3TLGE_cjs.AuthManager.generateToken(userId, normalizedEmail, role, c.env.JWT_SECRET, assignedFormTenantId);
+      const token = await chunkT7GBVPW4_cjs.AuthManager.generateToken(userId, normalizedEmail, role, c.env.JWT_SECRET, assignedFormTenantId);
       cookie.setCookie(c, "auth_token", token, {
         httpOnly: true,
         secure: false,
@@ -5704,7 +5738,7 @@ authRoutes.post(
 );
 authRoutes.post(
   "/login/form",
-  chunkASN3TLGE_cjs.rateLimit({ max: 30, windowMs: 60 * 1e3, keyPrefix: "login" }),
+  chunkT7GBVPW4_cjs.rateLimit({ max: 30, windowMs: 60 * 1e3, keyPrefix: "login" }),
   async (c) => {
     try {
       const formData = await c.req.formData();
@@ -5746,7 +5780,7 @@ authRoutes.post(
         </div>
       `);
       }
-      const isValidPassword = await chunkASN3TLGE_cjs.AuthManager.verifyPassword(password, user.password_hash);
+      const isValidPassword = await chunkT7GBVPW4_cjs.AuthManager.verifyPassword(password, user.password_hash);
       if (!isValidPassword) {
         return c.html(html.html`
         <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -5754,15 +5788,15 @@ authRoutes.post(
         </div>
       `);
       }
-      if (chunkASN3TLGE_cjs.AuthManager.isLegacyHash(user.password_hash)) {
+      if (chunkT7GBVPW4_cjs.AuthManager.isLegacyHash(user.password_hash)) {
         try {
-          const newHash = await chunkASN3TLGE_cjs.AuthManager.hashPassword(password);
+          const newHash = await chunkT7GBVPW4_cjs.AuthManager.hashPassword(password);
           await db.prepare("UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?").bind(newHash, Date.now(), user.id).run();
         } catch (rehashError) {
           console.error("Password rehash failed (non-fatal):", rehashError);
         }
       }
-      const token = await chunkASN3TLGE_cjs.AuthManager.generateToken(user.id, user.email, user.role, c.env.JWT_SECRET, user.tenant_id || null);
+      const token = await chunkT7GBVPW4_cjs.AuthManager.generateToken(user.id, user.email, user.role, c.env.JWT_SECRET, user.tenant_id || null);
       cookie.setCookie(c, "auth_token", token, {
         httpOnly: true,
         secure: false,
@@ -5804,7 +5838,7 @@ authRoutes.post(
 );
 authRoutes.post(
   "/seed-admin",
-  chunkASN3TLGE_cjs.rateLimit({ max: 10, windowMs: 60 * 1e3, keyPrefix: "seed-admin" }),
+  chunkT7GBVPW4_cjs.rateLimit({ max: 10, windowMs: 60 * 1e3, keyPrefix: "seed-admin" }),
   async (c) => {
     try {
       const db = c.env.DB;
@@ -5826,7 +5860,7 @@ authRoutes.post(
     `).run();
       const existingAdmin = await db.prepare("SELECT id FROM users WHERE email = ? OR username = ?").bind("admin@sonicjs.com", "admin").first();
       if (existingAdmin) {
-        const passwordHash2 = await chunkASN3TLGE_cjs.AuthManager.hashPassword("sonicjs!");
+        const passwordHash2 = await chunkT7GBVPW4_cjs.AuthManager.hashPassword("sonicjs!");
         await db.prepare("UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?").bind(passwordHash2, Date.now(), existingAdmin.id).run();
         return c.json({
           message: "Admin user already exists (password updated)",
@@ -5838,7 +5872,7 @@ authRoutes.post(
           }
         });
       }
-      const passwordHash = await chunkASN3TLGE_cjs.AuthManager.hashPassword("sonicjs!");
+      const passwordHash = await chunkT7GBVPW4_cjs.AuthManager.hashPassword("sonicjs!");
       const userId = "admin-user-id";
       const now = Date.now();
       const adminEmail = "admin@sonicjs.com".toLowerCase();
@@ -6070,7 +6104,7 @@ authRoutes.post("/accept-invitation", async (c) => {
     if (existingUsername) {
       return c.json({ error: "Username is already taken" }, 400);
     }
-    const passwordHash = await chunkASN3TLGE_cjs.AuthManager.hashPassword(password);
+    const passwordHash = await chunkT7GBVPW4_cjs.AuthManager.hashPassword(password);
     const updateStmt = db.prepare(`
       UPDATE users SET 
         username = ?,
@@ -6089,7 +6123,7 @@ authRoutes.post("/accept-invitation", async (c) => {
       Date.now(),
       invitedUser.id
     ).run();
-    const authToken = await chunkASN3TLGE_cjs.AuthManager.generateToken(invitedUser.id, invitedUser.email, invitedUser.role, c.env.JWT_SECRET, invitedUser.tenant_id || null);
+    const authToken = await chunkT7GBVPW4_cjs.AuthManager.generateToken(invitedUser.id, invitedUser.email, invitedUser.role, c.env.JWT_SECRET, invitedUser.tenant_id || null);
     cookie.setCookie(c, "auth_token", authToken, {
       httpOnly: true,
       secure: true,
@@ -6106,7 +6140,7 @@ authRoutes.post("/accept-invitation", async (c) => {
 });
 authRoutes.post(
   "/request-password-reset",
-  chunkASN3TLGE_cjs.rateLimit({ max: 3, windowMs: 15 * 60 * 1e3, keyPrefix: "password-reset" }),
+  chunkT7GBVPW4_cjs.rateLimit({ max: 3, windowMs: 15 * 60 * 1e3, keyPrefix: "password-reset" }),
   async (c) => {
     try {
       const formData = await c.req.formData();
@@ -6341,7 +6375,7 @@ authRoutes.post("/reset-password", async (c) => {
     if (Date.now() > user.password_reset_expires) {
       return c.json({ error: "Reset token has expired" }, 400);
     }
-    const newPasswordHash = await chunkASN3TLGE_cjs.AuthManager.hashPassword(password);
+    const newPasswordHash = await chunkT7GBVPW4_cjs.AuthManager.hashPassword(password);
     try {
       const historyStmt = db.prepare(`
         INSERT INTO password_history (id, user_id, password_hash, created_at)
@@ -9859,7 +9893,7 @@ function extractFieldData(fields, formData, options = {}) {
   }
   return { data, errors };
 }
-adminContentRoutes.use("*", chunkASN3TLGE_cjs.requireAuth());
+adminContentRoutes.use("*", chunkT7GBVPW4_cjs.requireAuth());
 async function getCollectionFields(db, collectionId, tenantId) {
   const cache = chunkNZWFCUDA_cjs.getCacheService(chunkNZWFCUDA_cjs.CACHE_CONFIGS.collection);
   return cache.getOrSet(
@@ -10563,7 +10597,7 @@ adminContentRoutes.put("/:id", async (c) => {
     `);
   }
 });
-adminContentRoutes.post("/preview", chunkASN3TLGE_cjs.requireRole(["admin", "editor", "author"]), async (c) => {
+adminContentRoutes.post("/preview", chunkT7GBVPW4_cjs.requireRole(["admin", "editor", "author"]), async (c) => {
   try {
     const tenantId = getTenantId(c);
     const formData = await c.req.formData();
@@ -10951,7 +10985,7 @@ adminContentRoutes.post("/:id/restore/:version", async (c) => {
     return c.json({ success: false, error: "Failed to restore version" });
   }
 });
-adminContentRoutes.get("/:id/version/:version/preview", chunkASN3TLGE_cjs.requireRole(["admin", "editor", "author"]), async (c) => {
+adminContentRoutes.get("/:id/version/:version/preview", chunkT7GBVPW4_cjs.requireRole(["admin", "editor", "author"]), async (c) => {
   try {
     const tenantId = getTenantId(c);
     const id = c.req.param("id");
@@ -12953,14 +12987,14 @@ function renderUsersListPage(data) {
 
 // src/routes/admin-users.ts
 var userRoutes = new hono.Hono();
-userRoutes.use("*", chunkASN3TLGE_cjs.requireAuth());
-userRoutes.use("/users/*", chunkASN3TLGE_cjs.requireRole(["admin"]));
-userRoutes.use("/users", chunkASN3TLGE_cjs.requireRole(["admin"]));
-userRoutes.use("/invite-user", chunkASN3TLGE_cjs.requireRole(["admin"]));
-userRoutes.use("/resend-invitation/*", chunkASN3TLGE_cjs.requireRole(["admin"]));
-userRoutes.use("/cancel-invitation/*", chunkASN3TLGE_cjs.requireRole(["admin"]));
-userRoutes.use("/activity-logs", chunkASN3TLGE_cjs.requireRole(["admin"]));
-userRoutes.use("/activity-logs/*", chunkASN3TLGE_cjs.requireRole(["admin"]));
+userRoutes.use("*", chunkT7GBVPW4_cjs.requireAuth());
+userRoutes.use("/users/*", chunkT7GBVPW4_cjs.requireRole(["admin"]));
+userRoutes.use("/users", chunkT7GBVPW4_cjs.requireRole(["admin"]));
+userRoutes.use("/invite-user", chunkT7GBVPW4_cjs.requireRole(["admin"]));
+userRoutes.use("/resend-invitation/*", chunkT7GBVPW4_cjs.requireRole(["admin"]));
+userRoutes.use("/cancel-invitation/*", chunkT7GBVPW4_cjs.requireRole(["admin"]));
+userRoutes.use("/activity-logs", chunkT7GBVPW4_cjs.requireRole(["admin"]));
+userRoutes.use("/activity-logs/*", chunkT7GBVPW4_cjs.requireRole(["admin"]));
 userRoutes.get("/", (c) => {
   return c.redirect("/admin/dashboard");
 });
@@ -13133,7 +13167,7 @@ userRoutes.put("/profile", async (c) => {
       }
       await saveCustomData(db, user.userId, sanitized);
     }
-    await chunkASN3TLGE_cjs.logActivity(
+    await chunkT7GBVPW4_cjs.logActivity(
       db,
       user.userId,
       "profile.update",
@@ -13197,7 +13231,7 @@ userRoutes.post("/profile/avatar", async (c) => {
       SELECT first_name, last_name FROM users WHERE id = ? AND tenant_id = ?
     `);
     const userData = await userStmt.bind(user.userId, tenantId).first();
-    await chunkASN3TLGE_cjs.logActivity(
+    await chunkT7GBVPW4_cjs.logActivity(
       db,
       user.userId,
       "profile.avatar_update",
@@ -13269,7 +13303,7 @@ userRoutes.post("/profile/password", async (c) => {
         dismissible: true
       }));
     }
-    const validPassword = await chunkASN3TLGE_cjs.AuthManager.verifyPassword(currentPassword, userData.password_hash);
+    const validPassword = await chunkT7GBVPW4_cjs.AuthManager.verifyPassword(currentPassword, userData.password_hash);
     if (!validPassword) {
       return c.html(renderAlert2({
         type: "error",
@@ -13277,7 +13311,7 @@ userRoutes.post("/profile/password", async (c) => {
         dismissible: true
       }));
     }
-    const newPasswordHash = await chunkASN3TLGE_cjs.AuthManager.hashPassword(newPassword);
+    const newPasswordHash = await chunkT7GBVPW4_cjs.AuthManager.hashPassword(newPassword);
     const historyStmt = db.prepare(`
       INSERT INTO password_history (id, user_id, password_hash, created_at)
       VALUES (?, ?, ?, ?)
@@ -13293,7 +13327,7 @@ userRoutes.post("/profile/password", async (c) => {
       WHERE id = ? AND tenant_id = ?
     `);
     await updateStmt.bind(newPasswordHash, Date.now(), user.userId, tenantId).run();
-    await chunkASN3TLGE_cjs.logActivity(
+    await chunkT7GBVPW4_cjs.logActivity(
       db,
       user.userId,
       "profile.password_change",
@@ -13362,7 +13396,7 @@ userRoutes.get("/users", async (c) => {
     `);
     const countResult = await countStmt.bind(...params).first();
     const totalUsers = countResult?.total || 0;
-    await chunkASN3TLGE_cjs.logActivity(
+    await chunkT7GBVPW4_cjs.logActivity(
       db,
       user.userId,
       "users.list_view",
@@ -13521,7 +13555,7 @@ userRoutes.post("/users/new", async (c) => {
         dismissible: true
       }));
     }
-    const passwordHash = await chunkASN3TLGE_cjs.AuthManager.hashPassword(password);
+    const passwordHash = await chunkT7GBVPW4_cjs.AuthManager.hashPassword(password);
     const userId = crypto.randomUUID();
     const createStmt = db.prepare(`
       INSERT INTO users (
@@ -13545,7 +13579,7 @@ userRoutes.post("/users/new", async (c) => {
       Date.now(),
       tenantId
     ).run();
-    await chunkASN3TLGE_cjs.logActivity(
+    await chunkT7GBVPW4_cjs.logActivity(
       db,
       user.userId,
       "user!.create",
@@ -13585,7 +13619,7 @@ userRoutes.get("/users/:id", async (c) => {
     if (!userRecord) {
       return c.json({ error: "User not found" }, 404);
     }
-    await chunkASN3TLGE_cjs.logActivity(
+    await chunkT7GBVPW4_cjs.logActivity(
       db,
       user.userId,
       "user!.view",
@@ -13814,7 +13848,7 @@ userRoutes.put("/users/:id", async (c) => {
       tenantId
     ).run();
     if (newPassword) {
-      const passwordHash = await chunkASN3TLGE_cjs.AuthManager.hashPassword(newPassword);
+      const passwordHash = await chunkT7GBVPW4_cjs.AuthManager.hashPassword(newPassword);
       const updatePasswordStmt = db.prepare(`
         UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ? AND tenant_id = ?
       `);
@@ -13868,7 +13902,7 @@ userRoutes.put("/users/:id", async (c) => {
         ).run();
       }
     }
-    await chunkASN3TLGE_cjs.logActivity(
+    await chunkT7GBVPW4_cjs.logActivity(
       db,
       user.userId,
       "user.update",
@@ -13914,7 +13948,7 @@ userRoutes.post("/users/:id/toggle", async (c) => {
       UPDATE users SET is_active = ?, updated_at = ? WHERE id = ? AND tenant_id = ?
     `);
     await toggleStmt.bind(active ? 1 : 0, Date.now(), userId, tenantId).run();
-    await chunkASN3TLGE_cjs.logActivity(
+    await chunkT7GBVPW4_cjs.logActivity(
       db,
       user.userId,
       active ? "user.activate" : "user.deactivate",
@@ -13956,7 +13990,7 @@ userRoutes.delete("/users/:id", async (c) => {
         DELETE FROM users WHERE id = ? AND tenant_id = ?
       `);
       await deleteStmt.bind(userId, tenantId).run();
-      await chunkASN3TLGE_cjs.logActivity(
+      await chunkT7GBVPW4_cjs.logActivity(
         db,
         user.userId,
         "user!.hard_delete",
@@ -13975,7 +14009,7 @@ userRoutes.delete("/users/:id", async (c) => {
         UPDATE users SET is_active = 0, updated_at = ? WHERE id = ? AND tenant_id = ?
       `);
       await deleteStmt.bind(Date.now(), userId, tenantId).run();
-      await chunkASN3TLGE_cjs.logActivity(
+      await chunkT7GBVPW4_cjs.logActivity(
         db,
         user.userId,
         "user!.soft_delete",
@@ -14043,7 +14077,7 @@ userRoutes.post("/invite-user", async (c) => {
       Date.now(),
       tenantId
     ).run();
-    await chunkASN3TLGE_cjs.logActivity(
+    await chunkT7GBVPW4_cjs.logActivity(
       db,
       user.userId,
       "user!.invite_sent",
@@ -14102,7 +14136,7 @@ userRoutes.post("/resend-invitation/:id", async (c) => {
       userId,
       tenantId
     ).run();
-    await chunkASN3TLGE_cjs.logActivity(
+    await chunkT7GBVPW4_cjs.logActivity(
       db,
       user.userId,
       "user!.invitation_resent",
@@ -14139,7 +14173,7 @@ userRoutes.delete("/cancel-invitation/:id", async (c) => {
     }
     const deleteStmt = db.prepare(`DELETE FROM users WHERE id = ? AND tenant_id = ?`);
     await deleteStmt.bind(userId, tenantId).run();
-    await chunkASN3TLGE_cjs.logActivity(
+    await chunkT7GBVPW4_cjs.logActivity(
       db,
       user.userId,
       "user!.invitation_cancelled",
@@ -14222,7 +14256,7 @@ userRoutes.get("/activity-logs", async (c) => {
       ...log,
       details: log.details ? JSON.parse(log.details) : null
     }));
-    await chunkASN3TLGE_cjs.logActivity(
+    await chunkT7GBVPW4_cjs.logActivity(
       db,
       user.userId,
       "activity.logs_viewed",
@@ -14329,7 +14363,7 @@ userRoutes.get("/activity-logs/export", async (c) => {
       csvRows.push(row.join(","));
     }
     const csvContent = csvRows.join("\n");
-    await chunkASN3TLGE_cjs.logActivity(
+    await chunkT7GBVPW4_cjs.logActivity(
       db,
       user.userId,
       "activity.logs_exported",
@@ -15668,7 +15702,7 @@ var fileValidationSchema2 = zod.z.object({
   // 50MB max
 });
 var adminMediaRoutes = new hono.Hono();
-adminMediaRoutes.use("*", chunkASN3TLGE_cjs.requireAuth());
+adminMediaRoutes.use("*", chunkT7GBVPW4_cjs.requireAuth());
 adminMediaRoutes.get("/", async (c) => {
   try {
     const tenantId = getTenantId(c);
@@ -16262,7 +16296,7 @@ adminMediaRoutes.put("/:id", async (c) => {
     `);
   }
 });
-adminMediaRoutes.delete("/cleanup", chunkASN3TLGE_cjs.requireRole("admin"), async (c) => {
+adminMediaRoutes.delete("/cleanup", chunkT7GBVPW4_cjs.requireRole("admin"), async (c) => {
   try {
     const tenantId = getTenantId(c);
     const db = c.env.DB;
@@ -17510,9 +17544,34 @@ function renderPluginSettingsPage(data) {
         const form = document.getElementById('settings-form');
         const formData = new FormData(form);
         const isAuthPlugin = '${plugin.id}' === 'core-auth';
+        const isOAuthPlugin = '${plugin.id}' === 'oauth-providers';
         let settings = {};
 
-        if (isAuthPlugin) {
+        if (isOAuthPlugin) {
+          // Handle nested OAuth providers settings structure
+          settings = { providers: { google: {}, github: {} } };
+
+          for (let [key, value] of formData.entries()) {
+            if (key.startsWith('oauth_')) {
+              const parts = key.replace('oauth_', '').split('_');
+              const provider = parts[0]; // e.g. "google"
+              const field = parts.slice(1).join('_'); // e.g. "clientId"
+
+              const input = form.querySelector(\`[name="\${key}"]\`);
+              if (!settings.providers[provider]) settings.providers[provider] = {};
+              settings.providers[provider][field] = input.type === 'checkbox' ? input.checked : value;
+            }
+          }
+
+          // Ensure unchecked checkboxes are set to false
+          ['google', 'github'].forEach(function(provider) {
+            const enabledCheckbox = form.querySelector(\`[name="oauth_\${provider}_enabled"]\`);
+            if (enabledCheckbox && !enabledCheckbox.checked) {
+              if (!settings.providers[provider]) settings.providers[provider] = {};
+              settings.providers[provider].enabled = false;
+            }
+          });
+        } else if (isAuthPlugin) {
           // Handle nested auth settings structure
           settings = {
             requiredFields: {},
@@ -17981,7 +18040,8 @@ function formatTimestamp(timestamp) {
 }
 var pluginSettingsComponents = {
   "otp-login": renderOTPLoginSettingsContent,
-  "email": renderEmailSettingsContent
+  "email": renderEmailSettingsContent,
+  "oauth-providers": renderOAuthProvidersSettingsContent
 };
 function renderOTPLoginSettingsContent(plugin, settings) {
   const siteName = settings.siteName || "SonicJS";
@@ -18486,10 +18546,78 @@ function renderEmailSettingsContent(plugin, settings) {
     </script>
   `;
 }
+function renderOAuthProvidersSettingsContent(plugin, settings) {
+  const providers = settings.providers || {};
+  const google = providers.google || { clientId: "", clientSecret: "", enabled: false };
+  const inputClass = "backdrop-blur-sm bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-300 focus:border-blue-400 focus:outline-none transition-colors w-full";
+  return `
+    <form id="settings-form" class="space-y-8">
+      <div>
+        <h2 class="text-xl font-semibold text-white mb-2">OAuth Providers</h2>
+        <p class="text-gray-400 mb-6">Configure social login providers for your application.</p>
+      </div>
+
+      <!-- Google Provider -->
+      <div class="backdrop-blur-md bg-white/5 rounded-xl border border-white/10 p-6">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+            <svg class="h-6 w-6" viewBox="0 0 24 24">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-white">Google</h3>
+            <p class="text-sm text-gray-400">Allow users to sign in with their Google account</p>
+          </div>
+        </div>
+
+        <!-- Enable Toggle -->
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <label for="oauth_google_enabled" class="text-sm font-medium text-gray-300">Enable Google Login</label>
+            <p class="text-xs text-gray-400">Show the Google sign-in button on the login page</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" name="oauth_google_enabled" id="oauth_google_enabled" ${google.enabled ? "checked" : ""} class="sr-only peer">
+            <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+          </label>
+        </div>
+
+        <!-- Client ID -->
+        <div class="mb-4">
+          <label for="oauth_google_clientId" class="block text-sm font-medium text-gray-300 mb-2">Client ID</label>
+          <input type="text" name="oauth_google_clientId" id="oauth_google_clientId" value="${escapeHtmlAttr(google.clientId || "")}" placeholder="123456789.apps.googleusercontent.com" class="${inputClass}">
+        </div>
+
+        <!-- Client Secret -->
+        <div class="mb-4">
+          <label for="oauth_google_clientSecret" class="block text-sm font-medium text-gray-300 mb-2">Client Secret</label>
+          <input type="password" name="oauth_google_clientSecret" id="oauth_google_clientSecret" value="${escapeHtmlAttr(google.clientSecret || "")}" placeholder="GOCSPX-..." class="${inputClass}">
+        </div>
+
+        <!-- Setup Instructions -->
+        <div class="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mt-4">
+          <h4 class="text-sm font-semibold text-blue-300 mb-2">Setup Instructions</h4>
+          <ol class="text-sm text-blue-200/80 space-y-1 list-decimal list-inside">
+            <li>Go to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" class="underline hover:text-blue-100">Google Cloud Console</a></li>
+            <li>Create a new OAuth 2.0 Client ID (Web application type)</li>
+            <li>Add your callback URL to Authorized redirect URIs:</li>
+          </ol>
+          <div class="mt-2 bg-black/30 rounded-md px-3 py-2">
+            <code class="text-sm text-blue-200 select-all">https://your-domain.com/auth/oauth/google/callback</code>
+          </div>
+        </div>
+      </div>
+    </form>
+  `;
+}
 
 // src/routes/admin-plugins.ts
 var adminPluginRoutes = new hono.Hono();
-adminPluginRoutes.use("*", chunkASN3TLGE_cjs.requireAuth());
+adminPluginRoutes.use("*", chunkT7GBVPW4_cjs.requireAuth());
 var AVAILABLE_PLUGINS = Object.values(chunkQNY7OU4B_cjs.PLUGIN_REGISTRY).map((p) => ({
   id: p.id,
   name: p.codeName,
@@ -19552,7 +19680,7 @@ function renderLogConfigPage(data) {
 
 // src/routes/admin-logs.ts
 var adminLogsRoutes = new hono.Hono();
-adminLogsRoutes.use("*", chunkASN3TLGE_cjs.requireAuth());
+adminLogsRoutes.use("*", chunkT7GBVPW4_cjs.requireAuth());
 adminLogsRoutes.get("/", async (c) => {
   try {
     const user = c.get("user");
@@ -21896,7 +22024,7 @@ function renderStorageUsage(databaseSizeBytes, mediaSizeBytes) {
 // src/routes/admin-dashboard.ts
 var VERSION = chunkVUISYUHY_cjs.getCoreVersion();
 var router = new hono.Hono();
-router.use("*", chunkASN3TLGE_cjs.requireAuth());
+router.use("*", chunkT7GBVPW4_cjs.requireAuth());
 router.get("/", async (c) => {
   const user = c.get("user");
   try {
@@ -23718,10 +23846,10 @@ function renderCollectionFormPage(data) {
 
 // src/routes/admin-collections.ts
 var adminCollectionsRoutes = new hono.Hono();
-adminCollectionsRoutes.use("*", chunkASN3TLGE_cjs.requireAuth());
-adminCollectionsRoutes.post("*", chunkASN3TLGE_cjs.requireRole(["admin"]));
-adminCollectionsRoutes.put("*", chunkASN3TLGE_cjs.requireRole(["admin"]));
-adminCollectionsRoutes.delete("*", chunkASN3TLGE_cjs.requireRole(["admin"]));
+adminCollectionsRoutes.use("*", chunkT7GBVPW4_cjs.requireAuth());
+adminCollectionsRoutes.post("*", chunkT7GBVPW4_cjs.requireRole(["admin"]));
+adminCollectionsRoutes.put("*", chunkT7GBVPW4_cjs.requireRole(["admin"]));
+adminCollectionsRoutes.delete("*", chunkT7GBVPW4_cjs.requireRole(["admin"]));
 adminCollectionsRoutes.get("/", async (c) => {
   try {
     const tenantId = getTenantId(c);
@@ -25927,7 +26055,7 @@ function renderDatabaseToolsSettings(settings) {
 
 // src/routes/admin-settings.ts
 var adminSettingsRoutes = new hono.Hono();
-adminSettingsRoutes.use("*", chunkASN3TLGE_cjs.requireAuth());
+adminSettingsRoutes.use("*", chunkT7GBVPW4_cjs.requireAuth());
 function getMockSettings(user) {
   return {
     general: {
@@ -26095,7 +26223,7 @@ adminSettingsRoutes.get("/database-tools", (c) => {
 adminSettingsRoutes.get("/api/migrations/status", async (c) => {
   try {
     const db = c.env.DB;
-    const migrationService = new chunkZPXIHEHV_cjs.MigrationService(db);
+    const migrationService = new chunk7ELF7BB3_cjs.MigrationService(db);
     const status = await migrationService.getMigrationStatus();
     return c.json({
       success: true,
@@ -26119,7 +26247,7 @@ adminSettingsRoutes.post("/api/migrations/run", async (c) => {
       }, 403);
     }
     const db = c.env.DB;
-    const migrationService = new chunkZPXIHEHV_cjs.MigrationService(db);
+    const migrationService = new chunk7ELF7BB3_cjs.MigrationService(db);
     const result = await migrationService.runPendingMigrations();
     return c.json({
       success: result.success,
@@ -26137,7 +26265,7 @@ adminSettingsRoutes.post("/api/migrations/run", async (c) => {
 adminSettingsRoutes.get("/api/migrations/validate", async (c) => {
   try {
     const db = c.env.DB;
-    const migrationService = new chunkZPXIHEHV_cjs.MigrationService(db);
+    const migrationService = new chunk7ELF7BB3_cjs.MigrationService(db);
     const validation = await migrationService.validateSchema();
     return c.json({
       success: true,
@@ -28027,7 +28155,7 @@ function renderFormCreatePage(data) {
 
 // src/routes/admin-forms.ts
 var adminFormsRoutes = new hono.Hono();
-adminFormsRoutes.use("*", chunkASN3TLGE_cjs.requireAuth());
+adminFormsRoutes.use("*", chunkT7GBVPW4_cjs.requireAuth());
 adminFormsRoutes.get("/", async (c) => {
   try {
     const tenantId = getTenantId(c);
@@ -29212,7 +29340,7 @@ function renderAPIReferencePage(data) {
 // src/routes/admin-api-reference.ts
 var VERSION2 = chunkVUISYUHY_cjs.getCoreVersion();
 var router2 = new hono.Hono();
-router2.use("*", chunkASN3TLGE_cjs.requireAuth());
+router2.use("*", chunkT7GBVPW4_cjs.requireAuth());
 router2.get("/", async (c) => {
   const user = c.get("user");
   try {
@@ -29306,5 +29434,5 @@ exports.router2 = router2;
 exports.test_cleanup_default = test_cleanup_default;
 exports.userProfilesPlugin = userProfilesPlugin;
 exports.userRoutes = userRoutes;
-//# sourceMappingURL=chunk-Q5KGKN6Y.cjs.map
-//# sourceMappingURL=chunk-Q5KGKN6Y.cjs.map
+//# sourceMappingURL=chunk-U4R4GQ72.cjs.map
+//# sourceMappingURL=chunk-U4R4GQ72.cjs.map
