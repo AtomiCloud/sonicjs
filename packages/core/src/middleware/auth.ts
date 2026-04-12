@@ -251,6 +251,11 @@ export const requireAuth = () => {
       // Add user info to context
       c.set('user', payload)
 
+      // Set tenant context directly from auth payload
+      if (payload.tenantId) {
+        c.set('tenantId', payload.tenantId)
+      }
+
       return await next()
     } catch (error) {
       console.error('Auth middleware error:', error)
@@ -298,19 +303,53 @@ export const optionalAuth = () => {
   return async (c: Context, next: Next) => {
     try {
       let token = c.req.header('Authorization')?.replace('Bearer ', '')
-      
+
       if (!token) {
         token = getCookie(c, 'auth_token')
       }
-      
+
       if (token) {
+        let payload: JWTPayload | null = null
+
+        // Try JWT first
         const jwtSecret = (c.env as any)?.JWT_SECRET
-        const payload = await AuthManager.verifyToken(token, jwtSecret)
+        payload = await AuthManager.verifyToken(token, jwtSecret)
+
+        // Try API token if JWT failed
+        if (!payload && token.startsWith('ffx_')) {
+          const db = (c.env as any)?.DB
+          if (db) {
+            const now = new Date().toISOString()
+            const row = await db.prepare(
+              `SELECT at.id, at.tenant_id, at.permissions, at.expires_at, u.id as user_id, u.email, u.role
+               FROM api_tokens at
+               JOIN users u ON at.user_id = u.id
+               WHERE at.token = ? AND (at.expires_at IS NULL OR at.expires_at > ?)`
+            ).bind(token, now).first()
+
+            if (row) {
+              await db.prepare('UPDATE api_tokens SET last_used_at = ? WHERE id = ?')
+                .bind(now, row.id).run()
+              payload = {
+                userId: row.user_id as string,
+                email: row.email as string,
+                role: row.role as string,
+                tenantId: row.tenant_id as string | null,
+                exp: 0,
+                iat: 0,
+              }
+            }
+          }
+        }
+
         if (payload) {
           c.set('user', payload)
+          if (payload.tenantId) {
+            c.set('tenantId', payload.tenantId)
+          }
         }
       }
-      
+
       return await next()
     } catch (error) {
       // Don't block on auth errors in optional auth

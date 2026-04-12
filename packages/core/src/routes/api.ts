@@ -477,9 +477,7 @@ apiRoutes.get('/collections', optionalAuth(), async (c) => {
 
   try {
     const db = c.env.DB
-    // Resolve tenant from context or directly from user (for optionalAuth routes)
-    const user = c.get('user') as { tenantId?: string } | undefined
-    const tenantId = c.get('tenantId') as string | undefined || user?.tenantId || null
+    const tenantId = getTenantIdOrNull(c)
     const cacheEnabled = c.get('cacheEnabled')
     const cache = getCacheService(CACHE_CONFIGS.api!)
     const cacheKey = cache.generateKey('collections', `tenant:${tenantId || 'all'}:all`)
@@ -559,8 +557,7 @@ apiRoutes.get('/content', optionalAuth(), async (c) => {
 
   try {
     const db = c.env.DB
-    const user = c.get('user') as { tenantId?: string } | undefined
-    const tenantId = c.get('tenantId') as string | undefined || user?.tenantId || null
+    const tenantId = getTenantIdOrNull(c)
     const queryParams = c.req.query()
 
     // Handle collection parameter - convert collection name to collection_id
@@ -712,8 +709,7 @@ apiRoutes.get('/collections/:collection/content', optionalAuth(), async (c) => {
   try {
     const collection = c.req.param('collection')
     const db = c.env.DB
-    const user = c.get('user') as { tenantId?: string } | undefined
-    const tenantId = c.get('tenantId') as string | undefined || user?.tenantId || null
+    const tenantId = getTenantIdOrNull(c)
     const queryParams = c.req.query()
 
     // First check if collection exists
