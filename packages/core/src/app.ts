@@ -199,9 +199,9 @@ export function createSonicJSApp(config: SonicJSConfig = {}): SonicJSApp {
 
   // Fetch tenants list for super_admin users and inject tenant switcher into admin layout
   app.use('/admin/*', async (c, next) => {
-    const user = c.get('user')
     await next()
 
+    const user = c.get('user') as { role?: string } | undefined
     if (user?.role !== 'super_admin') return
     if (!c.res.headers.get('content-type')?.includes('text/html')) return
 
