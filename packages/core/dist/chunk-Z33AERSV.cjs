@@ -1,8 +1,10 @@
-import { syncCollections, syncAllFormCollections, PluginBootstrapService } from './chunk-3GZLOTZK.js';
-import { MigrationService } from './chunk-OK67RC2X.js';
-import { metricsTracker } from './chunk-FICTAGD4.js';
-import { sign, verify } from 'hono/jwt';
-import { setCookie, getCookie } from 'hono/cookie';
+'use strict';
+
+var chunkQNY7OU4B_cjs = require('./chunk-QNY7OU4B.cjs');
+var chunk55VJXTSX_cjs = require('./chunk-55VJXTSX.cjs');
+var chunkRCQ2HIQD_cjs = require('./chunk-RCQ2HIQD.cjs');
+var jwt = require('hono/jwt');
+var cookie = require('hono/cookie');
 
 // src/middleware/bootstrap.ts
 var bootstrapComplete = false;
@@ -55,23 +57,23 @@ function bootstrapMiddleware(config = {}) {
     try {
       console.log("[Bootstrap] Starting system initialization...");
       console.log("[Bootstrap] Running database migrations...");
-      const migrationService = new MigrationService(c.env.DB);
+      const migrationService = new chunk55VJXTSX_cjs.MigrationService(c.env.DB);
       await migrationService.runPendingMigrations();
       console.log("[Bootstrap] Syncing collection configurations...");
       try {
-        await syncCollections(c.env.DB);
+        await chunkQNY7OU4B_cjs.syncCollections(c.env.DB);
       } catch (error) {
         console.error("[Bootstrap] Error syncing collections:", error);
       }
       console.log("[Bootstrap] Syncing form collections...");
       try {
-        await syncAllFormCollections(c.env.DB);
+        await chunkQNY7OU4B_cjs.syncAllFormCollections(c.env.DB);
       } catch (error) {
         console.error("[Bootstrap] Error syncing form collections:", error);
       }
       if (!config.plugins?.disableAll) {
         console.log("[Bootstrap] Bootstrapping core plugins...");
-        const bootstrapService = new PluginBootstrapService(c.env.DB);
+        const bootstrapService = new chunkQNY7OU4B_cjs.PluginBootstrapService(c.env.DB);
         const needsBootstrap = await bootstrapService.isBootstrapNeeded();
         if (needsBootstrap) {
           await bootstrapService.bootstrapCorePlugins();
@@ -100,11 +102,11 @@ var AuthManager = class {
       // 24 hours
       iat: Math.floor(Date.now() / 1e3)
     };
-    return await sign(payload, secret || JWT_SECRET_FALLBACK, "HS256");
+    return await jwt.sign(payload, secret || JWT_SECRET_FALLBACK, "HS256");
   }
   static async verifyToken(token, secret) {
     try {
-      const payload = await verify(token, secret || JWT_SECRET_FALLBACK, "HS256");
+      const payload = await jwt.verify(token, secret || JWT_SECRET_FALLBACK, "HS256");
       if (payload.exp < Math.floor(Date.now() / 1e3)) {
         return null;
       }
@@ -202,7 +204,7 @@ var AuthManager = class {
    * @param options - Optional cookie configuration
    */
   static setAuthCookie(c, token, options) {
-    setCookie(c, "auth_token", token, {
+    cookie.setCookie(c, "auth_token", token, {
       httpOnly: options?.httpOnly ?? true,
       secure: options?.secure ?? true,
       sameSite: options?.sameSite ?? "Strict",
@@ -216,7 +218,7 @@ var requireAuth = () => {
     try {
       let token = c.req.header("Authorization")?.replace("Bearer ", "");
       if (!token) {
-        token = getCookie(c, "auth_token");
+        token = cookie.getCookie(c, "auth_token");
       }
       if (!token) {
         const acceptHeader = c.req.header("Accept") || "";
@@ -275,6 +277,13 @@ var requireAuth = () => {
       c.set("user", payload);
       if (payload.tenantId) {
         c.set("tenantId", payload.tenantId);
+      } else if (payload.role === "super_admin") {
+        const headerTenantId = c.req.header("X-Tenant-Id");
+        const cookieTenantId = cookie.getCookie(c, "admin_tenant_id");
+        const resolvedTenantId = headerTenantId || cookieTenantId;
+        if (resolvedTenantId) {
+          c.set("tenantId", resolvedTenantId);
+        }
       }
       return await next();
     } catch (error) {
@@ -313,7 +322,7 @@ var optionalAuth = () => {
     try {
       let token = c.req.header("Authorization")?.replace("Bearer ", "");
       if (!token) {
-        token = getCookie(c, "auth_token");
+        token = cookie.getCookie(c, "auth_token");
       }
       if (token) {
         let payload = null;
@@ -346,6 +355,13 @@ var optionalAuth = () => {
           c.set("user", payload);
           if (payload.tenantId) {
             c.set("tenantId", payload.tenantId);
+          } else if (payload.role === "super_admin") {
+            const headerTenantId = c.req.header("X-Tenant-Id");
+            const cookieTenantId = cookie.getCookie(c, "admin_tenant_id");
+            const resolvedTenantId = headerTenantId || cookieTenantId;
+            if (resolvedTenantId) {
+              c.set("tenantId", resolvedTenantId);
+            }
           }
         }
       }
@@ -362,7 +378,7 @@ var metricsMiddleware = () => {
   return async (c, next) => {
     const path = new URL(c.req.url).pathname;
     if (path !== "/admin/dashboard/api/metrics") {
-      metricsTracker.recordRequest();
+      chunkRCQ2HIQD_cjs.metricsTracker.recordRequest();
     }
     await next();
   };
@@ -459,12 +475,12 @@ function csrfProtection(options = {}) {
       await next();
       return;
     }
-    const authCookie = getCookie(c, "auth_token");
+    const authCookie = cookie.getCookie(c, "auth_token");
     if (!authCookie) {
       await next();
       return;
     }
-    const cookieToken = getCookie(c, "csrf_token");
+    const cookieToken = cookie.getCookie(c, "csrf_token");
     let headerToken = c.req.header("X-CSRF-Token");
     if (!headerToken) {
       const contentType = c.req.header("Content-Type") || "";
@@ -490,7 +506,7 @@ function csrfProtection(options = {}) {
   };
 }
 async function ensureCsrfCookie(c, secret) {
-  const existing = getCookie(c, "csrf_token");
+  const existing = cookie.getCookie(c, "csrf_token");
   if (existing) {
     const isValid = await validateCsrfToken(existing, secret);
     if (isValid) {
@@ -501,7 +517,7 @@ async function ensureCsrfCookie(c, secret) {
   const token = await generateCsrfToken(secret);
   c.set("csrfToken", token);
   const isDev = c.env?.ENVIRONMENT === "development" || !c.env?.ENVIRONMENT;
-  setCookie(c, "csrf_token", token, {
+  cookie.setCookie(c, "csrf_token", token, {
     httpOnly: false,
     // JS must read this cookie
     secure: !isDev,
@@ -596,6 +612,31 @@ var requireActivePlugins = () => async (_c, next) => await next();
 var getActivePlugins = () => [];
 var isPluginActive = () => false;
 
-export { AuthManager, PermissionManager, bootstrapMiddleware, cacheHeaders, compressionMiddleware, csrfProtection, detailedLoggingMiddleware, generateCsrfToken, getActivePlugins, isPluginActive, logActivity, loggingMiddleware, metricsMiddleware, optionalAuth, performanceLoggingMiddleware, rateLimit, requireActivePlugin, requireActivePlugins, requireAnyPermission, requireAuth, requirePermission, requireRole, securityHeadersMiddleware, securityLoggingMiddleware, validateCsrfToken, verifySecurityConfig };
-//# sourceMappingURL=chunk-4RG63RXO.js.map
-//# sourceMappingURL=chunk-4RG63RXO.js.map
+exports.AuthManager = AuthManager;
+exports.PermissionManager = PermissionManager;
+exports.bootstrapMiddleware = bootstrapMiddleware;
+exports.cacheHeaders = cacheHeaders;
+exports.compressionMiddleware = compressionMiddleware;
+exports.csrfProtection = csrfProtection;
+exports.detailedLoggingMiddleware = detailedLoggingMiddleware;
+exports.generateCsrfToken = generateCsrfToken;
+exports.getActivePlugins = getActivePlugins;
+exports.isPluginActive = isPluginActive;
+exports.logActivity = logActivity;
+exports.loggingMiddleware = loggingMiddleware;
+exports.metricsMiddleware = metricsMiddleware;
+exports.optionalAuth = optionalAuth;
+exports.performanceLoggingMiddleware = performanceLoggingMiddleware;
+exports.rateLimit = rateLimit;
+exports.requireActivePlugin = requireActivePlugin;
+exports.requireActivePlugins = requireActivePlugins;
+exports.requireAnyPermission = requireAnyPermission;
+exports.requireAuth = requireAuth;
+exports.requirePermission = requirePermission;
+exports.requireRole = requireRole;
+exports.securityHeadersMiddleware = securityHeadersMiddleware;
+exports.securityLoggingMiddleware = securityLoggingMiddleware;
+exports.validateCsrfToken = validateCsrfToken;
+exports.verifySecurityConfig = verifySecurityConfig;
+//# sourceMappingURL=chunk-Z33AERSV.cjs.map
+//# sourceMappingURL=chunk-Z33AERSV.cjs.map
