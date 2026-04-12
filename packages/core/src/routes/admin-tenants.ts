@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { setCookie, deleteCookie } from 'hono/cookie'
 import type { Bindings, Variables } from '../app'
 import { requireAuth, AuthManager } from '../middleware/auth'
 import { renderTenantsListPage } from '../templates/pages/admin-tenants-list.template'
@@ -19,6 +20,25 @@ router.use('*', async (c, next) => {
     return c.redirect('/admin/dashboard')
   }
   return next()
+})
+
+// ============================================================================
+// Tenant Switcher
+// ============================================================================
+
+// POST /switch — Set or clear admin_tenant_id cookie for tenant switching
+router.post('/switch', async (c) => {
+  const { tenantId } = await c.req.json<{ tenantId?: string }>()
+  if (tenantId) {
+    setCookie(c, 'admin_tenant_id', tenantId, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'Lax',
+    })
+  } else {
+    deleteCookie(c, 'admin_tenant_id', { path: '/' })
+  }
+  return c.json({ ok: true })
 })
 
 // ============================================================================

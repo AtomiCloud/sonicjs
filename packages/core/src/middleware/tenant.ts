@@ -1,4 +1,5 @@
 import type { Context, Next } from 'hono'
+import { getCookie } from 'hono/cookie'
 import type { Bindings, Variables } from '../app'
 
 type AppContext = Context<{ Bindings: Bindings; Variables: Variables }>
@@ -24,21 +25,24 @@ export function tenantMiddleware() {
 
     let tenantId: string | undefined
 
-    // Super-admin can specify tenant via header
+    // Super-admin can specify tenant via header or admin cookie
     if (user.role === 'super_admin') {
+      // Priority: X-Tenant-Id header > admin_tenant_id cookie > no scoping
       const headerTenantId = c.req.header('X-Tenant-Id')
-      if (headerTenantId) {
+      const cookieTenantId = getCookie(c, 'admin_tenant_id')
+      const selectedTenantId = headerTenantId || cookieTenantId
+      if (selectedTenantId) {
         // Verify tenant exists
         const tenant = await c.env.DB
           .prepare('SELECT id FROM tenants WHERE id = ? AND is_active = 1')
-          .bind(headerTenantId)
+          .bind(selectedTenantId)
           .first()
         if (!tenant) {
           return c.json({ error: 'Tenant not found' }, 404)
         }
-        tenantId = headerTenantId
+        tenantId = selectedTenantId
       }
-      // Super-admin without X-Tenant-Id header: no tenant scoping (cross-tenant)
+      // Super-admin without header or cookie: no tenant scoping (cross-tenant)
     } else {
       // Regular user: resolve from JWT claim
       tenantId = user.tenantId

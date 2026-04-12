@@ -45,6 +45,7 @@ import { securityAuditMiddleware } from './plugins/core-plugins/security-audit-p
 import { stripePlugin } from './plugins/core-plugins/stripe-plugin'
 import { pluginMenuMiddleware } from './middleware/plugin-menu'
 import { tenantMiddleware } from './middleware/tenant'
+import { getCookie } from 'hono/cookie'
 import cachePlugin from './plugins/cache'
 import { faviconSvg } from './assets/favicon'
 import { setAppInstance } from './services/route-metadata'
@@ -195,6 +196,55 @@ export function createSonicJSApp(config: SonicJSConfig = {}): SonicJSApp {
       app.use('*', middleware)
     }
   }
+
+  // Fetch tenants list for super_admin users and inject tenant switcher into admin layout
+  app.use('/admin/*', async (c, next) => {
+    const user = c.get('user')
+    await next()
+
+    if (user?.role !== 'super_admin') return
+    if (!c.res.headers.get('content-type')?.includes('text/html')) return
+
+    const TENANT_MARKER = '<!-- TENANT_SWITCHER -->'
+    const status = c.res.status
+    const headers = new Headers(c.res.headers)
+    const html = await c.res.text()
+
+    if (!html.includes(TENANT_MARKER)) {
+      c.res = new Response(html, { status, headers })
+      return
+    }
+
+    let tenants: Array<{ id: string; name: string; slug: string }> = []
+    try {
+      const result = await c.env.DB
+        .prepare('SELECT id, name, slug FROM tenants WHERE is_active = 1 ORDER BY name')
+        .all()
+      tenants = result.results as Array<{ id: string; name: string; slug: string }>
+    } catch {
+      // DB not ready
+    }
+
+    const currentTenantId = getCookie(c, 'admin_tenant_id') || ''
+    const options = tenants.map(t =>
+      `<option value="${t.id}"${currentTenantId === t.id ? ' selected' : ''}>${t.name} (${t.slug})</option>`
+    ).join('')
+
+    const switcherHtml = tenants.length > 0 ? `
+      <div class="mt-3">
+        <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1 block">Viewing tenant</label>
+        <select
+          onchange="switchTenant(this.value)"
+          class="w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-900 dark:border-white/10 dark:bg-zinc-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+        >
+          <option value=""${!currentTenantId ? ' selected' : ''}>All Tenants</option>
+          ${options}
+        </select>
+      </div>` : ''
+
+    const newHtml = html.split(TENANT_MARKER).join(switcherHtml)
+    c.res = new Response(newHtml, { status, headers })
+  })
 
   // Plugin dynamic menu items for admin sidebar
   app.use('/admin/*', pluginMenuMiddleware())

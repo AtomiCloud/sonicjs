@@ -1,16 +1,16 @@
-import { getTenantIdOrNull, renderConfirmationDialog, getConfirmationDialogScript, api_default, api_media_default, api_system_default, admin_api_default, router, adminCollectionsRoutes, adminFormsRoutes, adminSettingsRoutes, public_forms_default, router2, admin_content_default, adminMediaRoutes, userProfilesPlugin, adminPluginRoutes, adminLogsRoutes, userRoutes, auth_default, test_cleanup_default } from './chunk-6IPFK5HK.js';
-export { ROUTES_INFO, admin_api_default as adminApiRoutes, adminCheckboxRoutes, admin_code_examples_default as adminCodeExamplesRoutes, adminCollectionsRoutes, admin_content_default as adminContentRoutes, router as adminDashboardRoutes, adminDesignRoutes, adminLogsRoutes, adminMediaRoutes, adminPluginRoutes, adminSettingsRoutes, admin_testimonials_default as adminTestimonialsRoutes, userRoutes as adminUsersRoutes, api_content_crud_default as apiContentCrudRoutes, api_media_default as apiMediaRoutes, api_default as apiRoutes, api_system_default as apiSystemRoutes, auth_default as authRoutes, createUserProfilesPlugin, defineUserProfile, getTenantId, getTenantIdOrNull, getUserProfileConfig, isSuperAdmin, userProfilesPlugin } from './chunk-6IPFK5HK.js';
+import { getTenantIdOrNull, renderConfirmationDialog, getConfirmationDialogScript, api_default, api_media_default, api_system_default, admin_api_default, router, adminCollectionsRoutes, adminFormsRoutes, adminSettingsRoutes, public_forms_default, router2, admin_content_default, adminMediaRoutes, userProfilesPlugin, adminPluginRoutes, adminLogsRoutes, userRoutes, auth_default, test_cleanup_default } from './chunk-C7BGKL4I.js';
+export { ROUTES_INFO, admin_api_default as adminApiRoutes, adminCheckboxRoutes, admin_code_examples_default as adminCodeExamplesRoutes, adminCollectionsRoutes, admin_content_default as adminContentRoutes, router as adminDashboardRoutes, adminDesignRoutes, adminLogsRoutes, adminMediaRoutes, adminPluginRoutes, adminSettingsRoutes, admin_testimonials_default as adminTestimonialsRoutes, userRoutes as adminUsersRoutes, api_content_crud_default as apiContentCrudRoutes, api_media_default as apiMediaRoutes, api_default as apiRoutes, api_system_default as apiSystemRoutes, auth_default as authRoutes, createUserProfilesPlugin, defineUserProfile, getTenantId, getTenantIdOrNull, getUserProfileConfig, isSuperAdmin, userProfilesPlugin } from './chunk-C7BGKL4I.js';
 import { SettingsService, setAppInstance, schema_exports } from './chunk-TBJY2FF7.js';
 export { Logger, apiTokens, collections, content, contentVersions, getLogger, initLogger, insertCollectionSchema, insertContentSchema, insertLogConfigSchema, insertMediaSchema, insertPluginActivityLogSchema, insertPluginAssetSchema, insertPluginHookSchema, insertPluginRouteSchema, insertPluginSchema, insertSystemLogSchema, insertUserSchema, insertWorkflowHistorySchema, logConfig, media, pluginActivityLog, pluginAssets, pluginHooks, pluginRoutes, plugins, selectCollectionSchema, selectContentSchema, selectLogConfigSchema, selectMediaSchema, selectPluginActivityLogSchema, selectPluginAssetSchema, selectPluginHookSchema, selectPluginRouteSchema, selectPluginSchema, selectSystemLogSchema, selectUserSchema, selectWorkflowHistorySchema, systemLogs, users, workflowHistory } from './chunk-TBJY2FF7.js';
-import { requireAuth, AuthManager, metricsMiddleware, bootstrapMiddleware, securityHeadersMiddleware, csrfProtection } from './chunk-FABYZIUK.js';
-export { AuthManager, PermissionManager, bootstrapMiddleware, cacheHeaders, compressionMiddleware, detailedLoggingMiddleware, getActivePlugins, isPluginActive, logActivity, loggingMiddleware, optionalAuth, performanceLoggingMiddleware, requireActivePlugin, requireActivePlugins, requireAnyPermission, requireAuth, requirePermission, requireRole, securityHeadersMiddleware as securityHeaders, securityLoggingMiddleware } from './chunk-FABYZIUK.js';
+import { requireAuth, AuthManager, metricsMiddleware, bootstrapMiddleware, securityHeadersMiddleware, csrfProtection } from './chunk-MAWJOBI2.js';
+export { AuthManager, PermissionManager, bootstrapMiddleware, cacheHeaders, compressionMiddleware, detailedLoggingMiddleware, getActivePlugins, isPluginActive, logActivity, loggingMiddleware, optionalAuth, performanceLoggingMiddleware, requireActivePlugin, requireActivePlugins, requireAnyPermission, requireAuth, requirePermission, requireRole, securityHeadersMiddleware as securityHeaders, securityLoggingMiddleware } from './chunk-MAWJOBI2.js';
 import { PluginService, PLUGIN_REGISTRY } from './chunk-3GZLOTZK.js';
 export { PluginBootstrapService, PluginService as PluginServiceClass, backfillFormSubmissions, cleanupRemovedCollections, createContentFromSubmission, deriveCollectionSchemaFromFormio, deriveSubmissionTitle, fullCollectionSync, getAvailableCollectionNames, getManagedCollections, isCollectionManaged, loadCollectionConfig, loadCollectionConfigs, mapFormStatusToContentStatus, registerCollections, syncAllFormCollections, syncCollection, syncCollections, syncFormCollection, validateCollectionConfig } from './chunk-3GZLOTZK.js';
-export { MigrationService } from './chunk-VFH3QNA2.js';
-export { renderFilterBar } from './chunk-CSOQPTKO.js';
-import { renderAdminLayout } from './chunk-KLX7B4L3.js';
-export { getConfirmationDialogScript, renderAlert, renderConfirmationDialog, renderForm, renderFormField, renderPagination, renderTable } from './chunk-KLX7B4L3.js';
-import { init_admin_layout_catalyst_template, renderAdminLayoutCatalyst } from './chunk-BGDZHSTR.js';
+export { MigrationService } from './chunk-DI6EEKCB.js';
+export { renderFilterBar } from './chunk-XY6SEOLJ.js';
+import { renderAdminLayout } from './chunk-LX56C3ES.js';
+export { getConfirmationDialogScript, renderAlert, renderConfirmationDialog, renderForm, renderFormField, renderPagination, renderTable } from './chunk-LX56C3ES.js';
+import { init_admin_layout_catalyst_template, renderAdminLayoutCatalyst } from './chunk-OA3U5YFV.js';
 export { HookSystemImpl, HookUtils, PluginManager as PluginManagerClass, PluginRegistryImpl, PluginValidator as PluginValidatorClass, ScopedHookSystem as ScopedHookSystemClass } from './chunk-PCUMA5NT.js';
 import { PluginBuilder } from './chunk-Y6DGPEG4.js';
 export { PluginBuilder, PluginHelpers } from './chunk-Y6DGPEG4.js';
@@ -22,7 +22,7 @@ export { escapeHtml, sanitizeInput, sanitizeObject } from './chunk-TQABQWOP.js';
 export { HOOKS } from './chunk-QXOZI5Q2.js';
 import './chunk-V4OQ3NZ2.js';
 import { Hono } from 'hono';
-import { setCookie, getCookie } from 'hono/cookie';
+import { setCookie, deleteCookie, getCookie } from 'hono/cookie';
 import { z } from 'zod';
 import { drizzle } from 'drizzle-orm/d1';
 
@@ -1515,6 +1515,19 @@ router3.use("*", async (c, next) => {
     return c.redirect("/admin/dashboard");
   }
   return next();
+});
+router3.post("/switch", async (c) => {
+  const { tenantId } = await c.req.json();
+  if (tenantId) {
+    setCookie(c, "admin_tenant_id", tenantId, {
+      path: "/",
+      httpOnly: true,
+      sameSite: "Lax"
+    });
+  } else {
+    deleteCookie(c, "admin_tenant_id", { path: "/" });
+  }
+  return c.json({ ok: true });
 });
 router3.get("/", async (c) => {
   try {
@@ -7645,7 +7658,7 @@ adminRoutes3.get("/settings", async (c) => {
   const db = c.env.DB;
   const user = c.get("user");
   const settings = await getSettings3(db);
-  const { renderAdminLayoutCatalyst: renderAdminLayoutCatalyst2 } = await import('./admin-layout-catalyst.template-CPZ74YI2.js');
+  const { renderAdminLayoutCatalyst: renderAdminLayoutCatalyst2 } = await import('./admin-layout-catalyst.template-7IHTL5YX.js');
   const content2 = `
     <div>
       <div class="mb-6">
@@ -8336,8 +8349,6 @@ function pluginMenuMiddleware() {
     }
   };
 }
-
-// src/middleware/tenant.ts
 function tenantMiddleware() {
   return async (c, next) => {
     const user = c.get("user");
@@ -8347,12 +8358,14 @@ function tenantMiddleware() {
     let tenantId;
     if (user.role === "super_admin") {
       const headerTenantId = c.req.header("X-Tenant-Id");
-      if (headerTenantId) {
-        const tenant = await c.env.DB.prepare("SELECT id FROM tenants WHERE id = ? AND is_active = 1").bind(headerTenantId).first();
+      const cookieTenantId = getCookie(c, "admin_tenant_id");
+      const selectedTenantId = headerTenantId || cookieTenantId;
+      if (selectedTenantId) {
+        const tenant = await c.env.DB.prepare("SELECT id FROM tenants WHERE id = ? AND is_active = 1").bind(selectedTenantId).first();
         if (!tenant) {
           return c.json({ error: "Tenant not found" }, 404);
         }
-        tenantId = headerTenantId;
+        tenantId = selectedTenantId;
       }
     } else {
       tenantId = user.tenantId;
@@ -10237,6 +10250,43 @@ function createSonicJSApp(config = {}) {
       app2.use("*", middleware);
     }
   }
+  app2.use("/admin/*", async (c, next) => {
+    const user = c.get("user");
+    await next();
+    if (user?.role !== "super_admin") return;
+    if (!c.res.headers.get("content-type")?.includes("text/html")) return;
+    const TENANT_MARKER = "<!-- TENANT_SWITCHER -->";
+    const status = c.res.status;
+    const headers = new Headers(c.res.headers);
+    const html = await c.res.text();
+    if (!html.includes(TENANT_MARKER)) {
+      c.res = new Response(html, { status, headers });
+      return;
+    }
+    let tenants = [];
+    try {
+      const result = await c.env.DB.prepare("SELECT id, name, slug FROM tenants WHERE is_active = 1 ORDER BY name").all();
+      tenants = result.results;
+    } catch {
+    }
+    const currentTenantId = getCookie(c, "admin_tenant_id") || "";
+    const options = tenants.map(
+      (t) => `<option value="${t.id}"${currentTenantId === t.id ? " selected" : ""}>${t.name} (${t.slug})</option>`
+    ).join("");
+    const switcherHtml = tenants.length > 0 ? `
+      <div class="mt-3">
+        <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1 block">Viewing tenant</label>
+        <select
+          onchange="switchTenant(this.value)"
+          class="w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-900 dark:border-white/10 dark:bg-zinc-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+        >
+          <option value=""${!currentTenantId ? " selected" : ""}>All Tenants</option>
+          ${options}
+        </select>
+      </div>` : "";
+    const newHtml = html.split(TENANT_MARKER).join(switcherHtml);
+    c.res = new Response(newHtml, { status, headers });
+  });
   app2.use("/admin/*", pluginMenuMiddleware());
   app2.route("/api", api_default);
   app2.route("/api/media", api_media_default);
