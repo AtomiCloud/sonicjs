@@ -47,7 +47,7 @@ import { pluginMenuMiddleware } from './middleware/plugin-menu'
 import { tenantMiddleware } from './middleware/tenant'
 import { getCookie } from 'hono/cookie'
 import cachePlugin from './plugins/cache'
-import { faviconSvg } from './assets/favicon'
+import { faviconPngBase64 } from './assets/favicon'
 import { setAppInstance } from './services/route-metadata'
 
 // ============================================================================
@@ -342,14 +342,19 @@ export function createSonicJSApp(config: SonicJSConfig = {}): SonicJSApp {
     }
   }
 
-  // Serve favicon
-  app.get('/favicon.svg', (c) => {
-    return new Response(faviconSvg, {
+  // Serve favicon (PNG)
+  app.get('/favicon.ico', (c) => {
+    const buf = Uint8Array.from(atob(faviconPngBase64), ch => ch.charCodeAt(0))
+    return new Response(buf, {
       headers: {
-        'Content-Type': 'image/svg+xml',
+        'Content-Type': 'image/png',
         'Cache-Control': 'public, max-age=31536000'
       }
     })
+  })
+  app.get('/favicon.svg', (c) => {
+    // Redirect old SVG path to PNG
+    return c.redirect('/favicon.ico', 301)
   })
 
   // Serve files from R2 storage (public file access)

@@ -1,27 +1,79 @@
-import { HtmlEscapedString } from "hono/utils/html";
-import { renderLogo } from "../components/logo.template";
+'use strict';
 
-// Catalyst Checkbox Component (HTML implementation)
-export interface CatalystCheckboxProps {
-  id: string;
-  name: string;
-  checked?: boolean;
-  disabled?: boolean;
-  label?: string;
-  description?: string;
-  color?:
-    | "dark/zinc"
-    | "dark/white"
-    | "white"
-    | "dark"
-    | "zinc"
-    | "blue"
-    | "green"
-    | "red";
-  className?: string;
+var chunkIGJUBJBW_cjs = require('./chunk-IGJUBJBW.cjs');
+
+// src/assets/logo.ts
+var logoPngBase64;
+var init_logo = chunkIGJUBJBW_cjs.__esm({
+  "src/assets/logo.ts"() {
+    logoPngBase64 = "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";
+  }
+});
+
+// src/templates/components/logo.template.ts
+function renderLogo(data = {}) {
+  const {
+    size = "md",
+    variant = "default",
+    showText = true,
+    showVersion = true,
+    version,
+    className = "",
+    href
+  } = data;
+  const imgSize = imgSizes[size];
+  const fontSize = fontSizes[size];
+  const textColor = variant === "white" ? "#ffffff" : variant === "dark" ? "#1f2937" : "#F1F2F2";
+  const accentColor = "#f97316";
+  const mascotImg = `<img src="data:image/png;base64,${logoPngBase64}" alt="ForgeFoxy" width="${imgSize}" height="${imgSize}" style="width: ${imgSize}px; height: ${imgSize}px;" />`;
+  const textMark = showText ? `
+    <span style="font-size: ${fontSize}; font-weight: 700; letter-spacing: -0.025em; line-height: 1;">
+      <span style="color: ${textColor}">Forge</span><span style="color: ${accentColor}">Foxy</span>
+    </span>
+  ` : "";
+  const versionBadge = showVersion && version ? `
+    <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${variant === "white" ? "bg-white/10 text-white/80 ring-white/20" : "bg-orange-50 text-orange-700 ring-orange-700/10 dark:bg-orange-500/10 dark:text-orange-400 dark:ring-orange-500/20"}">
+      ${version}
+    </span>
+  ` : "";
+  const logoContent = `
+    <div class="flex items-center gap-2 ${className}">
+      ${mascotImg}
+      ${textMark}
+      ${versionBadge}
+    </div>
+  `;
+  if (href) {
+    return `<a href="${href}" class="inline-block hover:opacity-80 transition-opacity">${logoContent}</a>`;
+  }
+  return logoContent;
 }
+var imgSizes, fontSizes;
+var init_logo_template = chunkIGJUBJBW_cjs.__esm({
+  "src/templates/components/logo.template.ts"() {
+    init_logo();
+    imgSizes = {
+      sm: "24",
+      md: "32",
+      lg: "40",
+      xl: "48"
+    };
+    fontSizes = {
+      sm: "1.125rem",
+      md: "1.25rem",
+      lg: "1.5rem",
+      xl: "2rem"
+    };
+  }
+});
 
-export function renderCatalystCheckbox(props: CatalystCheckboxProps): string {
+// src/templates/layouts/admin-layout-catalyst.template.ts
+var admin_layout_catalyst_template_exports = {};
+chunkIGJUBJBW_cjs.__export(admin_layout_catalyst_template_exports, {
+  renderAdminLayoutCatalyst: () => renderAdminLayoutCatalyst,
+  renderCatalystCheckbox: () => renderCatalystCheckbox
+});
+function renderCatalystCheckbox(props) {
   const {
     id,
     name,
@@ -30,49 +82,19 @@ export function renderCatalystCheckbox(props: CatalystCheckboxProps): string {
     label,
     description,
     color = "dark/zinc",
-    className = "",
+    className = ""
   } = props;
-
-  const colorConfig = {
-    "dark/zinc": {
-      bg: "#18181b",
-      border: "#09090b",
-      check: "#ffffff",
-      darkBg: "#52525b",
-    },
-    "dark/white": {
-      bg: "#18181b",
-      border: "#09090b",
-      check: "#ffffff",
-      darkBg: "#ffffff",
-      darkCheck: "#18181b",
-    },
-    white: { bg: "#ffffff", border: "#09090b", check: "#18181b" },
-    dark: { bg: "#18181b", border: "#09090b", check: "#ffffff" },
-    zinc: { bg: "#52525b", border: "#3f3f46", check: "#ffffff" },
-    blue: { bg: "#2563eb", border: "#1d4ed8", check: "#ffffff" },
-    green: { bg: "#16a34a", border: "#15803d", check: "#ffffff" },
-    red: { bg: "#dc2626", border: "#b91c1c", check: "#ffffff" },
-  };
-
-  const _config = colorConfig[color] || colorConfig["dark/zinc"];
-
   const colorClasses = {
-    "dark/zinc":
-      "peer-checked:bg-zinc-900 peer-checked:before:bg-zinc-900 dark:peer-checked:bg-zinc-600",
-    "dark/white":
-      "peer-checked:bg-zinc-900 peer-checked:before:bg-zinc-900 dark:peer-checked:bg-white",
+    "dark/zinc": "peer-checked:bg-zinc-900 peer-checked:before:bg-zinc-900 dark:peer-checked:bg-zinc-600",
+    "dark/white": "peer-checked:bg-zinc-900 peer-checked:before:bg-zinc-900 dark:peer-checked:bg-white",
     white: "peer-checked:bg-white peer-checked:before:bg-white",
     dark: "peer-checked:bg-zinc-900 peer-checked:before:bg-zinc-900",
     zinc: "peer-checked:bg-zinc-600 peer-checked:before:bg-zinc-600",
     blue: "peer-checked:bg-blue-600 peer-checked:before:bg-blue-600",
     green: "peer-checked:bg-green-600 peer-checked:before:bg-green-600",
-    red: "peer-checked:bg-red-600 peer-checked:before:bg-red-600",
+    red: "peer-checked:bg-red-600 peer-checked:before:bg-red-600"
   };
-
-  const checkColor =
-    color === "dark/white" ? "dark:text-zinc-900" : "text-white";
-
+  const checkColor = color === "dark/white" ? "dark:text-zinc-900" : "text-white";
   const baseClasses = `
     relative isolate flex w-4 h-4 items-center justify-center rounded-[0.3125rem]
     before:absolute before:inset-0 before:-z-10 before:rounded-[calc(0.3125rem-1px)] before:bg-white before:shadow-sm
@@ -84,18 +106,11 @@ export function renderCatalystCheckbox(props: CatalystCheckboxProps): string {
     peer-disabled:opacity-50
     peer-disabled:border-zinc-950/25 peer-disabled:bg-zinc-950/5
     dark:peer-disabled:border-white/20 dark:peer-disabled:bg-white/2.5
-  `
-    .trim()
-    .replace(/\s+/g, " ");
-
+  `.trim().replace(/\s+/g, " ");
   const checkIconClasses = `
     w-4 h-4 opacity-0 peer-checked:opacity-100 pointer-events-none
-  `
-    .trim()
-    .replace(/\s+/g, " ");
-
+  `.trim().replace(/\s+/g, " ");
   if (description) {
-    // Field layout with description
     return `
       <div class="grid grid-cols-[1.125rem_1fr] gap-x-4 gap-y-1 sm:grid-cols-[1rem_1fr] ${className}">
         <div class="col-start-1 row-start-1 mt-0.75 sm:mt-1">
@@ -120,7 +135,6 @@ export function renderCatalystCheckbox(props: CatalystCheckboxProps): string {
       </div>
     `;
   } else {
-    // Simple checkbox with optional label
     return `
       <label class="inline-flex items-center gap-3 cursor-pointer ${className}">
         <input
@@ -141,31 +155,7 @@ export function renderCatalystCheckbox(props: CatalystCheckboxProps): string {
     `;
   }
 }
-
-export interface AdminLayoutCatalystData {
-  title: string;
-  pageTitle?: string;
-  currentPath?: string;
-  version?: string;
-  enableExperimentalFeatures?: boolean;
-  user?: {
-    name: string;
-    email: string;
-    role: string;
-  };
-  scripts?: string[];
-  styles?: string[];
-  content: string | HtmlEscapedString;
-  dynamicMenuItems?: Array<{
-    label: string;
-    path: string;
-    icon: string;
-  }>;
-}
-
-export function renderAdminLayoutCatalyst(
-  data: AdminLayoutCatalystData
-): string {
+function renderAdminLayoutCatalyst(data) {
   return `<!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
@@ -301,46 +291,34 @@ export function renderAdminLayoutCatalyst(
     });
   </script>
 
-  ${
-    data.styles
-      ? data.styles
-          .map((style) => `<link rel="stylesheet" href="${style}">`)
-          .join("\n  ")
-      : ""
-  }
-  ${
-    data.scripts
-      ? data.scripts
-          .map((script) => `<script src="${script}"></script>`)
-          .join("\n  ")
-      : ""
-  }
+  ${data.styles ? data.styles.map((style) => `<link rel="stylesheet" href="${style}">`).join("\n  ") : ""}
+  ${data.scripts ? data.scripts.map((script) => `<script src="${script}"></script>`).join("\n  ") : ""}
 </head>
 <body class="min-h-screen bg-white dark:bg-zinc-900">
   <div class="relative isolate flex min-h-svh w-full max-lg:flex-col lg:bg-zinc-100 dark:lg:bg-zinc-950">
     <!-- Sidebar on desktop -->
     <div class="fixed inset-y-0 left-0 w-64 max-lg:hidden">
       ${renderCatalystSidebar(
-        data.currentPath,
-        data.user,
-        data.dynamicMenuItems,
-        false,
-        data.version,
-        data.enableExperimentalFeatures
-      )}
+    data.currentPath,
+    data.user,
+    data.dynamicMenuItems,
+    false,
+    data.version,
+    data.enableExperimentalFeatures
+  )}
     </div>
 
     <!-- Mobile sidebar (hidden by default) -->
     <div id="mobile-sidebar-overlay" class="fixed inset-0 bg-black/30 lg:hidden hidden z-40" onclick="closeMobileSidebar()"></div>
     <div id="mobile-sidebar" class="fixed inset-y-0 left-0 w-80 transform -translate-x-full transition-transform duration-300 ease-in-out lg:hidden z-50">
       ${renderCatalystSidebar(
-        data.currentPath,
-        data.user,
-        data.dynamicMenuItems,
-        true,
-        data.version,
-        data.enableExperimentalFeatures
-      )}
+    data.currentPath,
+    data.user,
+    data.dynamicMenuItems,
+    true,
+    data.version,
+    data.enableExperimentalFeatures
+  )}
     </div>
 
     <!-- Main content area -->
@@ -534,112 +512,94 @@ export function renderAdminLayoutCatalyst(
 </body>
 </html>`;
 }
-
-function renderCatalystSidebar(
-  currentPath: string = "",
-  user?: any,
-  dynamicMenuItems?: Array<{ label: string; path: string; icon: string }>,
-  isMobile: boolean = false,
-  version?: string,
-  enableExperimentalFeatures?: boolean
-): string {
+function renderCatalystSidebar(currentPath = "", user, dynamicMenuItems, isMobile = false, version, enableExperimentalFeatures) {
   let baseMenuItems = [
     {
       label: "Dashboard",
       path: "/admin",
       icon: `<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
         <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
-      </svg>`,
+      </svg>`
     },
     {
       label: "Collections",
       path: "/admin/collections",
       icon: `<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
         <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/>
-      </svg>`,
+      </svg>`
     },
     {
       label: "Forms",
       path: "/admin/forms",
       icon: `<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-      </svg>`,
+      </svg>`
     },
     {
       label: "Content",
       path: "/admin/content",
       icon: `<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
         <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
-      </svg>`,
+      </svg>`
     },
     {
       label: "Media",
       path: "/admin/media",
       icon: `<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
         <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
-      </svg>`,
+      </svg>`
     },
     {
       label: "Users",
       path: "/admin/users",
       icon: `<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
         <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
-      </svg>`,
+      </svg>`
     },
     {
       label: "Plugins",
       path: "/admin/plugins",
       icon: `<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-      </svg>`,
+      </svg>`
     },
     {
       label: "Cache",
       path: "/admin/cache",
       icon: `<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
         <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm14 1a1 1 0 11-2 0 1 1 0 012 0zM2 13a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2zm14 1a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd"/>
-      </svg>`,
-    },
+      </svg>`
+    }
   ];
-
   const settingsMenuItem = {
     label: "Settings",
     path: "/admin/settings",
     icon: `<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
       <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
-    </svg>`,
+    </svg>`
   };
-
-  // Add Tenants menu item for super_admin only
-  if (user?.role === 'super_admin') {
+  if (user?.role === "super_admin") {
     baseMenuItems.push({
       label: "Tenants",
       path: "/admin/tenants",
       icon: `<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
         <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"/>
-      </svg>`,
+      </svg>`
     });
   }
-
-  // Combine base menu items with dynamic menu items
   const allMenuItems = [...baseMenuItems];
   if (dynamicMenuItems && dynamicMenuItems.length > 0) {
-    // Insert dynamic menu items after Users menu item
     const usersIndex = allMenuItems.findIndex(
       (item) => item.path === "/admin/users"
     );
     if (usersIndex !== -1) {
       allMenuItems.splice(usersIndex + 1, 0, ...dynamicMenuItems);
     } else {
-      // Fallback: add to end if Users not found
       allMenuItems.push(...dynamicMenuItems);
     }
   }
-  // Marker for middleware-injected plugin menu items (used when dynamicMenuItems is not passed explicitly)
-  const pluginMenuMarker = (!dynamicMenuItems || dynamicMenuItems.length === 0) ? '<!-- DYNAMIC_PLUGIN_MENU -->' : '';
-
-  const closeButton = isMobile
-    ? `
+  const pluginMenuMarker = !dynamicMenuItems || dynamicMenuItems.length === 0 ? "<!-- DYNAMIC_PLUGIN_MENU -->" : "";
+  const closeButton = isMobile ? `
     <div class="-mb-3 px-4 pt-3">
       <button onclick="closeMobileSidebar()" class="relative flex w-full items-center gap-3 rounded-lg p-2 text-left text-base/6 font-medium text-zinc-950 hover:bg-zinc-950/5 dark:text-white dark:hover:bg-white/5 sm:text-sm/5" aria-label="Close navigation">
         <svg class="h-5 w-5 shrink-0 fill-zinc-500 dark:fill-zinc-400" viewBox="0 0 20 20">
@@ -648,60 +608,40 @@ function renderCatalystSidebar(
         <span>Close menu</span>
       </button>
     </div>
-  `
-    : "";
-
+  ` : "";
   return `
-    <nav class="flex h-full min-h-0 flex-col bg-white shadow-sm ring-1 ring-zinc-950/5 dark:bg-zinc-900 dark:ring-white/10 ${
-      isMobile ? "is-mobile rounded-lg p-2 m-2" : ""
-    }">
+    <nav class="flex h-full min-h-0 flex-col bg-white shadow-sm ring-1 ring-zinc-950/5 dark:bg-zinc-900 dark:ring-white/10 ${isMobile ? "is-mobile rounded-lg p-2 m-2" : ""}">
       ${closeButton}
 
       <!-- Sidebar Header -->
       <div class="flex flex-col border-b border-zinc-950/5 p-4 dark:border-white/5">
         ${renderLogo({ size: "md", showText: true, variant: "white", version, href: "/admin" })}
-        ${user?.role === 'super_admin' ? '<!-- TENANT_SWITCHER -->' : ''}
+        ${user?.role === "super_admin" ? "<!-- TENANT_SWITCHER -->" : ""}
       </div>
 
       <!-- Sidebar Body -->
       <div class="flex flex-1 flex-col overflow-y-auto p-4">
         <div class="flex flex-col gap-0.5">
-          ${allMenuItems
-            .map((item) => {
-              const isActive =
-                currentPath === item.path ||
-                (item.path !== "/admin" && currentPath?.startsWith(item.path));
-              return `
+          ${allMenuItems.map((item) => {
+    const isActive = currentPath === item.path || item.path !== "/admin" && currentPath?.startsWith(item.path);
+    return `
               <span class="relative">
-                ${
-                  isActive
-                    ? `
+                ${isActive ? `
                   <span class="absolute inset-y-2 -left-4 w-0.5 rounded-full bg-cyan-500 dark:bg-cyan-400"></span>
-                `
-                    : ""
-                }
+                ` : ""}
                 <a
                   href="${item.path}"
-                  class="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm/5 font-medium ${
-                    isActive
-                      ? "text-zinc-950 dark:text-white"
-                      : "text-zinc-950 hover:bg-zinc-950/5 dark:text-white dark:hover:bg-white/5"
-                  }"
+                  class="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm/5 font-medium ${isActive ? "text-zinc-950 dark:text-white" : "text-zinc-950 hover:bg-zinc-950/5 dark:text-white dark:hover:bg-white/5"}"
                   ${isActive ? 'data-current="true"' : ""}
                 >
-                  <span class="shrink-0 ${
-                    isActive
-                      ? "fill-zinc-950 dark:fill-white"
-                      : "fill-zinc-500 dark:fill-zinc-400"
-                  }">
+                  <span class="shrink-0 ${isActive ? "fill-zinc-950 dark:fill-white" : "fill-zinc-500 dark:fill-zinc-400"}">
                     ${item.icon}
                   </span>
                   <span class="truncate">${item.label}</span>
                 </a>
               </span>
             `;
-            })
-            .join("")}
+  }).join("")}
           ${pluginMenuMarker}
         </div>
       </div>
@@ -709,45 +649,29 @@ function renderCatalystSidebar(
       <!-- Settings Menu Item (Bottom) -->
       <div class="border-t border-zinc-950/5 p-4 dark:border-white/5">
         ${(() => {
-          const isActive =
-            currentPath === settingsMenuItem.path ||
-            currentPath?.startsWith(settingsMenuItem.path);
-          return `
+    const isActive = currentPath === settingsMenuItem.path || currentPath?.startsWith(settingsMenuItem.path);
+    return `
             <span class="relative">
-              ${
-                isActive
-                  ? `
+              ${isActive ? `
                 <span class="absolute inset-y-2 -left-4 w-0.5 rounded-full bg-cyan-500 dark:bg-cyan-400"></span>
-              `
-                  : ""
-              }
+              ` : ""}
               <a
                 href="${settingsMenuItem.path}"
-                class="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm/5 font-medium ${
-                  isActive
-                    ? "text-zinc-950 dark:text-white"
-                    : "text-zinc-950 hover:bg-zinc-950/5 dark:text-white dark:hover:bg-white/5"
-                }"
+                class="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm/5 font-medium ${isActive ? "text-zinc-950 dark:text-white" : "text-zinc-950 hover:bg-zinc-950/5 dark:text-white dark:hover:bg-white/5"}"
                 ${isActive ? 'data-current="true"' : ""}
               >
-                <span class="shrink-0 ${
-                  isActive
-                    ? "fill-zinc-950 dark:fill-white"
-                    : "fill-zinc-500 dark:fill-zinc-400"
-                }">
+                <span class="shrink-0 ${isActive ? "fill-zinc-950 dark:fill-white" : "fill-zinc-500 dark:fill-zinc-400"}">
                   ${settingsMenuItem.icon}
                 </span>
                 <span class="truncate">${settingsMenuItem.label}</span>
               </a>
             </span>
           `;
-        })()}
+  })()}
       </div>
 
       <!-- Sidebar Footer (User) -->
-      ${
-        user
-          ? `
+      ${user ? `
         <div class="flex flex-col border-t border-zinc-950/5 p-4 dark:border-white/5">
           <div class="relative">
             <button
@@ -756,17 +680,9 @@ function renderCatalystSidebar(
               class="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm/5 font-medium text-zinc-950 hover:bg-zinc-950/5 dark:text-white dark:hover:bg-white/5"
             >
               <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-white dark:bg-white dark:text-zinc-950">
-                <span class="text-xs font-semibold">${(
-                  user.name ||
-                  user.email ||
-                  "U"
-                )
-                  .charAt(0)
-                  .toUpperCase()}</span>
+                <span class="text-xs font-semibold">${(user.name || user.email || "U").charAt(0).toUpperCase()}</span>
               </div>
-              <span class="flex-1 truncate">${
-                user.name || user.email || "User"
-              }</span>
+              <span class="flex-1 truncate">${user.name || user.email || "User"}</span>
               <svg class="h-4 w-4 shrink-0 fill-zinc-500 dark:fill-zinc-400" viewBox="0 0 20 20">
                 <path d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" />
               </svg>
@@ -776,12 +692,8 @@ function renderCatalystSidebar(
             <div class="userDropdown hidden absolute bottom-full mb-2 left-0 right-0 mx-2 rounded-xl bg-white shadow-lg ring-1 ring-zinc-950/10 dark:bg-zinc-800 dark:ring-white/10 z-50">
               <div class="p-2">
                 <div class="px-3 py-2 border-b border-zinc-950/5 dark:border-white/5">
-                  <p class="text-sm font-medium text-zinc-950 dark:text-white">${
-                    user.name || user.email || "User"
-                  }</p>
-                  <p class="text-xs text-zinc-500 dark:text-zinc-400">${
-                    user.email || ""
-                  }</p>
+                  <p class="text-sm font-medium text-zinc-950 dark:text-white">${user.name || user.email || "User"}</p>
+                  <p class="text-xs text-zinc-500 dark:text-zinc-400">${user.email || ""}</p>
                 </div>
                 <a href="/admin/profile" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-950 hover:bg-zinc-950/5 dark:text-white dark:hover:bg-white/5">
                   <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -799,9 +711,21 @@ function renderCatalystSidebar(
             </div>
           </div>
         </div>
-      `
-          : ""
-      }
+      ` : ""}
     </nav>
   `;
 }
+var init_admin_layout_catalyst_template = chunkIGJUBJBW_cjs.__esm({
+  "src/templates/layouts/admin-layout-catalyst.template.ts"() {
+    init_logo_template();
+  }
+});
+
+exports.admin_layout_catalyst_template_exports = admin_layout_catalyst_template_exports;
+exports.init_admin_layout_catalyst_template = init_admin_layout_catalyst_template;
+exports.init_logo_template = init_logo_template;
+exports.renderAdminLayoutCatalyst = renderAdminLayoutCatalyst;
+exports.renderCatalystCheckbox = renderCatalystCheckbox;
+exports.renderLogo = renderLogo;
+//# sourceMappingURL=chunk-5OYE6XHF.cjs.map
+//# sourceMappingURL=chunk-5OYE6XHF.cjs.map
