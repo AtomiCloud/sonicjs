@@ -285,7 +285,7 @@ export const requireRole = (requiredRole: string | string[]) => {
     
     const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole]
     
-    if (!roles.includes(user.role)) {
+    if (!roles.includes(user.role) && user.role !== 'super_admin') {
       // Check if this is a browser request (HTML accept header)
       const acceptHeader = c.req.header('Accept') || ''
       if (acceptHeader.includes('text/html')) {
