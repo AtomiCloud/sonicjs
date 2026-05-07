@@ -34,6 +34,7 @@ import { securityHeadersMiddleware } from './middleware/security-headers'
 import { createDatabaseToolsAdminRoutes } from './plugins/core-plugins/database-tools-plugin/admin-routes'
 import { createSeedDataAdminRoutes } from './plugins/core-plugins/seed-data-plugin/admin-routes'
 import adminTenantsRoutes from './routes/admin-tenants'
+import adminTokensRoutes from './routes/admin-tokens'
 import { emailPlugin } from './plugins/core-plugins/email-plugin'
 import { otpLoginPlugin } from './plugins/core-plugins/otp-login-plugin'
 import { oauthProvidersPlugin } from './plugins/core-plugins/oauth-providers'
@@ -319,6 +320,7 @@ export function createSonicJSApp(config: SonicJSConfig = {}): SonicJSApp {
   }
 
   app.route('/admin/tenants', adminTenantsRoutes)
+  app.route('/admin/tokens', adminTokensRoutes)
   app.route('/admin/plugins', adminPluginRoutes)
   app.route('/admin/logs', adminLogsRoutes)
   app.route('/admin', adminUsersRoutes)
