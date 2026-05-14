@@ -9,6 +9,13 @@ function generateId(): string {
   return crypto.randomUUID().replace(/-/g, '').substring(0, 21)
 }
 
+// Build the public URL for an R2 object. Prefers MEDIA_PUBLIC_BASE_URL (e.g. an R2 custom
+// domain served through Cloudflare's CDN); falls back to the bucket's rate-limited r2.dev URL.
+function buildMediaPublicUrl(env: Bindings, r2Key: string): string {
+  const base = (env.MEDIA_PUBLIC_BASE_URL || `https://pub-${env.BUCKET_NAME || 'sonicjs-media-dev'}.r2.dev`).replace(/\/+$/, '')
+  return `${base}/${r2Key.replace(/^\/+/, '')}`
+}
+
 // Helper function for emitting events (simplified for core package)
 async function emitEvent(eventName: string, data: any) {
   console.log(`[Event] ${eventName}:`, data)
@@ -96,9 +103,8 @@ apiMediaRoutes.post('/upload', async (c) => {
       return c.json({ error: 'Failed to upload file to storage' }, 500)
     }
 
-    // Generate public URL using environment variable for bucket name
-    const bucketName = c.env.BUCKET_NAME || 'sonicjs-media-dev'
-    const publicUrl = `https://pub-${bucketName}.r2.dev/${r2Key}`
+    // Generate public URL (custom domain when configured, otherwise the bucket's r2.dev URL)
+    const publicUrl = buildMediaPublicUrl(c.env, r2Key)
 
     // Extract image dimensions if it's an image
     let width: number | null = null
@@ -257,10 +263,9 @@ apiMediaRoutes.post('/upload-multiple', async (c) => {
           continue
         }
 
-        // Generate public URL using environment variable for bucket name
-        const bucketName = c.env.BUCKET_NAME || 'sonicjs-media-dev'
-        const publicUrl = `https://pub-${bucketName}.r2.dev/${r2Key}`
-        
+        // Generate public URL (custom domain when configured, otherwise the bucket's r2.dev URL)
+        const publicUrl = buildMediaPublicUrl(c.env, r2Key)
+
         // Extract image dimensions if it's an image
         let width: number | null = null
         let height: number | null = null
@@ -590,8 +595,7 @@ apiMediaRoutes.post('/bulk-move', async (c) => {
         }
 
         // Update database with new folder and R2 key
-        const bucketName = c.env.BUCKET_NAME || 'sonicjs-media-dev'
-        const newPublicUrl = `https://pub-${bucketName}.r2.dev/${newR2Key}`
+        const newPublicUrl = buildMediaPublicUrl(c.env, newR2Key)
 
         const updateStmt = c.env.DB.prepare(`
           UPDATE media

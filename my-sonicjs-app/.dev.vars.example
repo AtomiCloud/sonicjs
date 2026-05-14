@@ -1,0 +1,13 @@
+# Example local Worker variables. Copy to `.dev.vars` (gitignored) and fill in real values
+# for `wrangler dev`. For production, set the same keys as Worker environment variables in the
+# Cloudflare dashboard (Workers & Pages -> my-sonicjs-app -> Settings -> Variables) or with
+# `npx wrangler secret put <NAME>`.
+
+# Public base URL for media. Point this at an R2 custom domain (CDN-backed) connected to the
+# media bucket, e.g. https://media.example.com . If unset, the app falls back to the bucket's
+# rate-limited https://pub-<BUCKET_NAME>.r2.dev URL.
+MEDIA_PUBLIC_BASE_URL=https://media.example.com
+
+# Name of the R2 media bucket. Only used to build the r2.dev fallback URL when
+# MEDIA_PUBLIC_BASE_URL is not set.
+BUCKET_NAME=sonicjs-media-prod

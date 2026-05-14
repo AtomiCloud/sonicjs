@@ -69,6 +69,8 @@ export interface Bindings {
   CORS_ORIGINS?: string
   JWT_SECRET?: string
   BUCKET_NAME?: string
+  /** Public base URL for media (e.g. an R2 custom domain). Falls back to the bucket's r2.dev URL. */
+  MEDIA_PUBLIC_BASE_URL?: string
   GOOGLE_MAPS_API_KEY?: string
 }
 
