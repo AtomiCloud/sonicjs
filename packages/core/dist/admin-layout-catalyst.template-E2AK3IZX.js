@@ -1,7 +1,0 @@
-import { init_admin_layout_catalyst_template } from './chunk-AWXFP2GO.js';
-export { renderAdminLayoutCatalyst, renderCatalystCheckbox } from './chunk-AWXFP2GO.js';
-import './chunk-V4OQ3NZ2.js';
-
-init_admin_layout_catalyst_template();
-//# sourceMappingURL=admin-layout-catalyst.template-E2AK3IZX.js.map
-//# sourceMappingURL=admin-layout-catalyst.template-E2AK3IZX.js.map

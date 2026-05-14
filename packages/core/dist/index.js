@@ -1,16 +1,16 @@
-import { getTenantIdOrNull, renderConfirmationDialog, getConfirmationDialogScript, api_default, api_media_default, api_system_default, admin_api_default, router, adminCollectionsRoutes, adminFormsRoutes, adminSettingsRoutes, public_forms_default, router2, admin_content_default, adminMediaRoutes, userProfilesPlugin, adminPluginRoutes, adminLogsRoutes, userRoutes, auth_default, test_cleanup_default } from './chunk-VLXCQYYF.js';
-export { ROUTES_INFO, admin_api_default as adminApiRoutes, adminCheckboxRoutes, admin_code_examples_default as adminCodeExamplesRoutes, adminCollectionsRoutes, admin_content_default as adminContentRoutes, router as adminDashboardRoutes, adminDesignRoutes, adminLogsRoutes, adminMediaRoutes, adminPluginRoutes, adminSettingsRoutes, admin_testimonials_default as adminTestimonialsRoutes, userRoutes as adminUsersRoutes, api_content_crud_default as apiContentCrudRoutes, api_media_default as apiMediaRoutes, api_default as apiRoutes, api_system_default as apiSystemRoutes, auth_default as authRoutes, createUserProfilesPlugin, defineUserProfile, getTenantId, getTenantIdOrNull, getUserProfileConfig, isSuperAdmin, userProfilesPlugin } from './chunk-VLXCQYYF.js';
+import { getTenantIdOrNull, renderConfirmationDialog, getConfirmationDialogScript, api_default, api_media_default, api_system_default, admin_api_default, router, adminCollectionsRoutes, adminFormsRoutes, adminSettingsRoutes, public_forms_default, router2, admin_content_default, adminMediaRoutes, userProfilesPlugin, adminPluginRoutes, adminLogsRoutes, userRoutes, auth_default, test_cleanup_default } from './chunk-RLOBJLBQ.js';
+export { ROUTES_INFO, admin_api_default as adminApiRoutes, adminCheckboxRoutes, admin_code_examples_default as adminCodeExamplesRoutes, adminCollectionsRoutes, admin_content_default as adminContentRoutes, router as adminDashboardRoutes, adminDesignRoutes, adminLogsRoutes, adminMediaRoutes, adminPluginRoutes, adminSettingsRoutes, admin_testimonials_default as adminTestimonialsRoutes, userRoutes as adminUsersRoutes, api_content_crud_default as apiContentCrudRoutes, api_media_default as apiMediaRoutes, api_default as apiRoutes, api_system_default as apiSystemRoutes, auth_default as authRoutes, createUserProfilesPlugin, defineUserProfile, getTenantId, getTenantIdOrNull, getUserProfileConfig, isSuperAdmin, userProfilesPlugin } from './chunk-RLOBJLBQ.js';
 import { SettingsService, setAppInstance, schema_exports } from './chunk-TBJY2FF7.js';
 export { Logger, apiTokens, collections, content, contentVersions, getLogger, initLogger, insertCollectionSchema, insertContentSchema, insertLogConfigSchema, insertMediaSchema, insertPluginActivityLogSchema, insertPluginAssetSchema, insertPluginHookSchema, insertPluginRouteSchema, insertPluginSchema, insertSystemLogSchema, insertUserSchema, insertWorkflowHistorySchema, logConfig, media, pluginActivityLog, pluginAssets, pluginHooks, pluginRoutes, plugins, selectCollectionSchema, selectContentSchema, selectLogConfigSchema, selectMediaSchema, selectPluginActivityLogSchema, selectPluginAssetSchema, selectPluginHookSchema, selectPluginRouteSchema, selectPluginSchema, selectSystemLogSchema, selectUserSchema, selectWorkflowHistorySchema, systemLogs, users, workflowHistory } from './chunk-TBJY2FF7.js';
-import { requireAuth, AuthManager, metricsMiddleware, bootstrapMiddleware, securityHeadersMiddleware, csrfProtection } from './chunk-4LUS7CAG.js';
-export { AuthManager, PermissionManager, bootstrapMiddleware, cacheHeaders, compressionMiddleware, detailedLoggingMiddleware, getActivePlugins, isPluginActive, logActivity, loggingMiddleware, optionalAuth, performanceLoggingMiddleware, requireActivePlugin, requireActivePlugins, requireAnyPermission, requireAuth, requirePermission, requireRole, securityHeadersMiddleware as securityHeaders, securityLoggingMiddleware } from './chunk-4LUS7CAG.js';
-import { PluginService, PLUGIN_REGISTRY } from './chunk-3GZLOTZK.js';
-export { PluginBootstrapService, PluginService as PluginServiceClass, backfillFormSubmissions, cleanupRemovedCollections, createContentFromSubmission, deriveCollectionSchemaFromFormio, deriveSubmissionTitle, fullCollectionSync, getAvailableCollectionNames, getManagedCollections, isCollectionManaged, loadCollectionConfig, loadCollectionConfigs, mapFormStatusToContentStatus, registerCollections, syncAllFormCollections, syncCollection, syncCollections, syncFormCollection, validateCollectionConfig } from './chunk-3GZLOTZK.js';
-export { MigrationService } from './chunk-UU6SLB5N.js';
-export { renderFilterBar } from './chunk-3MOR4LC6.js';
-import { renderAdminLayout } from './chunk-KUNCU4E3.js';
-export { getConfirmationDialogScript, renderAlert, renderConfirmationDialog, renderForm, renderFormField, renderPagination, renderTable } from './chunk-KUNCU4E3.js';
-import { init_admin_layout_catalyst_template, renderAdminLayoutCatalyst } from './chunk-AWXFP2GO.js';
+import { requireAuth, AuthManager, metricsMiddleware, bootstrapMiddleware, securityHeadersMiddleware, csrfProtection } from './chunk-2CMCGQGJ.js';
+export { AuthManager, PermissionManager, bootstrapMiddleware, cacheHeaders, compressionMiddleware, detailedLoggingMiddleware, getActivePlugins, isPluginActive, logActivity, loggingMiddleware, optionalAuth, performanceLoggingMiddleware, requireActivePlugin, requireActivePlugins, requireAnyPermission, requireAuth, requirePermission, requireRole, securityHeadersMiddleware as securityHeaders, securityLoggingMiddleware } from './chunk-2CMCGQGJ.js';
+import { syncCollections, PluginService, PLUGIN_REGISTRY } from './chunk-QX7FGXUQ.js';
+export { PluginBootstrapService, PluginService as PluginServiceClass, backfillFormSubmissions, cleanupRemovedCollections, createContentFromSubmission, deriveCollectionSchemaFromFormio, deriveSubmissionTitle, fullCollectionSync, getAvailableCollectionNames, getManagedCollections, isCollectionManaged, loadCollectionConfig, loadCollectionConfigs, mapFormStatusToContentStatus, registerCollections, syncAllFormCollections, syncCollection, syncCollections, syncFormCollection, validateCollectionConfig } from './chunk-QX7FGXUQ.js';
+export { MigrationService } from './chunk-UHFMLNBB.js';
+export { renderFilterBar } from './chunk-DS6GRG4M.js';
+import { renderAdminLayout } from './chunk-E5F3U33I.js';
+export { getConfirmationDialogScript, renderAlert, renderConfirmationDialog, renderForm, renderFormField, renderPagination, renderTable } from './chunk-E5F3U33I.js';
+import { init_admin_layout_catalyst_template, renderAdminLayoutCatalyst } from './chunk-7ASWZUQJ.js';
 export { HookSystemImpl, HookUtils, PluginManager as PluginManagerClass, PluginRegistryImpl, PluginValidator as PluginValidatorClass, ScopedHookSystem as ScopedHookSystemClass } from './chunk-PCUMA5NT.js';
 import { PluginBuilder } from './chunk-Y6DGPEG4.js';
 export { PluginBuilder, PluginHelpers } from './chunk-Y6DGPEG4.js';
@@ -567,9 +567,9 @@ function formatCellValue(value) {
 
 // src/plugins/core-plugins/database-tools-plugin/admin-routes.ts
 function createDatabaseToolsAdminRoutes() {
-  const router4 = new Hono();
-  router4.use("*", requireAuth());
-  router4.get("/api/stats", async (c) => {
+  const router5 = new Hono();
+  router5.use("*", requireAuth());
+  router5.get("/api/stats", async (c) => {
     try {
       const user = c.get("user");
       if (!user || user.role !== "admin") {
@@ -593,7 +593,7 @@ function createDatabaseToolsAdminRoutes() {
       }, 500);
     }
   });
-  router4.post("/api/truncate", async (c) => {
+  router5.post("/api/truncate", async (c) => {
     try {
       const user = c.get("user");
       if (!user || user.role !== "admin") {
@@ -630,7 +630,7 @@ function createDatabaseToolsAdminRoutes() {
       }, 500);
     }
   });
-  router4.post("/api/backup", async (c) => {
+  router5.post("/api/backup", async (c) => {
     try {
       const user = c.get("user");
       if (!user || user.role !== "admin") {
@@ -657,7 +657,7 @@ function createDatabaseToolsAdminRoutes() {
       }, 500);
     }
   });
-  router4.get("/api/validate", async (c) => {
+  router5.get("/api/validate", async (c) => {
     try {
       const user = c.get("user");
       if (!user || user.role !== "admin") {
@@ -681,7 +681,7 @@ function createDatabaseToolsAdminRoutes() {
       }, 500);
     }
   });
-  router4.get("/api/tables/:tableName", async (c) => {
+  router5.get("/api/tables/:tableName", async (c) => {
     try {
       const user = c.get("user");
       if (!user || user.role !== "admin") {
@@ -710,7 +710,7 @@ function createDatabaseToolsAdminRoutes() {
       }, 500);
     }
   });
-  router4.get("/tables/:tableName", async (c) => {
+  router5.get("/tables/:tableName", async (c) => {
     try {
       const user = c.get("user");
       if (!user || user.role !== "admin") {
@@ -746,7 +746,7 @@ function createDatabaseToolsAdminRoutes() {
       return c.text(`Error: ${error}`, 500);
     }
   });
-  return router4;
+  return router5;
 }
 
 // src/plugins/core-plugins/seed-data-plugin/services/seed-data-service.ts
@@ -1401,7 +1401,7 @@ function renderTenantsListPage(data) {
         <div class="fixed inset-0 bg-black/60" onclick="document.getElementById('create-modal').classList.add('hidden')"></div>
         <div class="relative w-full max-w-lg rounded-xl bg-zinc-900 ring-1 ring-white/10 shadow-2xl p-6">
           <h2 class="text-lg font-semibold text-white mb-4">Create New Tenant</h2>
-          <form id="create-tenant-form" class="space-y-4">
+          <form id="create-tenant-form" class="space-y-4" onsubmit="handleCreateTenantSubmit(event)">
             <div>
               <label class="block text-sm font-medium text-zinc-300 mb-1">Tenant Name</label>
               <input type="text" name="name" required placeholder="My Customer"
@@ -1437,7 +1437,53 @@ function renderTenantsListPage(data) {
     </div>
 
     <script>
-      document.getElementById('create-tenant-form').addEventListener('submit', async (e) => {
+      function renderCreateTenantSuccess(apiToken) {
+        const successDiv = document.getElementById('create-success');
+        successDiv.innerHTML = '';
+
+        const title = document.createElement('p');
+        title.className = 'font-medium mb-2';
+        title.textContent = 'Tenant created!';
+
+        const label = document.createElement('p');
+        label.className = 'mb-1';
+        label.textContent = 'API Token:';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex items-center gap-2';
+
+        const code = document.createElement('code');
+        code.id = 'api-token-value';
+        code.className = 'bg-zinc-800 px-2 py-1 rounded text-xs font-mono break-all flex-1';
+        code.textContent = apiToken;
+
+        const copyButton = document.createElement('button');
+        copyButton.type = 'button';
+        copyButton.className = 'shrink-0 rounded bg-zinc-700 px-2 py-1 text-xs text-white hover:bg-zinc-600';
+        copyButton.textContent = 'Copy';
+        copyButton.onclick = () => {
+          navigator.clipboard.writeText(apiToken).then(() => {
+            copyButton.textContent = 'Copied!';
+            setTimeout(() => {
+              copyButton.textContent = 'Copy';
+            }, 2000);
+          });
+        };
+
+        wrapper.appendChild(code);
+        wrapper.appendChild(copyButton);
+
+        const help = document.createElement('p');
+        help.className = 'text-xs text-zinc-500 mt-2';
+        help.textContent = 'Save this token \u2014 it will not be shown again.';
+
+        successDiv.appendChild(title);
+        successDiv.appendChild(label);
+        successDiv.appendChild(wrapper);
+        successDiv.appendChild(help);
+      }
+
+      async function handleCreateTenantSubmit(e) {
         e.preventDefault();
         const form = e.target;
         const btn = document.getElementById('create-btn');
@@ -1464,7 +1510,7 @@ function renderTenantsListPage(data) {
             errorDiv.textContent = data.error || 'Failed to create tenant';
             errorDiv.classList.remove('hidden');
           } else {
-            successDiv.innerHTML = '<p class="font-medium mb-2">Tenant created!</p><p class="mb-1">API Token:</p><div class="flex items-center gap-2"><code id="api-token-value" class="bg-zinc-800 px-2 py-1 rounded text-xs font-mono break-all flex-1">' + data.apiToken + '</code><button type="button" onclick="navigator.clipboard.writeText(document.getElementById('api-token-value').textContent).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000)})" class="shrink-0 rounded bg-zinc-700 px-2 py-1 text-xs text-white hover:bg-zinc-600">Copy</button></div><p class="text-xs text-zinc-500 mt-2">Save this token \u2014 it will not be shown again.</p>';
+            renderCreateTenantSuccess(data.apiToken);
             successDiv.classList.remove('hidden');
             form.reset();
             btn.textContent = 'Done';
@@ -1477,7 +1523,7 @@ function renderTenantsListPage(data) {
         }
         btn.disabled = false;
         btn.textContent = 'Create Tenant';
-      });
+      }
 
       // Auto-generate slug from name
       document.querySelector('input[name="name"]').addEventListener('input', (e) => {
@@ -1615,6 +1661,11 @@ router3.post("/api", async (c) => {
     await db.prepare(
       "INSERT INTO api_tokens (id, name, token, user_id, permissions, tenant_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
     ).bind(tokenId, `${slug}-api-token`, apiToken, userId, '["*"]', tenantId, now).run();
+    try {
+      await syncCollections(db, tenantId);
+    } catch (error) {
+      console.error(`Error syncing managed collections for tenant ${tenantId}:`, error);
+    }
     const tenant = await db.prepare("SELECT * FROM tenants WHERE id = ?").bind(tenantId).first();
     return c.json({ tenant, adminUser: { id: userId, email: adminEmail, role: "admin" }, apiToken }, 201);
   } catch (error) {
@@ -1832,6 +1883,269 @@ function renderTenantsDetailLayout(data) {
   });
 }
 var admin_tenants_default = router3;
+
+// src/templates/pages/admin-tokens-list.template.ts
+init_admin_layout_catalyst_template();
+function renderTokensListPage(data) {
+  const rows = data.tokens.map((t) => {
+    const created = new Date(t.created_at).toLocaleString();
+    const lastUsed = t.last_used_at ? new Date(t.last_used_at).toLocaleString() : "Never";
+    return `
+      <tr data-token-id="${t.id}">
+        <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-white sm:pl-6">${escapeHtml3(t.name)}</td>
+        <td class="whitespace-nowrap px-3 py-4 text-sm text-zinc-400">${escapeHtml3(t.user_email)}</td>
+        <td class="whitespace-nowrap px-3 py-4 text-sm text-zinc-400">${created}</td>
+        <td class="whitespace-nowrap px-3 py-4 text-sm text-zinc-400">${lastUsed}</td>
+        <td class="whitespace-nowrap px-3 py-4 text-sm text-right">
+          <button
+            type="button"
+            class="rounded-md bg-red-500/10 px-2.5 py-1 text-xs font-semibold text-red-400 ring-1 ring-inset ring-red-500/20 hover:bg-red-500/20 transition-colors"
+            onclick="revokeToken('${t.id}', '${escapeHtmlAttr(t.name)}')"
+          >Revoke</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+  const emptyState = data.tokens.length === 0 ? `
+    <tr>
+      <td colspan="5" class="px-6 py-12 text-center text-sm text-zinc-500">
+        No super admin tokens yet. Mint one to allow Mercury (or other cross-tenant clients) to push to any tenant.
+      </td>
+    </tr>
+  ` : "";
+  const pageContent = `
+    <div class="px-4 sm:px-6 lg:px-8">
+      <div class="sm:flex sm:items-center sm:justify-between">
+        <div>
+          <h1 class="text-2xl font-semibold text-white">Super Admin API Tokens</h1>
+          <p class="mt-2 text-sm text-zinc-400">
+            Cross-tenant <code class="text-xs text-zinc-300 bg-zinc-800 px-1 py-0.5 rounded">ffx_</code> tokens for service clients (e.g. Mercury pipeline).
+            Send <code class="text-xs text-zinc-300 bg-zinc-800 px-1 py-0.5 rounded">X-Tenant-Id</code> header to scope each request to a tenant.
+          </p>
+        </div>
+        <div class="mt-4 sm:mt-0">
+          <button onclick="document.getElementById('mint-modal').classList.remove('hidden')"
+            class="inline-flex items-center rounded-lg bg-lime-600 px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-lime-700 transition-colors shadow-sm">
+            <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+            </svg>
+            Mint Token
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-8 flow-root">
+        <div class="overflow-x-auto rounded-xl ring-1 ring-white/10">
+          <table class="min-w-full divide-y divide-white/5">
+            <thead class="bg-zinc-800/50">
+              <tr>
+                <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-zinc-300 sm:pl-6">Name</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-zinc-300">Owner</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-zinc-300">Created</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-zinc-300">Last Used</th>
+                <th scope="col" class="px-3 py-3.5 text-right text-sm font-semibold text-zinc-300 sm:pr-6">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+              ${rows}${emptyState}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="mint-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+      <div class="flex min-h-full items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black/60" onclick="closeMintModal()"></div>
+        <div class="relative w-full max-w-lg rounded-xl bg-zinc-900 ring-1 ring-white/10 shadow-2xl p-6">
+          <h2 class="text-lg font-semibold text-white mb-4">Mint Super Admin Token</h2>
+          <form id="mint-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-zinc-300 mb-1">Token Name</label>
+              <input type="text" name="name" required maxlength="100" placeholder="mercury-pipeline"
+                class="w-full rounded-lg border-0 bg-zinc-800 px-3 py-2 text-white ring-1 ring-inset ring-white/10 placeholder:text-zinc-500 focus:ring-2 focus:ring-lime-500 text-sm"/>
+              <p class="mt-1 text-xs text-zinc-500">Descriptive name to identify this token in the list.</p>
+            </div>
+            <div id="mint-error" class="hidden rounded-lg bg-red-500/10 p-3 text-sm text-red-400 ring-1 ring-inset ring-red-500/20"></div>
+            <div id="mint-success" class="hidden rounded-lg bg-green-500/10 p-3 text-sm text-green-400 ring-1 ring-inset ring-green-500/20"></div>
+            <div class="flex justify-end gap-3 pt-2">
+              <button type="button" onclick="closeMintModal()"
+                class="rounded-lg px-3.5 py-2.5 text-sm font-semibold text-zinc-300 hover:text-white transition-colors">Cancel</button>
+              <button type="submit" id="mint-btn"
+                class="rounded-lg bg-lime-600 px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-lime-700 transition-colors shadow-sm">Mint Token</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function closeMintModal() {
+        const modal = document.getElementById('mint-modal');
+        modal.classList.add('hidden');
+        document.getElementById('mint-form').reset();
+        document.getElementById('mint-error').classList.add('hidden');
+        document.getElementById('mint-success').classList.add('hidden');
+        const btn = document.getElementById('mint-btn');
+        btn.disabled = false;
+        btn.textContent = 'Mint Token';
+        btn.type = 'submit';
+        btn.onclick = null;
+      }
+
+      document.getElementById('mint-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const btn = document.getElementById('mint-btn');
+        const errorDiv = document.getElementById('mint-error');
+        const successDiv = document.getElementById('mint-success');
+        errorDiv.classList.add('hidden');
+        successDiv.classList.add('hidden');
+        btn.disabled = true;
+        btn.textContent = 'Minting...';
+
+        try {
+          const res = await fetch('/admin/tokens/api', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: form.name.value })
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            errorDiv.textContent = data.error || 'Failed to mint token';
+            errorDiv.classList.remove('hidden');
+          } else {
+            successDiv.innerHTML = '<p class="font-medium mb-2">Token minted!</p><p class="mb-1 text-xs text-green-300">Copy this token now \u2014 it will not be shown again.</p><div class="flex items-center gap-2"><code id="api-token-value" class="bg-zinc-800 px-2 py-1 rounded text-xs font-mono break-all flex-1">' + data.apiToken + '</code><button type="button" onclick="navigator.clipboard.writeText(document.getElementById(\\'api-token-value\\').textContent).then(()=>{this.textContent=\\'Copied!\\';setTimeout(()=>this.textContent=\\'Copy\\',2000)})" class="shrink-0 rounded bg-zinc-700 px-2 py-1 text-xs text-white hover:bg-zinc-600">Copy</button></div>';
+            successDiv.classList.remove('hidden');
+            btn.textContent = 'Done';
+            btn.type = 'button';
+            btn.onclick = () => window.location.reload();
+            btn.disabled = false;
+            return;
+          }
+        } catch (err) {
+          errorDiv.textContent = 'Network error';
+          errorDiv.classList.remove('hidden');
+        }
+        btn.disabled = false;
+        btn.textContent = 'Mint Token';
+      });
+
+      async function revokeToken(id, name) {
+        if (!confirm('Revoke token "' + name + '"? This cannot be undone \u2014 any service using this token will immediately stop working.')) return;
+        try {
+          const res = await fetch('/admin/tokens/api/' + encodeURIComponent(id), { method: 'DELETE' });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            alert(data.error || 'Failed to revoke token');
+            return;
+          }
+          window.location.reload();
+        } catch (err) {
+          alert('Network error');
+        }
+      }
+    </script>
+  `;
+  const layoutData = {
+    title: "Super Admin Tokens",
+    pageTitle: "Super Admin Tokens",
+    currentPath: "/admin/tokens",
+    user: data.user,
+    version: data.version,
+    content: pageContent
+  };
+  return renderAdminLayoutCatalyst(layoutData);
+}
+function escapeHtml3(s) {
+  return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function escapeHtmlAttr(s) {
+  return escapeHtml3(s).replace(/`/g, "&#96;");
+}
+
+// src/routes/admin-tokens.ts
+var router4 = new Hono();
+router4.use("*", requireAuth());
+router4.use("*", async (c, next) => {
+  const user = c.get("user");
+  if (user?.role !== "super_admin") {
+    if (c.req.header("Accept")?.includes("application/json") || c.req.path.includes("/api")) {
+      return c.json({ error: "Super admin access required" }, 403);
+    }
+    return c.redirect("/admin/dashboard");
+  }
+  return next();
+});
+router4.get("/", async (c) => {
+  try {
+    const db = c.env.DB;
+    const user = c.get("user");
+    const tokens = await db.prepare(`
+      SELECT t.id, t.name, t.created_at, t.last_used_at, t.expires_at, u.email AS user_email
+      FROM api_tokens t
+      JOIN users u ON t.user_id = u.id
+      WHERE t.tenant_id IS NULL
+      ORDER BY t.created_at DESC
+    `).all();
+    return c.html(renderTokensListPage({
+      tokens: tokens.results,
+      user: { name: user.email, email: user.email, role: user.role },
+      version: c.get("appVersion")
+    }));
+  } catch (error) {
+    console.error("Error rendering tokens page:", error);
+    return c.text("Failed to load tokens page", 500);
+  }
+});
+router4.post("/api", async (c) => {
+  try {
+    const db = c.env.DB;
+    const user = c.get("user");
+    const body = await c.req.json();
+    const name = (body.name || "").trim();
+    if (!name) return c.json({ error: "name is required" }, 400);
+    if (name.length > 100) return c.json({ error: "name must be 100 characters or fewer" }, 400);
+    const ownerRow = await db.prepare(
+      "SELECT id FROM users WHERE id = ? AND role = ? AND is_active = 1"
+    ).bind(user.userId, "super_admin").first();
+    if (!ownerRow) {
+      return c.json({ error: "Super admin user not found or inactive" }, 500);
+    }
+    const tokenBytes = new Uint8Array(16);
+    crypto.getRandomValues(tokenBytes);
+    const tokenHex = Array.from(tokenBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+    const apiToken = `ffx_${tokenHex}`;
+    const tokenId = crypto.randomUUID();
+    const now = Date.now();
+    await db.prepare(
+      "INSERT INTO api_tokens (id, name, token, user_id, permissions, tenant_id, created_at) VALUES (?, ?, ?, ?, ?, NULL, ?)"
+    ).bind(tokenId, name, apiToken, ownerRow.id, '["*"]', now).run();
+    return c.json({
+      token: { id: tokenId, name, created_at: now },
+      apiToken
+    }, 201);
+  } catch (error) {
+    console.error("Error minting super_admin token:", error);
+    return c.json({ error: "Failed to mint token" }, 500);
+  }
+});
+router4.delete("/api/:id", async (c) => {
+  try {
+    const db = c.env.DB;
+    const id = c.req.param("id");
+    const existing = await db.prepare(
+      "SELECT id FROM api_tokens WHERE id = ? AND tenant_id IS NULL"
+    ).bind(id).first();
+    if (!existing) return c.json({ error: "Token not found" }, 404);
+    await db.prepare("DELETE FROM api_tokens WHERE id = ? AND tenant_id IS NULL").bind(id).run();
+    return c.json({ message: "Token revoked" });
+  } catch (error) {
+    console.error("Error revoking token:", error);
+    return c.json({ error: "Failed to revoke token" }, 500);
+  }
+});
+var admin_tokens_default = router4;
 function createEmailPlugin() {
   const builder = PluginBuilder.create({
     name: "email",
@@ -7708,7 +8022,7 @@ adminRoutes3.get("/settings", async (c) => {
   const db = c.env.DB;
   const user = c.get("user");
   const settings = await getSettings3(db);
-  const { renderAdminLayoutCatalyst: renderAdminLayoutCatalyst2 } = await import('./admin-layout-catalyst.template-E2AK3IZX.js');
+  const { renderAdminLayoutCatalyst: renderAdminLayoutCatalyst2 } = await import('./admin-layout-catalyst.template-GE7TAUQR.js');
   const content2 = `
     <div>
       <div class="mb-6">
@@ -10360,6 +10674,7 @@ function createSonicJSApp(config = {}) {
     }
   }
   app2.route("/admin/tenants", admin_tenants_default);
+  app2.route("/admin/tokens", admin_tokens_default);
   app2.route("/admin/plugins", adminPluginRoutes);
   app2.route("/admin/logs", adminLogsRoutes);
   app2.route("/admin", userRoutes);
