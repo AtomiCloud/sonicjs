@@ -104,6 +104,19 @@ describe('syncCollection', () => {
     expect(mockDb._mocks.prepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collections'))
   })
 
+  it('should scope collection lookup and insert by tenant when tenantId is provided', async () => {
+    mockDb._mocks.first.mockResolvedValue(null)
+    mockDb._mocks.run.mockResolvedValue({ success: true })
+
+    const config = createTestConfig()
+    const result = await syncCollection(mockDb as any, config, 'tenant-123')
+
+    expect(result.status).toBe('created')
+    expect(mockDb._mocks.prepare).toHaveBeenCalledWith('SELECT * FROM collections WHERE name = ? AND tenant_id = ?')
+    expect(mockDb._mocks.bind).toHaveBeenCalledWith('test-collection', 'tenant-123')
+    expect(mockDb._mocks.prepare).toHaveBeenCalledWith(expect.stringContaining('tenant_id'))
+  })
+
   it('should return unchanged when collection exists and matches config', async () => {
     const config = createTestConfig()
     // The code does JSON.stringify(existing.schema) so we need to return the object, not a string

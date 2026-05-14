@@ -31,8 +31,7 @@ const config: SonicJSConfig = {
   plugins: {
     directory: './src/plugins',
     autoLoad: false,  // Set to true to auto-load custom plugins
-    disableAll: false,  // Enable plugins
-    enabled: ['email', 'contact-form']  // Enable specific plugins
+    disableAll: false  // Enable plugins
   }
 }
 

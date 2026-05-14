@@ -31,6 +31,9 @@ id = "8546a637323a4584809c1da1d34373f0"
 [vars]
 ENVIRONMENT = "development"
 CORS_ORIGINS = "http://localhost:8787"
+# MEDIA_PUBLIC_BASE_URL / BUCKET_NAME are NOT set here on purpose — keep them out of version control.
+# Local dev:   put them in my-sonicjs-app/.dev.vars (see .dev.vars.example)
+# Production:   set them as Worker environment variables (Cloudflare dashboard) or `wrangler secret put`
 
 # Observability
 [observability]

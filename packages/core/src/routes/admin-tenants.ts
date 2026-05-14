@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { setCookie, deleteCookie } from 'hono/cookie'
 import type { Bindings, Variables } from '../app'
 import { requireAuth, AuthManager } from '../middleware/auth'
+import { syncCollections } from '../services/collection-sync'
 import { renderTenantsListPage } from '../templates/pages/admin-tenants-list.template'
 import { renderAdminLayoutCatalyst } from '../templates/layouts/admin-layout-catalyst.template'
 
@@ -166,6 +167,12 @@ router.post('/api', async (c) => {
     await db.prepare(
       'INSERT INTO api_tokens (id, name, token, user_id, permissions, tenant_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
     ).bind(tokenId, `${slug}-api-token`, apiToken, userId, '["*"]', tenantId, now).run()
+
+    try {
+      await syncCollections(db, tenantId)
+    } catch (error) {
+      console.error(`Error syncing managed collections for tenant ${tenantId}:`, error)
+    }
 
     const tenant = await db.prepare('SELECT * FROM tenants WHERE id = ?').bind(tenantId).first()
 

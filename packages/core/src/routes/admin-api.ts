@@ -194,7 +194,8 @@ const createCollectionSchema = z.object({
   name: z.string().min(1).max(255).regex(/^[a-z0-9_]+$/, 'Must contain only lowercase letters, numbers, and underscores'),
   displayName: z.string().min(1).max(255).optional(),
   display_name: z.string().min(1).max(255).optional(),
-  description: z.string().optional()
+  description: z.string().optional(),
+  schema: z.record(z.string(), z.any()).optional()
 }).refine(data => data.displayName || data.display_name, {
   message: 'Either displayName or display_name is required',
   path: ['displayName']
@@ -502,8 +503,8 @@ adminApiRoutes.post('/collections', async (c) => {
         return c.json({ error: 'A collection with this name already exists' }, 400)
       }
 
-      // Create basic schema
-      const basicSchema = {
+      // Create basic schema unless a full schema payload is supplied.
+      const defaultSchema = {
         type: "object",
         properties: {
           title: {
@@ -525,6 +526,7 @@ adminApiRoutes.post('/collections', async (c) => {
         },
         required: ["title"]
       }
+      const collectionSchema = validatedData.schema || defaultSchema
 
       const collectionId = crypto.randomUUID()
       const now = Date.now()
@@ -539,7 +541,7 @@ adminApiRoutes.post('/collections', async (c) => {
         validatedData.name,
         displayName,
         validatedData.description || null,
-        JSON.stringify(basicSchema),
+        JSON.stringify(collectionSchema),
         1, // is_active
         now,
         now,

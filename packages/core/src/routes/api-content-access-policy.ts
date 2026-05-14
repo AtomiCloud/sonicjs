@@ -1,7 +1,7 @@
 import type { FilterCondition, FilterGroup, QueryFilter } from '../utils/query-filter'
 
 function canReadNonPublicContent(userRole?: string): boolean {
-  return userRole === 'admin' || userRole === 'editor'
+  return userRole === 'super_admin' || userRole === 'admin' || userRole === 'editor'
 }
 
 function isStatusCondition(condition: FilterCondition): boolean {

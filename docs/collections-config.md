@@ -1660,9 +1660,9 @@ blogRoutes.get('/featured', async (c) => {
 
   // Get blog_posts collection
   const collectionStmt = db.prepare(
-    'SELECT id FROM collections WHERE name = ? AND is_active = 1'
+    'SELECT id FROM collections WHERE name = ? AND is_active = 1 AND tenant_id = ?'
   )
-  const collection = await collectionStmt.bind('blog_posts').first()
+  const collection = await collectionStmt.bind('blog_posts', tenantId).first()
 
   if (!collection) {
     return c.json({ error: 'Blog posts collection not found' }, 404)
