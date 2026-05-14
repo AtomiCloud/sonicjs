@@ -91,7 +91,7 @@ export function renderTenantsListPage(data: TenantsListPageData): string {
         <div class="fixed inset-0 bg-black/60" onclick="document.getElementById('create-modal').classList.add('hidden')"></div>
         <div class="relative w-full max-w-lg rounded-xl bg-zinc-900 ring-1 ring-white/10 shadow-2xl p-6">
           <h2 class="text-lg font-semibold text-white mb-4">Create New Tenant</h2>
-          <form id="create-tenant-form" class="space-y-4">
+          <form id="create-tenant-form" class="space-y-4" onsubmit="handleCreateTenantSubmit(event)">
             <div>
               <label class="block text-sm font-medium text-zinc-300 mb-1">Tenant Name</label>
               <input type="text" name="name" required placeholder="My Customer"
@@ -127,7 +127,53 @@ export function renderTenantsListPage(data: TenantsListPageData): string {
     </div>
 
     <script>
-      document.getElementById('create-tenant-form').addEventListener('submit', async (e) => {
+      function renderCreateTenantSuccess(apiToken) {
+        const successDiv = document.getElementById('create-success');
+        successDiv.innerHTML = '';
+
+        const title = document.createElement('p');
+        title.className = 'font-medium mb-2';
+        title.textContent = 'Tenant created!';
+
+        const label = document.createElement('p');
+        label.className = 'mb-1';
+        label.textContent = 'API Token:';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex items-center gap-2';
+
+        const code = document.createElement('code');
+        code.id = 'api-token-value';
+        code.className = 'bg-zinc-800 px-2 py-1 rounded text-xs font-mono break-all flex-1';
+        code.textContent = apiToken;
+
+        const copyButton = document.createElement('button');
+        copyButton.type = 'button';
+        copyButton.className = 'shrink-0 rounded bg-zinc-700 px-2 py-1 text-xs text-white hover:bg-zinc-600';
+        copyButton.textContent = 'Copy';
+        copyButton.onclick = () => {
+          navigator.clipboard.writeText(apiToken).then(() => {
+            copyButton.textContent = 'Copied!';
+            setTimeout(() => {
+              copyButton.textContent = 'Copy';
+            }, 2000);
+          });
+        };
+
+        wrapper.appendChild(code);
+        wrapper.appendChild(copyButton);
+
+        const help = document.createElement('p');
+        help.className = 'text-xs text-zinc-500 mt-2';
+        help.textContent = 'Save this token — it will not be shown again.';
+
+        successDiv.appendChild(title);
+        successDiv.appendChild(label);
+        successDiv.appendChild(wrapper);
+        successDiv.appendChild(help);
+      }
+
+      async function handleCreateTenantSubmit(e) {
         e.preventDefault();
         const form = e.target;
         const btn = document.getElementById('create-btn');
@@ -154,7 +200,7 @@ export function renderTenantsListPage(data: TenantsListPageData): string {
             errorDiv.textContent = data.error || 'Failed to create tenant';
             errorDiv.classList.remove('hidden');
           } else {
-            successDiv.innerHTML = '<p class="font-medium mb-2">Tenant created!</p><p class="mb-1">API Token:</p><div class="flex items-center gap-2"><code id="api-token-value" class="bg-zinc-800 px-2 py-1 rounded text-xs font-mono break-all flex-1">' + data.apiToken + '</code><button type="button" onclick="navigator.clipboard.writeText(document.getElementById(\'api-token-value\').textContent).then(()=>{this.textContent=\'Copied!\';setTimeout(()=>this.textContent=\'Copy\',2000)})" class="shrink-0 rounded bg-zinc-700 px-2 py-1 text-xs text-white hover:bg-zinc-600">Copy</button></div><p class="text-xs text-zinc-500 mt-2">Save this token — it will not be shown again.</p>';
+            renderCreateTenantSuccess(data.apiToken);
             successDiv.classList.remove('hidden');
             form.reset();
             btn.textContent = 'Done';
@@ -167,7 +213,7 @@ export function renderTenantsListPage(data: TenantsListPageData): string {
         }
         btn.disabled = false;
         btn.textContent = 'Create Tenant';
-      });
+      }
 
       // Auto-generate slug from name
       document.querySelector('input[name="name"]').addEventListener('input', (e) => {

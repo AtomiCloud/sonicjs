@@ -12,7 +12,6 @@ import type { SonicJSConfig } from '@sonicjs-cms/core'
 import blogPostsCollection from './collections/blog-posts.collection'
 import pageBlocksCollection from './collections/page-blocks.collection'
 import contactMessagesCollection from './collections/contact-messages.collection'
-import restaurantsCollection from './collections/restaurants.collection'
 
 // Import plugins (manual mounting until auto-loading is implemented)
 import contactFormPlugin from './plugins/contact-form/index'
@@ -21,8 +20,7 @@ import contactFormPlugin from './plugins/contact-form/index'
 registerCollections([
   blogPostsCollection,
   pageBlocksCollection,
-  contactMessagesCollection,
-  restaurantsCollection
+  contactMessagesCollection
 ])
 
 // Application configuration

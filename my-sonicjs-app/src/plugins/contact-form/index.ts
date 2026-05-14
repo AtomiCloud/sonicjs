@@ -4,6 +4,7 @@ import manifest from './manifest.json'
 import { ContactService } from './services/contact'
 import adminRoutes from './routes/admin'
 import publicRoutes from './routes/public'
+import apiRoutes from './routes/api'
 
 export function createContactPlugin(): Plugin {
   const builder = PluginBuilder.create({
@@ -18,9 +19,16 @@ export function createContactPlugin(): Plugin {
     compatibility: '^2.0.0'
   })
 
-  // Public routes
-  builder.addRoute('/', publicRoutes, {
-    description: 'Contact form public routes',
+  // Public page route
+  builder.addRoute('/contact', publicRoutes, {
+    description: 'Contact form public page',
+    requiresAuth: false,
+    priority: 10
+  })
+
+  // Public submission API route
+  builder.addRoute('/api/contact', apiRoutes, {
+    description: 'Contact form submission API',
     requiresAuth: false,
     priority: 10
   })

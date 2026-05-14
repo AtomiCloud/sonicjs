@@ -1141,7 +1141,7 @@ CREATE INDEX IF NOT EXISTS idx_content_collection ON content(collection_id);
 CREATE INDEX IF NOT EXISTS idx_content_slug ON content(slug);
 CREATE INDEX IF NOT EXISTS idx_media_folder ON media(folder);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_collections_name ON collections(name);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_collections_tenant_name ON collections(tenant_id, name);
 
 -- Use prepared statements (automatic in Drizzle ORM)
 -- Queries are compiled once and reused

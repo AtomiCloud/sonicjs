@@ -62,6 +62,23 @@ describe('normalizePublicContentFilter', () => {
     ])
   })
 
+  it('preserves super_admin status filters', () => {
+    const filter: QueryFilter = {
+      where: {
+        and: [
+          { field: 'status', operator: 'equals', value: 'draft' }
+        ]
+      }
+    }
+
+    const result = normalizePublicContentFilter(filter, 'super_admin')
+
+    expect(result).toBe(filter)
+    expect(result.where?.and).toEqual([
+      { field: 'status', operator: 'equals', value: 'draft' }
+    ])
+  })
+
   it('forces published status for viewer and author roles', () => {
     const filter: QueryFilter = {
       where: {

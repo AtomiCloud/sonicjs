@@ -171,18 +171,19 @@ Content collection definitions with JSON schemas.
 ```sql
 CREATE TABLE collections (
   id TEXT PRIMARY KEY,
-  name TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
   display_name TEXT NOT NULL,
   description TEXT,
   schema TEXT NOT NULL, -- JSON schema definition
   is_active INTEGER NOT NULL DEFAULT 1,
   managed INTEGER DEFAULT 0 NOT NULL, -- Config-managed collections
+  tenant_id TEXT, -- Tenant-scoped in multi-tenant deployments
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
 
 -- Indexes
-CREATE INDEX idx_collections_name ON collections(name);
+CREATE UNIQUE INDEX idx_collections_tenant_name ON collections(tenant_id, name);
 CREATE INDEX idx_collections_active ON collections(is_active);
 CREATE INDEX idx_collections_managed ON collections(managed);
 CREATE INDEX idx_collections_managed_active ON collections(managed, is_active);
